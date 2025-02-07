@@ -5,25 +5,27 @@ import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 
 class SignUpScreen extends StatefulWidget {
-
   const SignUpScreen({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return SignUpScreenState();
-  }
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class SignUpScreenState extends State<SignUpScreen> {
-  var fullNameController = TextEditingController();
-  var emailController = TextEditingController();
-  var passwordController = TextEditingController();
-  var confirmPasswordController = TextEditingController();
+class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
-  FocusNode fullNameFocusNode = FocusNode();
-  FocusNode emailFocusNode = FocusNode();
-  FocusNode passWordFocusNode = FocusNode();
-  FocusNode confirmPassWordFocusNode = FocusNode();
+  final FocusNode fullNameFocusNode = FocusNode();
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode passWordFocusNode = FocusNode();
+  final FocusNode confirmPassWordFocusNode = FocusNode();
+
+  // Use separate booleans to control password visibility
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -32,145 +34,184 @@ class SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> init() async {
-    //
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
-  void setState(fn) {
-    if (mounted) super.setState(fn);
+    // Your initialization logic (if any)
   }
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: Container(
-        width: context.width(),
-        height: context.height(),
-        decoration: BoxDecoration(
+        width: screenWidth,
+        height: screenHeight,
+        decoration: const BoxDecoration(
           image: DecorationImage(
-              image: AssetImage('assets/images/vouse_bg.jpg'),
-              fit: BoxFit.cover),
+            image: AssetImage('assets/images/vouse_bg.jpg'),
+            fit: BoxFit.cover,
+          ),
         ),
         child: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              50.height,
-              Text("Register New Account",
-                  style: boldTextStyle(size: 24, color: black)),
+              const SizedBox(height: 50),
+              Text(
+                "Register New Account",
+                style: boldTextStyle(size: 24, color: black),
+              ),
               Container(
-                margin: EdgeInsets.all(16),
+                margin: const EdgeInsets.all(16),
                 child: Stack(
                   alignment: Alignment.topCenter,
                   children: <Widget>[
                     Container(
-                      width: context.width(),
-                      padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                      margin: EdgeInsets.only(top: 55.0),
+                      width: screenWidth,
+                      padding: const EdgeInsets.only(
+                          left: 16, right: 16, bottom: 16),
+                      margin: const EdgeInsets.only(top: 55.0),
                       decoration: boxDecorationWithShadow(
-                          borderRadius: BorderRadius.circular(30),
-                          backgroundColor: context.cardColor),
+                        borderRadius: BorderRadius.circular(30),
+                        backgroundColor: context.cardColor,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Container(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                50.height,
-                                Text("Full Name",
-                                    style: boldTextStyle(size: 14)),
-                                8.height,
-                                AppTextField(
-                                  decoration: waInputDecoration(
-                                      hint: 'Enter your full name here',
-                                      prefixIcon:
-                                          Icons.person_outline_outlined),
-                                  textFieldType: TextFieldType.NAME,
-                                  keyboardType: TextInputType.name,
-                                  controller: fullNameController,
-                                  focus: fullNameFocusNode,
-                                  nextFocus: emailFocusNode,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 50),
+                              Text("Full Name", style: boldTextStyle(size: 14)),
+                              const SizedBox(height: 8),
+                              // Using AppTextField for non-password fields
+                              AppTextField(
+                                controller: fullNameController,
+                                focus: fullNameFocusNode,
+                                nextFocus: emailFocusNode,
+                                textFieldType: TextFieldType.NAME,
+                                keyboardType: TextInputType.name,
+                                decoration: waInputDecoration(
+                                  hint: 'Enter your full name here',
+                                  prefixIcon: Icons.person_outline_outlined,
                                 ),
-                                16.height,
-                                Text("Email", style: boldTextStyle(size: 14)),
-                                8.height,
-                                AppTextField(
-                                  decoration: waInputDecoration(
-                                      hint: 'Enter your email here',
-                                      prefixIcon: Icons.email_outlined),
-                                  textFieldType: TextFieldType.EMAIL,
-                                  keyboardType: TextInputType.emailAddress,
-                                  controller: emailController,
-                                  focus: emailFocusNode,
-                                  nextFocus: passWordFocusNode,
+                              ),
+                              const SizedBox(height: 16),
+                              Text("Email", style: boldTextStyle(size: 14)),
+                              const SizedBox(height: 8),
+                              AppTextField(
+                                controller: emailController,
+                                focus: emailFocusNode,
+                                nextFocus: passWordFocusNode,
+                                textFieldType: TextFieldType.EMAIL,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: waInputDecoration(
+                                  hint: 'Enter your email here',
+                                  prefixIcon: Icons.email_outlined,
                                 ),
-                                16.height,
-                                Text("Password",
-                                    style: boldTextStyle(size: 14)),
-                                8.height,
-                                AppTextField(
-                                  decoration: waInputDecoration(
-                                      hint: 'Enter your password here',
-                                      prefixIcon: Icons.lock_outline),
-                                  suffixIconColor: WAPrimaryColor,
-                                  textFieldType: TextFieldType.PASSWORD,
-                                  isPassword: true,
-                                  keyboardType: TextInputType.visiblePassword,
-                                  controller: passwordController,
-                                  focus: passWordFocusNode,
-                                  nextFocus: confirmPassWordFocusNode,
+                              ),
+                              const SizedBox(height: 16),
+                              Text("Password", style: boldTextStyle(size: 14)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: passwordController,
+                                focusNode: passWordFocusNode,
+                                obscureText: _obscurePassword,
+                                keyboardType: TextInputType.text,
+                                decoration: waInputDecoration(
+                                  hint: 'Enter your password here',
+                                  prefixIcon: Icons.lock_outline,
+                                ).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: VPrimaryColor,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
                                 ),
-                                16.height,
-                                Text("Confirm Password",
-                                    style: boldTextStyle(size: 14)),
-                                8.height,
-                                AppTextField(
-                                  decoration: waInputDecoration(
-                                      hint: 'Re-type password',
-                                      prefixIcon: Icons.lock_outline),
-                                  suffixIconColor: WAPrimaryColor,
-                                  textFieldType: TextFieldType.PASSWORD,
-                                  isPassword: true,
-                                  keyboardType: TextInputType.visiblePassword,
-                                  controller: passwordController,
-                                  focus: confirmPassWordFocusNode,
+                              ),
+                              const SizedBox(height: 16),
+                              Text("Confirm Password",
+                                  style: boldTextStyle(size: 14)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: confirmPasswordController,
+                                focusNode: confirmPassWordFocusNode,
+                                obscureText: _obscureConfirmPassword,
+                                keyboardType: TextInputType.text,
+                                decoration: waInputDecoration(
+                                  hint: 'Re-type password',
+                                  prefixIcon: Icons.lock_outline,
+                                ).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: VPrimaryColor,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword;
+                                      });
+                                    },
+                                  ),
                                 ),
-                                30.height,
-                                AppButton(
-                                        text: "Register Account",
-                                        color: WAPrimaryColor,
-                                        textColor: Colors.white,
-                                        shapeBorder: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(30)),
-                                        width: context.width(),
-                                        onTap: () {})
-                                    .paddingOnly(
-                                        left: context.width() * 0.1,
-                                        right: context.width() * 0.1),
-                                30.height,
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('Already have an account?',
+                              ),
+                              const SizedBox(height: 30),
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  left: screenWidth * 0.1,
+                                  right: screenWidth * 0.1,
+                                ),
+                                child: AppButton(
+                                  text: "Register Account",
+                                  color: VPrimaryColor,
+                                  textColor: Colors.white,
+                                  shapeBorder: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  width: screenWidth,
+                                  onTap: () {
+                                    // Your register account logic here
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                              Center(
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Already have an account?',
                                         style: primaryTextStyle(
-                                            color: Colors.grey)),
-                                    4.width,
-                                    Text('Log In here',
-                                        style: boldTextStyle(color: black)),
-                                  ],
-                                ).onTap(() {
-                                  finish(context);
-                                }).center(),
-                              ],
-                            ),
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Log In here',
+                                        style: boldTextStyle(color: black),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           )
                         ],
                       ),
@@ -179,20 +220,22 @@ class SignUpScreenState extends State<SignUpScreen> {
                       alignment: Alignment.center,
                       height: 100,
                       width: 100,
-                      decoration: boxDecorationRoundedWithShadow(30,
-                          backgroundColor: context.cardColor),
+                      decoration: boxDecorationRoundedWithShadow(
+                        30,
+                        backgroundColor: context.cardColor,
+                      ),
                       child: Image.asset(
-                        'assets/images/wa_app_logo.png',
+                        'assets/images/vouse_app_logo.png',
                         height: 60,
-                        color: WAPrimaryColor,
                         width: 60,
                         fit: BoxFit.cover,
+                        color: VPrimaryColor,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
             ],
           ),
         ),

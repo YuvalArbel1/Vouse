@@ -39,6 +39,8 @@ dependencies:
   retrofit: ^4.4.2
   dio: ^5.8.0+1
   nb_utils: ^7.0.10
+  firebase_core: ^3.11.0
+  firebase_auth: ^5.4.2
 
 dev_dependencies:
   flutter_test:

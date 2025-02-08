@@ -2,6 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+<!-- Inside ios/Runner/Info.plist (not GoogleService-Info.plist) -->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <!-- The reversed client ID from GoogleService-Info.plist: -->
+      <string>com.googleusercontent.apps.9956980467-mp1j1i097gmkqta9k534n8k8d63uhfpf</string>
+    </array>
+  </dict>
+</array>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

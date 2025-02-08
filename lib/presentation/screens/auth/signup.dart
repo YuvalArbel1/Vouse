@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vouse_flutter/presentation/providers/firebase_auth_notifier.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
+import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 
@@ -67,8 +68,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     // 4) Check final state from auth.
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
-      toast("Registration successful!");
-      // Possibly navigate away
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const VerificationPendingScreen(),
+        ),
+      );
     } else if (authState is DataFailed<void>) {
       final errorMsg = authState.error?.error ?? 'Unknown error';
       toast("Registration failed: $errorMsg");

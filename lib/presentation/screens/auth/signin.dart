@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vouse_flutter/presentation/providers/firebase_auth_notifier.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../../widgets/auth/forgot_password_dialog.dart';
 import 'signup.dart';
 
-/// A screen that handles Firebase sign-in with form validation.
-/// Uses Riverpod's firebaseAuthNotifierProvider for authentication.
+/// A screen that handles Firebase sign-in with form validation,
+/// plus a "Sign in with Google" button (and no Facebook).
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
@@ -17,18 +18,18 @@ class SignInScreen extends ConsumerStatefulWidget {
 }
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
-  /// Text controllers for email and password input fields.
-  final TextEditingController emailController = TextEditingController();
+  /// Controllers for email & password fields
+  final TextEditingController emailController    = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  /// Focus nodes for each input field (if you want to manage focus).
-  final FocusNode emailFocusNode = FocusNode();
-  final FocusNode passWordFocusNode = FocusNode();
+  /// FocusNodes for controlling focus
+  final FocusNode emailFocusNode     = FocusNode();
+  final FocusNode passWordFocusNode  = FocusNode();
 
-  /// This boolean controls whether the password text is hidden (obscured).
+  /// Toggles whether the password is obscured
   bool _obscurePassword = true;
 
-  /// A key to identify and manage our Form (for validation).
+  /// Key for validating the form fields
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -37,44 +38,53 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     init();
   }
 
-  /// Optional initialization logic.
   Future<void> init() async {
     // e.g., analytics, load saved credentials, etc.
   }
 
-  /// Handles sign-in logic by validating the form and calling the notifier.
+  /// Tries signing in with email/password after validating the form
   Future<void> _handleLogin() async {
-    // 1) Validate all fields in the Form.
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      // If validation fails, do not proceed.
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false)) return; // validation fail
 
-    // 2) If valid, read the text fields.
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    // 3) Use the Riverpod Notifier to sign in.
-    await ref
-        .read(firebaseAuthNotifierProvider.notifier)
-        .signIn(email, password);
+    await ref.read(firebaseAuthNotifierProvider.notifier).signIn(email, password);
 
-    // 4) Check the final auth state from the provider:
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
       toast("Login successful!");
+      // TODO: navigate to your main screen
     } else if (authState is DataFailed<void>) {
-      // The "error" property in authState.error now has our user-friendly message
       final errorMsg = authState.error?.error ?? 'Unknown error';
       toast("Login failed: $errorMsg");
-      print("Login failed: $errorMsg");
     }
   }
+
+  /// Called when the user taps "Sign in with Google."
+  /// We'll add the logic in your domain/data layers next,
+  /// but for now just a placeholder.
+  Future<void> _handleGoogleSignIn() async {
+    // 1) Trigger the Notifier method
+    await ref.read(firebaseAuthNotifierProvider.notifier).signInWithGoogle();
+
+    // 2) Check the final state
+    final authState = ref.read(firebaseAuthNotifierProvider);
+    if (authState is DataSuccess<void>) {
+      toast("Google sign-in successful!");
+      // TODO: navigate to your main screen
+    } else if (authState is DataFailed<void>) {
+      final errorMsg = authState.error?.error ?? 'Unknown error';
+      toast("Google sign-in failed: $errorMsg");
+      print("Google sign-in failed: $errorMsg");
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(firebaseAuthNotifierProvider);
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenWidth  = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -92,28 +102,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             children: <Widget>[
               const SizedBox(height: 50),
               Text("Log In", style: boldTextStyle(size: 24, color: black)),
+
               Container(
                 margin: const EdgeInsets.all(16),
                 child: Stack(
                   alignment: Alignment.topCenter,
                   children: <Widget>[
-                    /// The main card containing the form
+                    // Main card
                     Container(
                       width: screenWidth,
-                      padding: const EdgeInsets.only(
-                          left: 16, right: 16, bottom: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                       margin: const EdgeInsets.only(top: 55.0),
                       decoration: boxDecorationWithShadow(
                         borderRadius: BorderRadius.circular(30),
                         backgroundColor: context.cardColor,
                       ),
                       child: Form(
-                        key: _formKey, // Associate the form with our GlobalKey
+                        key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             const SizedBox(height: 50),
-
                             // Email
                             Text("Email", style: boldTextStyle(size: 14)),
                             const SizedBox(height: 8),
@@ -130,15 +139,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   return 'Email is required';
                                 }
                                 if (!value.trim().validateEmail()) {
-                                  // nb_utils has a validateEmail() extension
                                   return 'Please enter a valid email address';
                                 }
-                                return null; // all good
+                                return null;
                               },
                             ),
 
                             const SizedBox(height: 16),
-
                             // Password
                             Text("Password", style: boldTextStyle(size: 14)),
                             const SizedBox(height: 8),
@@ -153,9 +160,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               ).copyWith(
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
+                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                     color: vPrimaryColor,
                                   ),
                                   onPressed: () {
@@ -169,22 +174,31 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 if (value == null || value.isEmpty) {
                                   return 'Password is required';
                                 }
-                                return null; // all good
+                                return null;
                               },
                             ),
 
                             const SizedBox(height: 16),
-
                             // Forgot password link
                             Align(
                               alignment: Alignment.centerRight,
-                              child: Text("Forgot password?",
-                                  style: primaryTextStyle()),
+                              child: InkWell(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (dialogCtx) => const ForgotPasswordDialog(),
+                                  );
+                                },
+                                child: Text(
+                                  "Forgot password?",
+                                  style: primaryTextStyle(),
+                                ),
+                              ),
                             ),
 
                             const SizedBox(height: 30),
-
-                            // Log in button (calls our named function)
+                            // Log In button
                             Padding(
                               padding: EdgeInsets.only(
                                 left: screenWidth * 0.1,
@@ -198,8 +212,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                                 width: screenWidth,
-                                onTap:
-                                    _handleLogin, // use the named function here
+                                onTap: _handleLogin,
                               ),
                             ),
 
@@ -209,64 +222,49 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 width: 200,
                                 child: Row(
                                   children: [
-                                    const Expanded(
-                                        child: Divider(thickness: 2)),
+                                    const Expanded(child: Divider(thickness: 2)),
                                     const SizedBox(width: 8),
-                                    Text('or',
-                                        style: boldTextStyle(
-                                            size: 16, color: Colors.grey)),
+                                    Text('or', style: boldTextStyle(size: 16, color: Colors.grey)),
                                     const SizedBox(width: 8),
-                                    const Expanded(
-                                        child: Divider(thickness: 2)),
+                                    const Expanded(child: Divider(thickness: 2)),
                                   ],
                                 ),
                               ),
                             ),
 
                             const SizedBox(height: 30),
-
-                            // Social logins row (placeholders)
+                            // Social login row (just Google now)
                             Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    decoration: boxDecorationRoundedWithShadow(
-                                      16,
-                                      backgroundColor: context.cardColor,
-                                    ),
-                                    padding: const EdgeInsets.all(16),
-                                    child: Image.asset(
-                                      'assets/images/wa_facebook.png',
-                                      width: 40,
-                                      height: 40,
-                                    ),
+                              child: InkWell(
+                                onTap: _handleGoogleSignIn,
+                                child: Container(
+                                  decoration: boxDecorationRoundedWithShadow(
+                                    16,
+                                    backgroundColor: context.cardColor,
                                   ),
-                                  const SizedBox(width: 30),
-                                  Container(
-                                    decoration: boxDecorationRoundedWithShadow(
-                                      16,
-                                      backgroundColor: context.cardColor,
-                                    ),
-                                    padding: const EdgeInsets.all(16),
-                                    child: GoogleLogoWidget(size: 40),
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GoogleLogoWidget(size: 40),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Sign in with Google",
+                                        style: boldTextStyle(),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
 
                             const SizedBox(height: 30),
-
-                            // Registration link
+                            // Register link
                             Center(
                               child: InkWell(
                                 onTap: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const SignUpScreen(),
-                                    ),
+                                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
                                   );
                                 },
                                 child: Row(
@@ -274,12 +272,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   children: [
                                     Text(
                                       "Don't have an account?",
-                                      style:
-                                          primaryTextStyle(color: Colors.grey),
+                                      style: primaryTextStyle(color: Colors.grey),
                                     ),
                                     const SizedBox(width: 4),
-                                    Text('Register here',
-                                        style: boldTextStyle(color: black)),
+                                    Text('Register here', style: boldTextStyle(color: black)),
                                   ],
                                 ),
                               ),

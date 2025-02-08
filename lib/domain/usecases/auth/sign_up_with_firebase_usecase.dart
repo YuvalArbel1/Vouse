@@ -1,5 +1,5 @@
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/repository/firebase_auth_repository.dart';
+import 'package:vouse_flutter/domain/repository/auth/firebase_auth_repository.dart';
 import 'package:vouse_flutter/core/usecases/usecase.dart';
 
 // Simple params object to pass email & password

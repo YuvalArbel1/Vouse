@@ -18,14 +18,12 @@ class SignUpScreen extends ConsumerStatefulWidget {
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   /// Controllers for text fields.
-  final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
   /// Focus nodes if you need focus control.
-  final FocusNode fullNameFocusNode = FocusNode();
   final FocusNode emailFocusNode = FocusNode();
   final FocusNode passWordFocusNode = FocusNode();
   final FocusNode confirmPassWordFocusNode = FocusNode();
@@ -122,25 +120,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             const SizedBox(height: 50),
-
-                            // Full Name
-                            Text("Full Name", style: boldTextStyle(size: 14)),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: fullNameController,
-                              focusNode: fullNameFocusNode,
-                              keyboardType: TextInputType.name,
-                              decoration: waInputDecoration(
-                                hint: 'Enter your full name here',
-                                prefixIcon: Icons.person_outline_outlined,
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Full name is required';
-                                }
-                                return null; // ok
-                              },
-                            ),
 
                             const SizedBox(height: 16),
 

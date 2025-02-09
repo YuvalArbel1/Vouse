@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nb_utils/nb_utils.dart'; // For AppTextField, boldTextStyle, etc.
-import 'package:intl/intl.dart';         // For formatting the chosen date
+import 'package:intl/intl.dart'; // For formatting the chosen date
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 
 // Our local user logic
 import '../../../../domain/entities/user_entity.dart';
 import '../../../core/resources/data_state.dart';
+import '../../providers/auth/x_auth_providers.dart';
 import '../../providers/home/local_user_providers.dart';
 import '../home/home_screen.dart'; // Where we navigate after saving
 
@@ -27,16 +29,16 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Text controllers
-  final TextEditingController fullNameController    = TextEditingController();
+  final TextEditingController fullNameController = TextEditingController();
   final TextEditingController dateOfBirthController = TextEditingController();
-  final TextEditingController connectXController    = TextEditingController(
+  final TextEditingController connectXController = TextEditingController(
     text: 'Tap to connect your X account',
   );
 
   /// Focus nodes
-  final FocusNode fullNameFocusNode     = FocusNode();
-  final FocusNode dateOfBirthFocusNode  = FocusNode();
-  final FocusNode connectXFocusNode     = FocusNode();
+  final FocusNode fullNameFocusNode = FocusNode();
+  final FocusNode dateOfBirthFocusNode = FocusNode();
+  final FocusNode connectXFocusNode = FocusNode();
 
   DateTime? selectedDOB;
   String? selectedGender;
@@ -89,10 +91,18 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  /// Placeholder for X (Twitter) connection
-  void _connectToX() {
-    toast("Connect to X tapped!");
+  Future<void> _connectToX() async {
+    final result = await ref.read(signInToXUseCaseProvider).call();
+    if (result is DataSuccess<String>) {
+      final token = result.data;
+      toast("Twitter Access Token: $token");
+      // handle success, store token...
+    } else if (result is DataFailed<String>) {
+      final errorMsg = result.error?.error ?? 'Unknown error';
+      toast("Twitter Auth Error: $errorMsg");
+    }
   }
+
 
   /// Called when user taps "Continue." We'll save to local DB, then go Home.
   Future<void> _handleContinue() async {
@@ -116,9 +126,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
 
     // Save to local DB
-    final saveResult = await ref
-        .read(saveUserUseCaseProvider)
-        .call(params: entity);
+    final saveResult =
+        await ref.read(saveUserUseCaseProvider).call(params: entity);
 
     if (saveResult is DataSuccess<void>) {
       // Navigate to HomeScreen
@@ -155,12 +164,19 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 color: Colors.grey.withAlpha(50),
               ),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.black),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios),
+              color: Colors.black,
+              onPressed: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const SignInScreen()),
+              ),
+            ),
           ),
           centerTitle: true,
           elevation: 0.0,
           systemOverlayStyle:
-          const SystemUiOverlayStyle(statusBarBrightness: Brightness.dark),
+              const SystemUiOverlayStyle(statusBarBrightness: Brightness.dark),
         ),
         body: Container(
           width: MediaQuery.of(context).size.width,
@@ -201,7 +217,6 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           Text('Personal Information',
                               style: boldTextStyle(size: 18)),
                           const SizedBox(height: 16),
-
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -273,20 +288,23 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 Text('Connect to X (Twitter)',
                                     style: boldTextStyle(size: 14)),
                                 const SizedBox(height: 8),
-                                // Another readOnly text field
                                 Builder(
                                   builder: (ctx) {
                                     final baseDecoration = waInputDecoration(
                                       hint: 'Tap to connect your X account',
                                     );
-                                    final updatedDecoration = baseDecoration.copyWith(
+
+                                    final updatedDecoration =
+                                        baseDecoration.copyWith(
                                       filled: true,
-                                      fillColor: vAccentColor.withAlpha(
-                                        (0.06 * 255).toInt(),
-                                      ),
-                                      prefixIcon: Icon(
-                                        Icons.link,
-                                        color: vAccentColor,
+                                      fillColor: vAccentColor
+                                          .withAlpha((0.06 * 255).toInt()),
+                                      prefixIcon:
+                                          Icon(Icons.link, color: vAccentColor),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide:
+                                            BorderSide(color: vAccentColor),
                                       ),
                                     );
 
@@ -325,7 +343,6 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ),
                   ),
                 ),
-
                 Positioned(
                   top: 0,
                   child: Stack(

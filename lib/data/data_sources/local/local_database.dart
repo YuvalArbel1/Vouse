@@ -7,11 +7,10 @@ import '../../models/user_model.dart';
 class UserLocalDataSource {
   static const _dbName = 'vouse_app.db';
   static const _dbVersion = 1;
-  static const _tableName = 'users';
+  static const _tableName = 'user';
 
   static Database? _database;
 
-  /// Initialize or open the DB
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -26,23 +25,23 @@ class UserLocalDataSource {
       dbPath,
       version: _dbVersion,
       onCreate: _onCreate,
+      // If you need to handle migrations in the future, add onUpgrade here
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Create the "users" table
     await db.execute('''
-      CREATE TABLE $_tableName(
+      CREATE TABLE $_tableName (
         userId TEXT PRIMARY KEY,
         fullName TEXT NOT NULL,
         dateOfBirth TEXT NOT NULL,
         gender TEXT NOT NULL,
-        xCredential TEXT
+        avatarPath TEXT
       )
     ''');
   }
 
-  /// Insert or replace a user in the "users" table
+  /// Insert or replace a user in "users" table
   Future<void> insertOrUpdateUser(UserModel user) async {
     final db = await database;
     await db.insert(

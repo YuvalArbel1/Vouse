@@ -11,13 +11,15 @@ class UserEntity {
   final String fullName;
   final DateTime dateOfBirth;
   final String gender;
-  final String? xCredential;  // can be null if not connected
+  final String? avatarPath;
+
+
 
   UserEntity({
     required this.userId,
     required this.fullName,
     required this.dateOfBirth,
     required this.gender,
-    this.xCredential,
+    this.avatarPath,
   });
 }

@@ -25,6 +25,11 @@
   </dict>
 </array>
 
+<key>NSCameraUsageDescription</key>
+<string>We need camera access to let you take a profile photo.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>We need photo library access so you can select a photo.</string>
+
 
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

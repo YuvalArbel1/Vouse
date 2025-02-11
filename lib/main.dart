@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:vouse_flutter/presentation/providers/home/local_user_providers.dart';
+import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 
 // The screens we might show
 import 'core/resources/data_state.dart';
@@ -31,24 +32,28 @@ class App extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      // We use a StreamBuilder to watch FirebaseAuth user changes
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (ctx, snapshot) {
-          // 1) If the stream is still loading
+          // 1) If stream is waiting for auth state
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
 
-          // 2) If no user is logged in, go to SignInScreen
           final firebaseUser = snapshot.data;
+          // 2) If no user => go to SignInScreen
           if (firebaseUser == null) {
             return const SignInScreen();
           }
 
-          // 3) If we do have a user, check local DB for their profile
+          // 3) If user is logged in but email is NOT verified => show VerificationPendingScreen
+          if (!firebaseUser.emailVerified) {
+            return const VerificationPendingScreen();
+          }
+
+          // 4) If user is logged in & verified => check local DB for their profile
           return FutureBuilder<DataState<UserEntity?>>(
             future: ref
                 .read(getUserUseCaseProvider)
@@ -72,18 +77,18 @@ class App extends ConsumerWidget {
                   return const HomeScreen();
                 }
               } else if (dataState is DataFailed<UserEntity?>) {
-                // Some error occurred
+                // Some error occurred while accessing local DB
                 return Scaffold(
                   body: Center(
                     child: Text(
-                      'Error loading profile: ${dataState.error}',
+                      'Error loading profile: ${dataState.error?.error}',
                       style: const TextStyle(color: Colors.red),
                     ),
                   ),
                 );
               }
 
-              // fallback
+              // fallback if something else is unhandled
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );

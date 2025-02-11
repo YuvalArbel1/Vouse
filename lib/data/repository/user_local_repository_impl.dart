@@ -5,7 +5,7 @@ import 'package:vouse_flutter/data/models/user_model.dart';
 import 'package:dio/dio.dart';
 
 import '../../domain/repository/home/user_local_repository.dart';
-import '../data_sources/local.dart';
+import '../data_sources/local/local_database.dart';
 
 class UserLocalRepositoryImpl implements UserLocalRepository {
   final UserLocalDataSource _localDataSource;

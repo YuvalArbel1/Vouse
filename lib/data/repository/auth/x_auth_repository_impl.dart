@@ -1,7 +1,11 @@
+// lib/data/repository/x_auth_repository_impl.dart
+
 import 'package:dio/dio.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/repository/auth/x_auth_repository.dart';
 import 'package:vouse_flutter/data/clients/twitter_oauth2_client.dart';
+
+import '../../../domain/entities/x_auth_tokens.dart';
 
 class XAuthRepositoryImpl implements XAuthRepository {
   final TwitterOAuth2Client _client;
@@ -9,16 +13,17 @@ class XAuthRepositoryImpl implements XAuthRepository {
   XAuthRepositoryImpl(this._client);
 
   @override
-  Future<DataState<String>> signInToX() async {
+  Future<DataState<XAuthTokens>> signInToX() async {
     try {
-      // Request login with read scopes. If you have a plan that allows tweet.write, add it.
-      final token = await _client.login(scopes: [
+      // Request offline access for refresh token
+      final tokens = await _client.login(scopes: [
         'tweet.read',
         'users.read',
         'tweet.write',
+        'offline.access',
       ]);
 
-      if (token == null) {
+      if (tokens.accessToken == null) {
         return DataFailed(
           DioException(
             requestOptions: RequestOptions(path: ''),
@@ -27,7 +32,9 @@ class XAuthRepositoryImpl implements XAuthRepository {
         );
       }
 
-      return DataSuccess(token);
+      // Return both tokens inside DataSuccess
+      return DataSuccess(tokens);
+
     } catch (e) {
       return DataFailed(
         DioException(

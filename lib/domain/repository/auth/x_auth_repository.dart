@@ -1,6 +1,8 @@
 import 'package:vouse_flutter/core/resources/data_state.dart';
 
+import '../../entities/x_auth_tokens.dart';
+
 abstract class XAuthRepository {
-  /// Initiates a sign-in to Twitter using OAuth 2.0 with PKCE.
-  Future<DataState<String>> signInToX();
+  /// Returns DataState with both access & refresh tokens
+  Future<DataState<XAuthTokens>> signInToX();
 }

@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import '../models/user_model.dart';
+import '../../models/user_model.dart';
 
 /// Responsible for opening the local DB and performing CRUD on the "users" table.
 class UserLocalDataSource {

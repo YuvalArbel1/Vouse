@@ -2,12 +2,12 @@
 
 import 'package:riverpod/riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/usecases/auth/sign_in_with_firebase_usecase.dart';
-import 'package:vouse_flutter/domain/usecases/auth/sign_up_with_firebase_usecase.dart';
-import 'package:vouse_flutter/domain/usecases/auth/forgot_password_usecase.dart';
-import 'package:vouse_flutter/domain/usecases/auth/is_email_verified_usecase.dart';
-import 'package:vouse_flutter/domain/usecases/auth/send_email_verification_usecase.dart';
-import 'package:vouse_flutter/domain/usecases/auth/sign_in_with_google_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_firebase_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_up_with_firebase_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/forgot_password_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verification_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
 import 'firebase_auth_providers.dart';
 
 /// A [StateNotifier] that holds a [DataState<void>] describing the last

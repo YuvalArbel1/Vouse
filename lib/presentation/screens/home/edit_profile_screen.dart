@@ -9,7 +9,9 @@ import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 // Our local user logic
 import '../../../../domain/entities/user_entity.dart';
 import '../../../core/resources/data_state.dart';
+import '../../../domain/entities/x_auth_tokens.dart';
 import '../../providers/auth/x_auth_providers.dart';
+import '../../providers/auth/x_token_providers.dart';
 import '../../providers/home/local_user_providers.dart';
 import '../home/home_screen.dart'; // Where we navigate after saving
 
@@ -91,18 +93,43 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  /// Initiates the Twitter OAuth 2.0 sign-in flow, retrieves access & refresh
+  /// tokens, then saves them in secure storage.
+  ///
+  /// 1) We call [SignInToXUseCase], which returns a [DataState<XAuthTokens>].
+  ///    - On [DataSuccess], we read the [XAuthTokens] (accessToken, refreshToken).
+  ///    - On [DataFailed], we show an error toast.
+  ///
+  /// 2) We then call [SaveXTokensUseCase] to store those tokens in
+  ///    flutter_secure_storage. If that also succeeds, we show a success toast,
+  ///    otherwise an error toast.
   Future<void> _connectToX() async {
+    // 1) Trigger sign-in to X
     final result = await ref.read(signInToXUseCaseProvider).call();
-    if (result is DataSuccess<String>) {
-      final token = result.data;
-      toast("Twitter Access Token: $token");
-      // handle success, store token...
-    } else if (result is DataFailed<String>) {
+
+    // 2) Check the result type from signInToXUseCase
+    if (result is DataSuccess<XAuthTokens>) {
+      // Cast the retrieved data to XAuthTokens
+      final tokens = result.data!;
+
+      // 3) Save them in secure storage with SaveXTokensUseCase
+      final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
+
+      // pass the tokens as param
+      final saveResult = await saveTokensUseCase.call(params: tokens);
+
+      // 4) Check the result of saving
+      if (saveResult is DataSuccess<void>) {
+        toast("Tokens saved in Secure Storage!");
+      } else if (saveResult is DataFailed<void>) {
+        final err = saveResult.error?.error ?? 'Unknown error';
+        toast("Error storing tokens: $err");
+      }
+    } else if (result is DataFailed<XAuthTokens>) {
       final errorMsg = result.error?.error ?? 'Unknown error';
       toast("Twitter Auth Error: $errorMsg");
     }
   }
-
 
   /// Called when user taps "Continue." We'll save to local DB, then go Home.
   Future<void> _handleContinue() async {

@@ -50,6 +50,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   image_picker: ^1.1.2
   permission_handler: ^11.3.1
+  flutter_native_splash: ^2.4.4
 
 
 
@@ -65,6 +66,24 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
+
+flutter_native_splash:
+  # Background image that should fill the screen
+  background_image: assets/images/background_image.png
+
+  # Foreground/logo image
+  image: assets/images/vouse_app_logo.png
+
+  # Make the background image fill the screen on Android & iOS
+  android_gravity: fill
+  ios_content_mode: scaleAspectFill
+
+  # Enable both platforms
+  android: true
+  ios: true
+
+
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -74,6 +93,8 @@ flutter:
   assets:
     - assets/images/vouse_bg.jpg
     - assets/images/wa_facebook.png
+    - assets/images/vouse_app_logo.png
+    - assets/images/background_image.png
     - assets/images/vouse_app_logo.png
 
 

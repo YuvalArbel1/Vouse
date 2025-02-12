@@ -14,24 +14,57 @@ class FirebaseAuthRepositoryImpl implements FirebaseAuthRepository {
   /// Requires a [FirebaseAuth.instance], typically provided by your DI container.
   const FirebaseAuthRepositoryImpl(this._firebaseAuth);
 
+  /// Attempts to sign in an existing user with email and password.
+  ///
+  /// - If the credentials are correct but the user’s email is not verified,
+  ///   we return a [DataFailed<void>] with a special error message (e.g.,
+  ///   'EMAIL_NOT_VERIFIED') and automatically send a fresh verification email.
+  ///
+  /// - If sign-in succeeds and the email is verified, returns [DataSuccess<void>].
+  ///
+  /// - On any other error, returns [DataFailed<void>] with a user-friendly error
+  ///   message (derived from FirebaseAuthException or fallback).
   @override
   Future<DataState<void>> signIn(String email, String password) async {
     try {
-      await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+      // 1) Firebase sign-in with email/password
+      final userCred = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // 2) Check if the user’s email is verified
+      if (!(userCred.user?.emailVerified ?? false)) {
+        // Send another verification email automatically
+        await userCred.user?.sendEmailVerification();
+
+        // Return a DataFailed so UI can handle it (e.g., navigate to VerificationPendingScreen)
+        return DataFailed(
+          DioException(
+            requestOptions: RequestOptions(path: ''),
+
+            error: 'EMAIL_NOT_VERIFIED',
+          ),
+        );
+      }
+
+      // 3) Otherwise, the user is verified; return success
       return const DataSuccess(null);
+
     } on FirebaseAuthException catch (e) {
-      // Convert FirebaseAuthException to a user-friendly message.
+      // Convert FirebaseAuthException to a user-friendly message
       final message = _getFirebaseAuthErrorMessage(e);
       return DataFailed(
         DioException(requestOptions: RequestOptions(path: ''), error: message),
       );
     } catch (e) {
-      // Catch any other unexpected errors.
+      // Catch any other unexpected errors
       return DataFailed(
         DioException(requestOptions: RequestOptions(path: ''), error: e.toString()),
       );
     }
   }
+
 
   @override
   Future<DataState<void>> signUp(String email, String password) async {

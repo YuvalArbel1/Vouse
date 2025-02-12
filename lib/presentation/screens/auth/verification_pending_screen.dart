@@ -1,5 +1,3 @@
-/// presentation/screens/auth/verification_pending_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';

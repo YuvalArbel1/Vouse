@@ -3,6 +3,8 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
+import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
+import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
@@ -19,12 +21,12 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   /// Controllers for email & password fields
-  final TextEditingController emailController    = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   /// FocusNodes for controlling focus
-  final FocusNode emailFocusNode     = FocusNode();
-  final FocusNode passWordFocusNode  = FocusNode();
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode passWordFocusNode = FocusNode();
 
   /// Toggles whether the password is obscured
   bool _obscurePassword = true;
@@ -42,22 +44,55 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     // e.g., analytics, load saved credentials, etc.
   }
 
-  /// Tries signing in with email/password after validating the form
+  /// Tries signing in with email/password after validating the form.
+  ///
+  /// Steps:
+  /// 1. Validate the form fields (email & password).
+  /// 2. Call [firebaseAuthNotifierProvider]'s [signIn] method.
+  ///    - If the repository reports success, show a success toast and navigate
+  ///      to the main screen (TODO: replace the comment with actual navigation).
+  ///    - If the repository fails with a special error message 'EMAIL_NOT_VERIFIED',
+  ///      we navigate to the [VerificationPendingScreen].
+  ///    - If any other error occurs, show a toast with the error message.
   Future<void> _handleLogin() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return; // validation fail
+    // 1) Validate the form inputs
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      // If validation fails, do nothing
+      return;
+    }
 
+    // 2) Gather email & password
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    await ref.read(firebaseAuthNotifierProvider.notifier).signIn(email, password);
+    // 3) Perform sign-in through the Notifier
+    await ref
+        .read(firebaseAuthNotifierProvider.notifier)
+        .signIn(email, password);
 
+    // 4) Check the final state from the Notifier
     final authState = ref.read(firebaseAuthNotifierProvider);
+
     if (authState is DataSuccess<void>) {
-      toast("Login successful!");
-      // TODO: navigate to your main screen
+      // If sign-in was successful and the user is verified
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else if (authState is DataFailed<void>) {
+      // If sign-in failed
       final errorMsg = authState.error?.error ?? 'Unknown error';
-      toast("Login failed: $errorMsg");
+
+      if (errorMsg == 'EMAIL_NOT_VERIFIED') {
+        // If the repository reported the email is not verified,
+        // navigate to your verification pending screen
+        toast("Email is not verified. Please check your inbox.");
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const VerificationPendingScreen()),
+        );
+      } else {
+        // For any other error, just show a toast
+        toast("Login failed: $errorMsg");
+      }
     }
   }
 
@@ -71,20 +106,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     // 2) Check the final state
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
-      toast("Google sign-in successful!");
-      // TODO: navigate to your main screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     } else if (authState is DataFailed<void>) {
       final errorMsg = authState.error?.error ?? 'Unknown error';
       toast("Google sign-in failed: $errorMsg");
-      print("Google sign-in failed: $errorMsg");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(firebaseAuthNotifierProvider);
-    final double screenWidth  = MediaQuery.of(context).size.width;
+    final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -102,7 +136,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             children: <Widget>[
               const SizedBox(height: 50),
               Text("Log In", style: boldTextStyle(size: 24, color: black)),
-
               Container(
                 margin: const EdgeInsets.all(16),
                 child: Stack(
@@ -111,7 +144,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     // Main card
                     Container(
                       width: screenWidth,
-                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                      padding: const EdgeInsets.only(
+                          left: 16, right: 16, bottom: 16),
                       margin: const EdgeInsets.only(top: 55.0),
                       decoration: boxDecorationWithShadow(
                         borderRadius: BorderRadius.circular(30),
@@ -160,7 +194,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               ).copyWith(
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     color: vPrimaryColor,
                                   ),
                                   onPressed: () {
@@ -187,7 +223,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   showDialog(
                                     context: context,
                                     barrierDismissible: false,
-                                    builder: (dialogCtx) => const ForgotPasswordDialog(),
+                                    builder: (dialogCtx) =>
+                                        const ForgotPasswordDialog(),
                                   );
                                 },
                                 child: Text(
@@ -222,11 +259,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 width: 200,
                                 child: Row(
                                   children: [
-                                    const Expanded(child: Divider(thickness: 2)),
+                                    const Expanded(
+                                        child: Divider(thickness: 2)),
                                     const SizedBox(width: 8),
-                                    Text('or', style: boldTextStyle(size: 16, color: Colors.grey)),
+                                    Text('or',
+                                        style: boldTextStyle(
+                                            size: 16, color: Colors.grey)),
                                     const SizedBox(width: 8),
-                                    const Expanded(child: Divider(thickness: 2)),
+                                    const Expanded(
+                                        child: Divider(thickness: 2)),
                                   ],
                                 ),
                               ),
@@ -264,7 +305,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               child: InkWell(
                                 onTap: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignUpScreen()),
                                   );
                                 },
                                 child: Row(
@@ -272,10 +315,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   children: [
                                     Text(
                                       "Don't have an account?",
-                                      style: primaryTextStyle(color: Colors.grey),
+                                      style:
+                                          primaryTextStyle(color: Colors.grey),
                                     ),
                                     const SizedBox(width: 4),
-                                    Text('Register here', style: boldTextStyle(color: black)),
+                                    Text('Register here',
+                                        style: boldTextStyle(color: black)),
                                   ],
                                 ),
                               ),

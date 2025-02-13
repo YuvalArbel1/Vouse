@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
@@ -43,7 +44,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   /// Optional additional initialization.
   Future<void> init() async {
-    // e.g., pre-fill user data, analytics, etc.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
   }
 
   /// Handles registration after validating the form fields.

@@ -67,20 +67,12 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 
-flutter_native_splash:
-  # Background image that should fill the screen
-  background_image: assets/images/background_image.png
 
-  # Foreground/logo image
-  image: assets/images/vouse_app_logo.png
 
-  # Make the background image fill the screen on Android & iOS
-  android_gravity: fill
-  ios_content_mode: scaleAspectFill
 
-  # Enable both platforms
-  android: true
-  ios: true
+
+
+
 
 
 
@@ -95,7 +87,7 @@ flutter:
     - assets/images/wa_facebook.png
     - assets/images/vouse_app_logo.png
     - assets/images/background_image.png
-    - assets/images/vouse_app_logo.png
+    - assets/images/vouse_app_logo_white.png
 
 
 

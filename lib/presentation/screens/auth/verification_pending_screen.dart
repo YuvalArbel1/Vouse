@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
@@ -17,6 +18,19 @@ class VerificationPendingScreen extends ConsumerStatefulWidget {
 class _VerificationPendingScreenState
     extends ConsumerState<VerificationPendingScreen> {
   bool _checking = false;
+
+
+  @override
+  void initState() {
+    super.initState();
+    init();
+  }
+
+  Future<void> init() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
+  }
 
   /// Poll or manually check once user taps "Check Verification."
   Future<void> _checkVerification() async {

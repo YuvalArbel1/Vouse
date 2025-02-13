@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'presentation/screens/splash/splash_wrapper.dart';
-
-// Our local user usecases
+import 'package:vouse_flutter/presentation/screens/splash/app_wrapper.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  // 1) Preserve the native splash so we can remove it manually later
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // 2) Initialize Firebase, etc.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -16,18 +19,13 @@ void main() async {
   runApp(const ProviderScope(child: App()));
 }
 
-
-/// The root of our app. We do the "authStateChanges" check, then see
-/// if we have a local user record in DB. If not, show edit profile.
-class App extends ConsumerWidget {
+class App extends StatelessWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return MaterialApp(
-      home: MaterialApp(
-        home: SplashWrapper(),
-      ),
+      home: AppWrapper(),
     );
   }
 }

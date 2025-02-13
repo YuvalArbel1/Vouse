@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:nb_utils/nb_utils.dart';
+
 import 'package:vouse_flutter/core/resources/data_state.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
+import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
+import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
+import 'package:vouse_flutter/presentation/providers/home/local_user_providers.dart';
+
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../../../domain/entities/user_entity.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
 import 'signup.dart';
 
 /// A screen that handles Firebase sign-in with form validation,
-/// plus a "Sign in with Google" button (and no Facebook).
+/// plus a "Sign in with Google" button.
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
@@ -40,25 +48,25 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     init();
   }
 
+  /// Remove the native splash after the first frame, so we don't see it forever
   Future<void> init() async {
-    // e.g., analytics, load saved credentials, etc.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
   }
 
   /// Tries signing in with email/password after validating the form.
   ///
   /// Steps:
-  /// 1. Validate the form fields (email & password).
-  /// 2. Call [firebaseAuthNotifierProvider]'s [signIn] method.
-  ///    - If the repository reports success, show a success toast and navigate
-  ///      to the main screen (TODO: replace the comment with actual navigation).
-  ///    - If the repository fails with a special error message 'EMAIL_NOT_VERIFIED',
-  ///      we navigate to the [VerificationPendingScreen].
-  ///    - If any other error occurs, show a toast with the error message.
+  /// 1. Validate the form inputs.
+  /// 2. Call [firebaseAuthNotifierProvider]'s [signIn].
+  /// 3. If [DataSuccess], navigate to [HomeScreen].
+  /// 4. If "EMAIL_NOT_VERIFIED", show toast + navigate to [VerificationPendingScreen].
+  /// 5. Otherwise, show an error toast.
   Future<void> _handleLogin() async {
     // 1) Validate the form inputs
     if (!(_formKey.currentState?.validate() ?? false)) {
-      // If validation fails, do nothing
-      return;
+      return; // If invalid, do nothing
     }
 
     // 2) Gather email & password
@@ -66,39 +74,35 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final password = passwordController.text.trim();
 
     // 3) Perform sign-in through the Notifier
-    await ref
-        .read(firebaseAuthNotifierProvider.notifier)
-        .signIn(email, password);
+    await ref.read(firebaseAuthNotifierProvider.notifier).signIn(email, password);
 
     // 4) Check the final state from the Notifier
     final authState = ref.read(firebaseAuthNotifierProvider);
-
     if (authState is DataSuccess<void>) {
       // If sign-in was successful and the user is verified
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else if (authState is DataFailed<void>) {
-      // If sign-in failed
       final errorMsg = authState.error?.error ?? 'Unknown error';
 
       if (errorMsg == 'EMAIL_NOT_VERIFIED') {
-        // If the repository reported the email is not verified,
-        // navigate to your verification pending screen
         toast("Email is not verified. Please check your inbox.");
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const VerificationPendingScreen()),
         );
       } else {
-        // For any other error, just show a toast
         toast("Login failed: $errorMsg");
       }
     }
   }
 
   /// Called when the user taps "Sign in with Google."
-  /// We'll add the logic in your domain/data layers next,
-  /// but for now just a placeholder.
+  /// 1) We trigger the signInWithGoogle use case.
+  /// 2) If successful, we check local DB:
+  ///    - If user not found => go to EditProfile
+  ///    - If user found => go to Home
+  /// 3) If failed => show error toast
   Future<void> _handleGoogleSignIn() async {
     // 1) Trigger the Notifier method
     await ref.read(firebaseAuthNotifierProvider.notifier).signInWithGoogle();
@@ -106,9 +110,41 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     // 2) Check the final state
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      // Successfully signed in with Google
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        // This is unusual if signInWithGoogle succeeded, but let's handle it
+        toast("Google sign-in succeeded, but no Firebase user found.");
+        return;
+      }
+
+      // 2A) Since user is not forced to do email verification with Google SignIn,
+      //     we skip the verified check. Instead, let's see if they've completed the EditProfile.
+
+      // 2B) Use getUserUseCase to check local DB by userId
+      final getUserUC = ref.read(getUserUseCaseProvider);
+      final result = await getUserUC.call(params: GetUserParams(currentUser.uid));
+
+      if (result is DataSuccess<UserEntity?>) {
+        final localUser = result.data; // Could be null if not found
+        if (localUser == null) {
+          // Not found => go to EditProfile
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+          );
+        } else {
+          // Found => go to Home
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      } else {
+        // If DB check failed or something
+        final error = (result as DataFailed?)?.error?.error ?? 'DB error';
+        toast("Local DB check failed: $error");
+      }
+
     } else if (authState is DataFailed<void>) {
       final errorMsg = authState.error?.error ?? 'Unknown error';
       toast("Google sign-in failed: $errorMsg");
@@ -144,8 +180,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     // Main card
                     Container(
                       width: screenWidth,
-                      padding: const EdgeInsets.only(
-                          left: 16, right: 16, bottom: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                       margin: const EdgeInsets.only(top: 55.0),
                       decoration: boxDecorationWithShadow(
                         borderRadius: BorderRadius.circular(30),
@@ -157,6 +192,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             const SizedBox(height: 50),
+
                             // Email
                             Text("Email", style: boldTextStyle(size: 14)),
                             const SizedBox(height: 8),
@@ -180,6 +216,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ),
 
                             const SizedBox(height: 16),
+
                             // Password
                             Text("Password", style: boldTextStyle(size: 14)),
                             const SizedBox(height: 8),
@@ -194,9 +231,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               ).copyWith(
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
+                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                     color: vPrimaryColor,
                                   ),
                                   onPressed: () {
@@ -215,6 +250,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ),
 
                             const SizedBox(height: 16),
+
                             // Forgot password link
                             Align(
                               alignment: Alignment.centerRight,
@@ -223,18 +259,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   showDialog(
                                     context: context,
                                     barrierDismissible: false,
-                                    builder: (dialogCtx) =>
-                                        const ForgotPasswordDialog(),
+                                    builder: (dialogCtx) => const ForgotPasswordDialog(),
                                   );
                                 },
-                                child: Text(
-                                  "Forgot password?",
-                                  style: primaryTextStyle(),
-                                ),
+                                child: Text("Forgot password?", style: primaryTextStyle()),
                               ),
                             ),
 
                             const SizedBox(height: 30),
+
                             // Log In button
                             Padding(
                               padding: EdgeInsets.only(
@@ -254,27 +287,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ),
 
                             const SizedBox(height: 30),
+
+                            // "or" divider
                             Center(
                               child: SizedBox(
                                 width: 200,
                                 child: Row(
                                   children: [
-                                    const Expanded(
-                                        child: Divider(thickness: 2)),
+                                    const Expanded(child: Divider(thickness: 2)),
                                     const SizedBox(width: 8),
-                                    Text('or',
-                                        style: boldTextStyle(
-                                            size: 16, color: Colors.grey)),
+                                    Text('or', style: boldTextStyle(size: 16, color: Colors.grey)),
                                     const SizedBox(width: 8),
-                                    const Expanded(
-                                        child: Divider(thickness: 2)),
+                                    const Expanded(child: Divider(thickness: 2)),
                                   ],
                                 ),
                               ),
                             ),
 
                             const SizedBox(height: 30),
-                            // Social login row (just Google now)
+
+                            // "Sign in with Google"
                             Center(
                               child: InkWell(
                                 onTap: _handleGoogleSignIn,
@@ -289,10 +321,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                     children: [
                                       GoogleLogoWidget(size: 40),
                                       const SizedBox(width: 8),
-                                      Text(
-                                        "Sign in with Google",
-                                        style: boldTextStyle(),
-                                      ),
+                                      Text("Sign in with Google", style: boldTextStyle()),
                                     ],
                                   ),
                                 ),
@@ -300,14 +329,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ),
 
                             const SizedBox(height: 30),
+
                             // Register link
                             Center(
                               child: InkWell(
                                 onTap: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const SignUpScreen()),
+                                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
                                   );
                                 },
                                 child: Row(
@@ -315,12 +343,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   children: [
                                     Text(
                                       "Don't have an account?",
-                                      style:
-                                          primaryTextStyle(color: Colors.grey),
+                                      style: primaryTextStyle(color: Colors.grey),
                                     ),
                                     const SizedBox(width: 4),
-                                    Text('Register here',
-                                        style: boldTextStyle(color: black)),
+                                    Text('Register here', style: boldTextStyle(color: black)),
                                   ],
                                 ),
                               ),

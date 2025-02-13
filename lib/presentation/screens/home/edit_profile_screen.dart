@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart'; // For AppTextField, boldTextStyle, etc.
 import 'package:intl/intl.dart'; // For formatting the chosen date
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,6 +70,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       Colors.white,
       statusBarIconBrightness: Brightness.dark,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
   }
 
   @override

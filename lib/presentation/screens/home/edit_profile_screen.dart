@@ -263,6 +263,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     textFieldType: TextFieldType.NAME,
                                     decoration: waInputDecoration(
                                       hint: 'Enter your full name here',
+                                      prefixIcon: Icons.person,
                                     ),
                                     keyboardType: TextInputType.name,
                                     controller: fullNameController,
@@ -291,6 +292,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     keyboardType: TextInputType.text,
                                     decoration: waInputDecoration(
                                       hint: 'Tap to pick your birth date',
+                                      prefixIcon: Icons.calendar_today,
                                     ),
                                     onTap: _pickDateOfBirth,
                                     validator: (value) {
@@ -309,6 +311,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     isExpanded: true,
                                     decoration: waInputDecoration(
                                       hint: "Select your gender",
+                                      prefixIcon: Icons.transgender,
                                     ),
                                     items: genderOptions.map((String value) {
                                       return DropdownMenuItem<String>(

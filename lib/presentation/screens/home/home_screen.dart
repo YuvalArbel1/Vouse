@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-/// A simple placeholder for your main dashboard or home screen.
-class HomeScreen extends StatelessWidget {
+import '../post/create_post_screen.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  void initState() {
-    init();
-  }
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-  Future<void> init() async {
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Remove the splash after the first frame has rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
@@ -19,12 +24,16 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Page'),
+        title: const Text('Home Page'),
       ),
-      body: const Center(
-        child: Text(
-          'Welcome! You are logged in.',
-          style: TextStyle(fontSize: 20),
+      body: Center(
+        child: IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+            );
+          },
+          icon: const Icon(Icons.add),
         ),
       ),
     );

@@ -19,6 +19,7 @@ import '../home/home_screen.dart';
 
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../post/create_post_screen.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final bool isEditProfile;
@@ -158,6 +159,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (widget.isEditProfile) {
         Navigator.pop(context);
       } else {
+        // TODO navigate to next screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),

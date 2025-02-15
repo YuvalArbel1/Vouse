@@ -60,17 +60,15 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
     if (result is DataSuccess<UserEntity?>) {
       final localUser = result.data;
       if (localUser == null) {
-        // Not found => EditProfile, 1.5s
-        await Future.delayed(const Duration(milliseconds: 1000));
         _pushNext(const EditProfileScreen());
       } else {
         // Found => Home, 3s
         await Future.delayed(const Duration(seconds: 2));
+        // TODO - push Home with localUser
         _pushNext(const HomeScreen());
       }
     } else if (result is DataFailed<UserEntity?>) {
       // DB error => fallback signIn
-      await Future.delayed(const Duration(milliseconds: 1000));
       _pushNext(const SignInScreen());
     } else {
       // fallback

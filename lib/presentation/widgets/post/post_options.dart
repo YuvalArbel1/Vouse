@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/util/colors.dart';
+import 'ai_text_generation_dialog.dart';
 import 'post_option_icon.dart';
 import 'recent_images_row.dart';
 import '../../providers/post/post_images_provider.dart';
@@ -35,10 +36,28 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
 
   /// Opens phone gallery for a single image
   Future<void> _pickFromGallery() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
     _attemptAddImage(pickedFile.path);
+  }
+
+  void _onAIPressed() async {
+    // Show the AiTextGenerationDialog and wait for user to Insert or close
+    final generatedText = await showDialog<String>(
+      context: context,
+      builder: (_) => AiTextGenerationDialog(),
+    );
+
+    // If user canceled, generatedText == null
+    // If user inserted text, we have it in generatedText
+    if (generatedText != null && generatedText.isNotEmpty) {
+      // For demonstration, just show a toast
+      // In real usage, you might update your post text field:
+      // myTextController.text += "\n$generatedText";
+      toast("AI text inserted: $generatedText");
+    }
   }
 
   @override
@@ -82,9 +101,9 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
                   onTap: () => toast("Location pressed"),
                 ),
                 buildOptionIcon(
-                  icon: Icons.architecture, // or any AI icon
+                  icon: Icons.auto_awesome, // or any AI icon
                   label: "AI",
-                  onTap: () => toast("AI pressed"),
+                  onTap: _onAIPressed,
                 ),
               ],
             ),

@@ -11,9 +11,9 @@ import 'package:photo_manager/photo_manager.dart';
 import '../../../core/util/colors.dart';
 import '../../providers/post/post_images_provider.dart';
 
-/// Shows a camera icon + last 4 gallery images horizontally.
-/// Tapping any image or the camera icon tries to add it to postImagesProvider.
-/// If we already have 4, we show a toast and do not add more.
+/// A row with exactly 2 icons + up to 4 images, all evenly spaced:
+///   [ AI icon | Camera icon | (0..4) images ]
+/// There's no scroll view, because we only display at most 6 items.
 class RecentImagesRow extends ConsumerStatefulWidget {
   const RecentImagesRow({super.key});
 
@@ -28,13 +28,13 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
   @override
   void initState() {
     super.initState();
-    // Ask permissions after first frame
+    // Request permission & fetch images after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPermissionsAndFetchImages();
     });
   }
 
-  /// Request camera + gallery permission. If granted, fetch last 4 images.
+  /// Requests camera/photos permission, if granted fetch last 4 images
   Future<void> _initPermissionsAndFetchImages() async {
     final statusCamera = await Permission.camera.request();
     final statusPhotos = await Permission.photos.request();
@@ -47,7 +47,7 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     await _fetchLast4Images();
   }
 
-  /// Query device's main album for up to 4 recent images
+  /// Query device's album for up to 4 images
   Future<void> _fetchLast4Images() async {
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image,
@@ -69,7 +69,7 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     setState(() => _recentImages = files);
   }
 
-  /// Attempt to add a path to the postImagesProvider if <4. Otherwise toast.
+  /// Add image path to postImagesProvider if <4 images
   void _attemptAddImage(String path) {
     final currentImages = ref.read(postImagesProvider);
     if (currentImages.length >= 4) {
@@ -79,7 +79,7 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     }
   }
 
-  /// Launch camera, add result to provider if any
+  /// Launch camera & add
   Future<void> _captureNewImage() async {
     final statusCamera = await Permission.camera.request();
     if (statusCamera.isDenied) {
@@ -87,54 +87,64 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
       return;
     }
 
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? pickedFile =
+    await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile == null) return;
 
     _attemptAddImage(pickedFile.path);
   }
 
+  /// Placeholder for future AI generation
+  void _handleGenerateAIImage() {
+    toast("AI Generation tapped! (placeholder)");
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          // Camera icon
-          GestureDetector(
-            onTap: _captureNewImage,
-            child: Container(
-              width: 52,
-              height: 62,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: context.cardColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.camera_alt, color: vPrimaryColor),
-            ),
-          ),
+    // We'll display at most 6 items: [AI icon, Camera icon, up to 4 images]
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
 
-          // The last 4 images from device
-          ..._recentImages.map((file) {
-            return GestureDetector(
-              onTap: () => _attemptAddImage(file.path),
-              child: Container(
-                width: 52,
-                height: 62,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: context.cardColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(file, fit: BoxFit.cover),
-                ),
-              ),
-            );
-          }),
-        ],
+        // 2) Camera Icon
+        buildItemContainer(
+          child: Icon(Icons.camera_alt, color: vPrimaryColor),
+          onTap: _captureNewImage,
+        ),
+        // 3) Up to 4 images
+        ..._recentImages.map((file) {
+          return buildItemContainer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(file, fit: BoxFit.cover),
+            ),
+            onTap: () => _attemptAddImage(file.path),
+          );
+        }),
+
+        // buildItemContainer(
+        //   child: Icon(Icons.auto_awesome, color: vPrimaryColor),
+        //   onTap: _handleGenerateAIImage,
+        // ),
+      ],
+    );
+  }
+
+  /// A helper that returns a 52×62 container for icons or images
+  Widget buildItemContainer({
+    required Widget child,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 62,
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: child,
       ),
     );
   }

@@ -22,4 +22,9 @@ abstract class FirebaseAuthRepository {
 
   /// Sign in with google
   Future<DataState<void>> signInWithGoogle();
+
+  /// Signs out the currently logged-in user.
+  /// Returns a [DataSuccess<void>] if successful, or [DataFailed<void>] on error.
+  Future<DataState<void>> signOut();
+
 }

@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'package:vouse_flutter/domain/repository/ai/ai_text_repository.dart';
-import 'package:vouse_flutter/data/clients/firebase_vertex_ai_client.dart';
+import 'package:vouse_flutter/data/clients/vertex_ai/firebase_vertex_ai_client.dart';
 
 class AiTextRepositoryImpl implements AiTextRepository {
   final FirebaseVertexAiClient _client;

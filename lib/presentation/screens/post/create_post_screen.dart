@@ -23,9 +23,6 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  /// Example field if you need to store an image path or something else
-  String image = '';
-
   @override
   void initState() {
     super.initState();

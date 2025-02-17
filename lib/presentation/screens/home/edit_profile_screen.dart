@@ -9,9 +9,9 @@ import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
 // Our local user logic
-import '../../../../domain/entities/user_entity.dart';
+import '../../../domain/entities/locaal db/user_entity.dart';
 import '../../../core/resources/data_state.dart';
-import '../../../domain/entities/x_auth_tokens.dart';
+import '../../../domain/entities/secure_db/x_auth_tokens.dart';
 import '../../providers/auth/x_auth_providers.dart';
 import '../../providers/auth/x_token_providers.dart';
 import '../../providers/home/local_user_providers.dart';
@@ -19,7 +19,6 @@ import '../home/home_screen.dart';
 
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../post/create_post_screen.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final bool isEditProfile;

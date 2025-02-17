@@ -1,4 +1,4 @@
-import 'package:vouse_flutter/domain/entities/user_entity.dart';
+import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
 
 class UserModel extends UserEntity {
   UserModel({

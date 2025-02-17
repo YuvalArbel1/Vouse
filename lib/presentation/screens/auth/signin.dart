@@ -14,7 +14,7 @@ import 'package:vouse_flutter/presentation/providers/home/local_user_providers.d
 
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../../../domain/entities/user_entity.dart';
+import '../../../domain/entities/locaal db/user_entity.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
 import 'signup.dart';
 

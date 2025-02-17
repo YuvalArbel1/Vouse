@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+	<key>GMSApiKey</key>
+    <string>AIzaSyD4wv4oFV3YrLZ7ZLWUJ0uDlO8BFtMoA7E</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app requires access to your location to show a map and let you pick places.</string>
+
+
 		<!-- Inside ios/Runner/Info.plist (not GoogleService-Info.plist) -->
 		<key>CFBundleURLTypes</key>
 		<array>

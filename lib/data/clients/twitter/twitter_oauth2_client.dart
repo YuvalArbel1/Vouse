@@ -1,6 +1,6 @@
 import 'package:flutter_appauth/flutter_appauth.dart';
 // Import the domain XAuthTokens
-import 'package:vouse_flutter/domain/entities/x_auth_tokens.dart';
+import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 
 class TwitterOAuth2Client {
   final FlutterAppAuth appAuth;

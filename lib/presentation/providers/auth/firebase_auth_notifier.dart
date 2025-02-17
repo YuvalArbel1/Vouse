@@ -8,6 +8,7 @@ import 'package:vouse_flutter/domain/usecases/auth/firebase/forgot_password_usec
 import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verification_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
+import '../../../domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
 import 'firebase_auth_providers.dart';
 
 /// A [StateNotifier] that holds a [DataState<void>] describing the last
@@ -16,14 +17,14 @@ import 'firebase_auth_providers.dart';
 /// We also provide methods like [checkEmailVerified] which returns a bool
 /// instead of updating [state] with [DataSuccess<bool>].
 final firebaseAuthNotifierProvider =
-StateNotifierProvider<FirebaseAuthNotifier, DataState<void>>((ref) {
-  final signInUC    = ref.watch(signInWithFirebaseUseCaseProvider);
-  final signUpUC    = ref.watch(signUpWithFirebaseUseCaseProvider);
-  final forgotPassUC= ref.watch(forgotPasswordUseCaseProvider);
-  final sendVerUC   = ref.watch(sendEmailVerificationUseCaseProvider);
-  final checkVerUC  = ref.watch(isEmailVerifiedUseCaseProvider);
+    StateNotifierProvider<FirebaseAuthNotifier, DataState<void>>((ref) {
+  final signInUC = ref.watch(signInWithFirebaseUseCaseProvider);
+  final signUpUC = ref.watch(signUpWithFirebaseUseCaseProvider);
+  final forgotPassUC = ref.watch(forgotPasswordUseCaseProvider);
+  final sendVerUC = ref.watch(sendEmailVerificationUseCaseProvider);
+  final checkVerUC = ref.watch(isEmailVerifiedUseCaseProvider);
   final signInWithGoogleUC = ref.watch(signInWithGoogleUseCaseProvider);
-
+  final signOutUC = ref.watch(signOutWithFirebaseUseCaseProvider);
 
   return FirebaseAuthNotifier(
     signInUC,
@@ -32,26 +33,28 @@ StateNotifierProvider<FirebaseAuthNotifier, DataState<void>>((ref) {
     sendVerUC,
     checkVerUC,
     signInWithGoogleUC,
+    signOutUC,
   );
 });
 
 class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
   final SignInWithFirebaseUseCase _signInUseCase;
   final SignUpWithFirebaseUseCase _signUpUseCase;
-  final ForgotPasswordUseCase     _forgotPasswordUseCase;
+  final ForgotPasswordUseCase _forgotPasswordUseCase;
   final SendEmailVerificationUseCase _sendVerificationUseCase;
-  final IsEmailVerifiedUseCase       _isEmailVerifiedUseCase;
+  final IsEmailVerifiedUseCase _isEmailVerifiedUseCase;
   final SignInWithGoogleUseCase _signInWithGoogleUseCase;
-
+  final SignOutWithFirebaseUseCase _signOutUseCase;
 
   FirebaseAuthNotifier(
-      this._signInUseCase,
-      this._signUpUseCase,
-      this._forgotPasswordUseCase,
-      this._sendVerificationUseCase,
-      this._isEmailVerifiedUseCase,
-      this._signInWithGoogleUseCase,
-      ) : super(const DataSuccess(null));
+    this._signInUseCase,
+    this._signUpUseCase,
+    this._forgotPasswordUseCase,
+    this._sendVerificationUseCase,
+    this._isEmailVerifiedUseCase,
+    this._signInWithGoogleUseCase,
+    this._signOutUseCase,
+  ) : super(const DataSuccess(null));
 
   /// Attempts to sign in a user; updates [state] with success or failure.
   Future<void> signIn(String email, String password) async {
@@ -120,4 +123,18 @@ class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
     // result is DataSuccess<void> or DataFailed<void>
     state = result;
   }
+
+
+  /// Signs out the currently logged-in user via [SignOutWithFirebaseUseCase].
+  /// If successful, returns [DataSuccess<void>] in [state],
+  /// otherwise sets [DataFailed<void>].
+  Future<void> signOut() async {
+    // Optionally show a loading or success state
+    state = const DataSuccess(null);
+
+    final result = await _signOutUseCase.call(params: null);
+    state = result; // DataSuccess<void> or DataFailed<void>
+  }
+
+
 }

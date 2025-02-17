@@ -1,5 +1,5 @@
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/entities/user_entity.dart';
+import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
 
 /// Defines local DB methods for user data
 abstract class UserLocalRepository {

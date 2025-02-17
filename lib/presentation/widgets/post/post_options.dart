@@ -1,11 +1,13 @@
 // lib/presentation/widgets/post/post_options.dart
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/util/colors.dart';
+import '../../screens/post/select_location_screen.dart';
 import 'ai_text_generation_dialog.dart';
 import 'post_option_icon.dart';
 import 'recent_images_row.dart';
@@ -98,8 +100,43 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
                 buildOptionIcon(
                   icon: Icons.location_on,
                   label: "Location",
-                  onTap: () => toast("Location pressed"),
+                  onTap: () async {
+                    // 1) Optionally get current location first, or skip and let user choose:
+                    // final locationState = await ref
+                    //   .read(getCurrentLocationUseCaseProvider)
+                    //   .call();
+                    // If DataSuccess => animate map to that location, etc.
+
+                    final chosenLatLng = await Navigator.push<LatLng>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SelectLocationScreen(),
+                      ),
+                    );
+
+                    if (chosenLatLng == null) return;
+
+                    toast("Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}");
+
+                    // 2) (Optional) Reverse geocode for an address
+                    // final result = await ref
+                    //   .read(reverseGeocodeUseCaseProvider)
+                    //   .call(params: ReverseGeocodeParams(chosenLatLng.latitude, chosenLatLng.longitude));
+                    //
+                    // if (result is DataSuccess<String>) {
+                    //   toast("Address: ${result.data}");
+                    // }
+
+                    // 3) Save to a post location provider, or hold it for final post submission
+                    // ref.read(postLocationProvider.notifier).state =
+                    //   PlaceLocationEntity(
+                    //     latitude: chosenLatLng.latitude,
+                    //     longitude: chosenLatLng.longitude,
+                    //     address: result.data ?? null,
+                    //   );
+                  },
                 ),
+
                 buildOptionIcon(
                   icon: Icons.auto_awesome, // or any AI icon
                   label: "AI",

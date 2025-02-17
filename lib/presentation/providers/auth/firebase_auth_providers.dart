@@ -1,4 +1,3 @@
-// lib/presentation/providers/firebase_auth_providers.dart
 import 'package:riverpod/riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/data/repository/auth/firebase_auth_repository_impl.dart';
@@ -8,8 +7,10 @@ import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_up_with_firebas
 import 'package:vouse_flutter/domain/usecases/auth/firebase/forgot_password_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verification_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
 
-import '../../../domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
+// NEW: Import the signOut use case
+import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
 
 /// Provides a singleton instance of [FirebaseAuthRepository],
 /// which uses [FirebaseAuthRepositoryImpl].
@@ -51,4 +52,11 @@ final isEmailVerifiedUseCaseProvider = Provider<IsEmailVerifiedUseCase>((ref) {
 final signInWithGoogleUseCaseProvider = Provider<SignInWithGoogleUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SignInWithGoogleUseCase(repo);
+});
+
+/// A provider that creates a [SignOutWithFirebaseUseCase]
+/// by injecting the [firebaseAuthRepositoryProvider].
+final signOutWithFirebaseUseCaseProvider = Provider<SignOutWithFirebaseUseCase>((ref) {
+  final repo = ref.watch(firebaseAuthRepositoryProvider);
+  return SignOutWithFirebaseUseCase(repo);
 });

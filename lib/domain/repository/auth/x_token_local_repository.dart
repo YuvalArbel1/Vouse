@@ -1,5 +1,5 @@
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/entities/x_auth_tokens.dart';
+import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 
 /// Abstract contract for storing tokens in secure storage
 abstract class XTokenLocalRepository {

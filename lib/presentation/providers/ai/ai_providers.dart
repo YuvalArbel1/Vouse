@@ -1,7 +1,7 @@
 // lib/presentation/providers/ai_providers.dart
 
 import 'package:riverpod/riverpod.dart';
-import 'package:vouse_flutter/data/clients/firebase_vertex_ai_client.dart';
+import 'package:vouse_flutter/data/clients/vertex_ai/firebase_vertex_ai_client.dart';
 import 'package:vouse_flutter/data/repository/ai/ai_text_repository_impl.dart';
 import 'package:vouse_flutter/domain/repository/ai/ai_text_repository.dart';
 

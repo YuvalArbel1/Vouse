@@ -187,6 +187,20 @@ class FirebaseAuthRepositoryImpl implements FirebaseAuthRepository {
     }
   }
 
+  @override
+  Future<DataState<void>> signOut() async {
+    try {
+      await _firebaseAuth.signOut();
+      return const DataSuccess(null);
+    } catch (e) {
+      return DataFailed(
+        DioException(requestOptions: RequestOptions(path: ''), error: e.toString()),
+      );
+    }
+  }
+
+
+
   /// Converts [FirebaseAuthException] codes into user-friendly messages
   /// or lumps them into a generic fallback.
   String _getFirebaseAuthErrorMessage(FirebaseAuthException e) {

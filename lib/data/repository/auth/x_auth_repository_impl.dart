@@ -3,9 +3,9 @@
 import 'package:dio/dio.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/repository/auth/x_auth_repository.dart';
-import 'package:vouse_flutter/data/clients/twitter_oauth2_client.dart';
+import 'package:vouse_flutter/data/clients/twitter/twitter_oauth2_client.dart';
 
-import '../../../domain/entities/x_auth_tokens.dart';
+import '../../../domain/entities/secure_db/x_auth_tokens.dart';
 
 class XAuthRepositoryImpl implements XAuthRepository {
   final TwitterOAuth2Client _client;

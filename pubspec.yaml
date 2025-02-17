@@ -53,11 +53,20 @@ dependencies:
   flutter_native_splash: ^2.4.4
   photo_manager: ^3.6.4
   firebase_vertexai: ^1.2.0
+  google_maps_flutter: ^2.10.0
+  geocoding: ^3.0.0
+  riverpod: any
+  logger: ^2.5.0
+  json_annotation: ^4.9.0
+  location: ^8.0.0
 
 
 
 
 dev_dependencies:
+  retrofit_generator: '>=8.0.0 <10.0.0' # for Dart 3.3 use ^9.0.0
+  build_runner: ^2.3.3
+  json_serializable: ^6.8.0
   flutter_test:
     sdk: flutter
 

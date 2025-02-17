@@ -1,7 +1,7 @@
 // data/repository/auth/x_token_local_repository_impl.dart
 import 'package:dio/dio.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/entities/x_auth_tokens.dart';
+import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 import 'package:vouse_flutter/domain/repository/auth/x_token_local_repository.dart';
 
 import '../../data_sources/local/secure_local_database.dart';

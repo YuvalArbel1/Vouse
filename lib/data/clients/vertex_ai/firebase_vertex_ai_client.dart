@@ -1,66 +1,64 @@
-// lib/data/clients/firebase_vertex_ai_client.dart
+// lib/data/clients/vertex_ai/firebase_vertex_ai_client.dart
 
 import 'dart:async';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 
+/// A client that configures a generative model with a systemInstruction.
+/// We embed token constraints in the user prompt for min length,
+/// and use `maxOutputTokens` for the upper bound.
 class FirebaseVertexAiClient {
   final String modelId;
+  final Content systemInstruction;
 
-  /// The user can specify e.g. 'gemini-2.0-flash'
-  FirebaseVertexAiClient({this.modelId = 'gemini-2.0-flash'});
+  /// We store the model in a generic variable instead of a specific class
+  late final dynamic _model;
 
-  /// Streams partial text, using model.generateContentStream(...).
-  /// We pass a prompt that explicitly requests <300 chars,
-  /// plus an approximate token limit.
+  FirebaseVertexAiClient({
+    this.modelId = 'gemini-2.0-flash',
+    required this.systemInstruction,
+  }) {
+    // Initialize the generative model once with system instructions
+    _model = FirebaseVertexAI.instance.generativeModel(
+      model: modelId,
+      systemInstruction: systemInstruction,
+    );
+  }
+
+  /// Streams partial text, specifying approximate min tokens in the user prompt,
+  /// and using maxOutputTokens for the upper bound.
+  /// Temperature for creativity.
   Stream<String> generateTextStream({
     required String prompt,
-    required int maxChars,
-    int approximateTokens = 70, // ~70 tokens ~ 300 chars
+    required int minTokens,
+    required int maxTokens,
+    required double temperature,
   }) async* {
-    final model = FirebaseVertexAI.instance.generativeModel(
-      model: modelId,
-    );
+    // Combine the user prompt with a note about minTokens
+    // (since the plugin doesn't have minOutputTokens).
+    final userPrompt = """
+Write a social media post under $maxTokens tokens (~${maxTokens * 4} chars), 
+but at least $minTokens tokens (~${minTokens * 4} chars). 
+Only final text, no disclaimers.
 
-    // 1) We embed instructions in the prompt:
-    //    "Write a short social media post (under 300 chars)."
-    final instructionPrompt = """
-Write a social media post under $maxChars characters, with no extra disclaimers or chain-of-thought. 
-Only the final text. 
 $prompt
 """;
 
-    final promptList = [Content.text(instructionPrompt)];
+    // We pass this userPrompt in addition to the system instruction
+    // that's already part of `_model`.
+    final promptList = [Content.text(userPrompt)];
 
-    // 2) Call generateContentStream with 'maxOutputTokens'
-    final responseStream = model.generateContentStream(
+    final responseStream = _model.generateContentStream(
       promptList,
       generationConfig: GenerationConfig(
-        maxOutputTokens: approximateTokens,
-        temperature: 0.7,
+        maxOutputTokens: maxTokens,
+        temperature: temperature,
+        // topK, topP, presencePenalty, frequencyPenalty, etc. if needed
       ),
-
     );
 
-    // 3) If you truly never want to forcibly cut partial text,
-    //    you can skip the runtime check.
-    //    If you do want a final safety net, keep this:
     final buffer = StringBuffer();
     await for (final chunk in responseStream) {
       buffer.write(chunk.text);
-
-      // Optional final cutoff:
-      // If you REALLY never want more than maxChars, uncomment below.
-      /*
-      if (buffer.length >= maxChars) {
-        final truncated = buffer.toString().substring(0, maxChars);
-        yield truncated;
-        break;
-      } else {
-        yield buffer.toString();
-      }
-      */
-
-      // If skipping cutoff, just yield partial each time:
       yield buffer.toString();
     }
   }

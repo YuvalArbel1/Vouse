@@ -1,4 +1,4 @@
-// lib/presentation/providers/ai_text_notifier.dart
+// lib/presentation/providers/ai/ai_text_notifier.dart
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,11 +10,19 @@ class AiTextState {
   final bool isGenerating;
   final String? error;
 
-  AiTextState({
-    this.partialText = '',
-    this.isGenerating = false,
-    this.error,
-  });
+  AiTextState({this.partialText = '', this.isGenerating = false, this.error});
+
+  AiTextState copyWith({
+    String? partialText,
+    bool? isGenerating,
+    String? error,
+  }) {
+    return AiTextState(
+      partialText: partialText ?? this.partialText,
+      isGenerating: isGenerating ?? this.isGenerating,
+      error: error,
+    );
+  }
 }
 
 class AiTextNotifier extends StateNotifier<AiTextState> {
@@ -23,48 +31,40 @@ class AiTextNotifier extends StateNotifier<AiTextState> {
 
   AiTextNotifier(this._useCase) : super(AiTextState());
 
-  Future<void> generateText(String prompt, {int maxChars = 350}) async {
-    // cancel old sub
+  /// Called when the user hits "Generate"
+  Future<void> generateText(String prompt, {
+    int desiredChars = 150,
+    double temperature = 0.5,
+  }) async {
     await _sub?.cancel();
-    // set to generating
-    state = AiTextState(partialText: '', isGenerating: true, error: null);
+    state = AiTextState(partialText: '', isGenerating: true);
 
     try {
       final stream = await _useCase.call(
-        params: GenerateTextParams(prompt, maxChars: maxChars),
+        params: GenerateTextParams(
+          prompt,
+          desiredChars: desiredChars,
+          temperature: temperature,
+        ),
       );
 
       _sub = stream.listen(
-            (updatedSoFar) {
-          state = AiTextState(
-            partialText: updatedSoFar,
-            isGenerating: true,
-          );
+            (updated) {
+          state = state.copyWith(partialText: updated, isGenerating: true);
         },
         onDone: () {
-          state = AiTextState(
-            partialText: state.partialText,
-            isGenerating: false,
-          );
+          state = state.copyWith(isGenerating: false);
         },
         onError: (e, st) {
-          state = AiTextState(
-            partialText: '',
-            isGenerating: false,
-            error: e.toString(),
-          );
+          state = AiTextState(partialText: '', isGenerating: false, error: e.toString());
         },
       );
     } catch (e) {
-      state = AiTextState(
-        partialText: '',
-        isGenerating: false,
-        error: e.toString(),
-      );
+      state = AiTextState(partialText: '', isGenerating: false, error: e.toString());
     }
   }
 
-  /// Cancels streaming, resets
+  /// Reset AI text
   Future<void> resetState() async {
     await _sub?.cancel();
     state = AiTextState(partialText: '', isGenerating: false, error: null);

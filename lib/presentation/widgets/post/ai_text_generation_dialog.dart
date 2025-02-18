@@ -1,44 +1,52 @@
+// lib/presentation/widgets/post/ai_text_generation_dialog.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
-
 import '../../../core/util/colors.dart';
 import '../../providers/ai/ai_text_notifier.dart';
 import '../../providers/post/post_text_provider.dart';
 
-/// A dialog that dims the background & integrates with AiTextNotifier
-/// for real-time streaming text from Vertex AI.
-/// The user:
-/// - Types a prompt (up to 350 chars)
-/// - Taps "Generate" => partial text is streamed
-/// - "Regenerate" clears the text & restarts
-/// - "Insert" sends final text back to parent
 class AiTextGenerationDialog extends ConsumerStatefulWidget {
-  const AiTextGenerationDialog({super.key});
+  const AiTextGenerationDialog({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<AiTextGenerationDialog> createState() =>
-      _AiTextGenerationDialogState();
+  ConsumerState<AiTextGenerationDialog> createState() => _AiTextGenerationDialogState();
 }
 
-class _AiTextGenerationDialogState
-    extends ConsumerState<AiTextGenerationDialog> {
+class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog> {
   final TextEditingController _promptController = TextEditingController();
 
+  int _creativityInt = 5;   // 0..10 => 0.0..1.0
+  int _lengthInt = 150;     // 20..280
+  bool _hasGenerated = false;
+
   void _onGeneratePressed() {
+    // Hide the keyboard
+    FocusScope.of(context).unfocus();
+
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) {
       toast("Please enter a prompt first!");
       return;
     }
-    ref
-        .read(aiTextNotifierProvider.notifier)
-        .generateText(prompt, maxChars: 350);
+
+    // Switch to "Regenerate & Insert"
+    setState(() => _hasGenerated = true);
+
+    final temperature = _creativityInt / 10.0;
+    final desiredChars = _lengthInt;
+
+    // Call AiTextNotifier => domain => data
+    ref.read(aiTextNotifierProvider.notifier)
+        .generateText(prompt, desiredChars: desiredChars, temperature: temperature);
   }
+
 
   void _onRegeneratePressed() {
     _promptController.clear();
     ref.read(aiTextNotifierProvider.notifier).resetState();
+    setState(() => _hasGenerated = false);
   }
 
   void _onInsertPressed() {
@@ -47,10 +55,7 @@ class _AiTextGenerationDialogState
       toast("No AI text to insert!");
       return;
     }
-    // 1) Update the postTextProvider so the main text field sees it
     ref.read(postTextProvider.notifier).state = text;
-
-    // 2) Close only the dialog
     Navigator.pop(context);
   }
 
@@ -69,12 +74,10 @@ class _AiTextGenerationDialogState
     final isGenerating = aiState.isGenerating;
     final error = aiState.error;
 
-    // If partial text changed => sync it into the text field
     if (partialText.isNotEmpty && partialText != _promptController.text) {
       _promptController.text = partialText;
-      _promptController.selection = TextSelection.fromPosition(
-        TextPosition(offset: partialText.length),
-      );
+      _promptController.selection =
+          TextSelection.fromPosition(TextPosition(offset: partialText.length));
     }
 
     return Container(
@@ -93,7 +96,7 @@ class _AiTextGenerationDialogState
       ),
       child: SingleChildScrollView(
         child: Column(
-          mainAxisSize: MainAxisSize.min, // wrap content
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Title + close
@@ -109,14 +112,10 @@ class _AiTextGenerationDialogState
             ),
             const SizedBox(height: 8),
 
-            // Shorter label
-            Text(
-              "Describe your dream social media post:",
-              style: secondaryTextStyle(size: 14),
-            ),
+            Text("Describe your dream social media post:", style: secondaryTextStyle(size: 14)),
             const SizedBox(height: 8),
 
-            // Prompt text field
+            // Prompt text
             AppTextField(
               controller: _promptController,
               textFieldType: TextFieldType.MULTILINE,
@@ -126,27 +125,56 @@ class _AiTextGenerationDialogState
               decoration: InputDecoration(
                 filled: true,
                 fillColor: vPrimaryColor.withOpacity(0.06),
-                // Use a smaller style for the hint
                 hintStyle: secondaryTextStyle(size: 13, color: Colors.grey),
-                hintText:
-                    "Try to be fully explanatory—use your imagination to create a viral post!",
+                hintText: "Try to be fully explanatory—use your imagination...",
                 counterText: '',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(width: 0, style: BorderStyle.none),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
 
-            // Show error if any
-            if (error != null)
-              Text("Error: $error",
-                  style: primaryTextStyle(color: Colors.redAccent)),
+            // Creativity slider
+            Text("Creativity: $_creativityInt ${_describeCreativity(_creativityInt)}",
+                style: secondaryTextStyle()),
+            Slider(
+              value: _creativityInt.toDouble(),
+              min: 0,
+              max: 10,
+              divisions: 10,
+              label: "$_creativityInt",
+              onChanged: (val) {
+                setState(() {
+                  _creativityInt = val.toInt();
+                });
+              },
+            ),
+            const SizedBox(height: 12),
 
-            // If generating => spinner
+            // Length slider
+            Text("Desired Length: $_lengthInt chars", style: secondaryTextStyle()),
+            Slider(
+              value: _lengthInt.toDouble(),
+              min: 20,
+              max: 280,
+              divisions: 260,
+              label: "$_lengthInt",
+              onChanged: (val) {
+                setState(() {
+                  _lengthInt = val.toInt();
+                });
+              },
+            ),
+            Text("You can pick a short 20-char post or up to 280 chars.",
+                style: secondaryTextStyle(size: 12)),
+            const SizedBox(height: 12),
+
+            // Error or generating state
+            if (error != null)
+              Text("Error: $error", style: primaryTextStyle(color: Colors.redAccent)),
+
             if (isGenerating) ...[
               const SizedBox(height: 8),
               Row(
@@ -165,9 +193,7 @@ class _AiTextGenerationDialogState
   }
 
   Widget _buildButtonRow(BuildContext context) {
-    final currentText = _promptController.text.trim();
-    if (currentText.isEmpty) {
-      // If empty => "Generate"
+    if (!_hasGenerated) {
       return AppButton(
         color: vPrimaryColor,
         text: "Generate",
@@ -179,7 +205,6 @@ class _AiTextGenerationDialogState
         onTap: _onGeneratePressed,
       );
     } else {
-      // "Regenerate" & "Insert"
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -204,5 +229,11 @@ class _AiTextGenerationDialogState
         ],
       );
     }
+  }
+
+  String _describeCreativity(int val) {
+    if (val <= 3) return "(Low)";
+    if (val <= 6) return "(Moderate)";
+    return "(High)";
   }
 }

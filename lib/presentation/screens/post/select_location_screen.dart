@@ -11,8 +11,10 @@ import '../../../core/resources/data_state.dart';
 import '../../../domain/entities/google_maps/place_details_entity.dart';
 import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/google_maps/place_suggestion_entity.dart';
+import '../../../domain/usecases/google_maps/reverse_geocode_usecase.dart';
 import '../../../domain/usecases/google_maps/search_places_usecase.dart';
 import '../../providers/google_maps/location_providers.dart';
+import '../../providers/post/post_location_provider.dart';
 
 /// A screen that allows the user to pick a location on a Google Map:
 /// - Requests user permission for location, placing a red marker at the current position.
@@ -137,14 +139,47 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     });
   }
 
-  /// Called when the user presses the checkmark FloatingActionButton.
-  /// If no location is chosen, shows a toast; otherwise pops with [LatLng].
-  void _onConfirm() {
+  /// Called when the user presses the checkmark FAB.
+  /// If no location is chosen, we show a toast. Otherwise:
+  /// - Optionally reverse geocode the lat/lng to get an address.
+  /// - Build a [PlaceLocationEntity].
+  /// - Store it in [postLocationProvider].
+  /// - Pop this screen without returning a LatLng (the data is in the provider).
+  Future<void> _onConfirm() async {
     if (_pickedLatLng == null) {
       toast("No location selected!");
       return;
     }
-    Navigator.pop(context, _pickedLatLng);
+
+    // Grab lat/lng
+    final lat = _pickedLatLng!.latitude;
+    final lng = _pickedLatLng!.longitude;
+
+    // Possibly do a reverse geocode
+    final reverseUC = ref.read(reverseGeocodeUseCaseProvider);
+    final reverseResult =
+        await reverseUC.call(params: ReverseGeocodeParams(lat, lng));
+
+    String? address;
+    if (reverseResult is DataSuccess<String>) {
+      address = reverseResult.data;
+    }
+
+    // Build the final location entity
+    // If you have a place name from search, you can set it here too
+    // For now, we'll rely on address alone
+    final locationEntity = PlaceLocationEntity(
+      latitude: lat,
+      longitude: lng,
+      address: address,
+      name: null, // or some custom name
+    );
+
+    // Save to the postLocationProvider so the rest of the app sees it
+    ref.read(postLocationProvider.notifier).state = locationEntity;
+
+    // Finally pop
+    Navigator.pop(context);
   }
 
   /// Called when the user presses the close FloatingActionButton.
@@ -290,7 +325,10 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
               child: FloatingActionButton(
                 onPressed: _onConfirm,
                 backgroundColor: vPrimaryColor.withOpacity(0.7),
-                child: const Icon(Icons.check,color: vAccentColor,),
+                child: const Icon(
+                  Icons.check,
+                  color: vAccentColor,
+                ),
               ),
             ),
           ],

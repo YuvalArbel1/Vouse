@@ -75,7 +75,7 @@ class _PostTextState extends ConsumerState<PostText> {
           TextField(
             controller: _controller,
             autofocus: false,
-            maxLines: 15,
+            maxLines: 13,
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: 'What’s On Your Mind?',
@@ -85,7 +85,7 @@ class _PostTextState extends ConsumerState<PostText> {
 
           // If location is chosen, show the new widget
           if (placeLocation != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             LocationTagWidget(
               entity: placeLocation,
               onRemove: () {

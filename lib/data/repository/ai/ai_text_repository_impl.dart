@@ -21,9 +21,9 @@ class AiTextRepositoryImpl implements AiTextRepository {
     final minTokens = (approxTokens * 0.8).round();
     final maxTokens = (approxTokens * 1.2).round();
 
-    // But keep a floor/ceiling so it never goes below 1 or above 300, etc.
-    final finalMin = minTokens.clamp(1, 300);
-    final finalMax = maxTokens.clamp(1, 300);
+    // But keep a floor/ceiling so it never goes below 1 or above 280, etc.
+    final finalMin = minTokens.clamp(1, 280);
+    final finalMax = maxTokens.clamp(1, 280);
 
     return _client.generateTextStream(
       prompt: prompt,

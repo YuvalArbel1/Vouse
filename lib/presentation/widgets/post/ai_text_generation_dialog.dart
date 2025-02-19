@@ -8,17 +8,19 @@ import '../../providers/ai/ai_text_notifier.dart';
 import '../../providers/post/post_text_provider.dart';
 
 class AiTextGenerationDialog extends ConsumerStatefulWidget {
-  const AiTextGenerationDialog({Key? key}) : super(key: key);
+  const AiTextGenerationDialog({super.key});
 
   @override
-  ConsumerState<AiTextGenerationDialog> createState() => _AiTextGenerationDialogState();
+  ConsumerState<AiTextGenerationDialog> createState() =>
+      _AiTextGenerationDialogState();
 }
 
-class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog> {
+class _AiTextGenerationDialogState
+    extends ConsumerState<AiTextGenerationDialog> {
   final TextEditingController _promptController = TextEditingController();
 
-  int _creativityInt = 5;   // 0..10 => 0.0..1.0
-  int _lengthInt = 150;     // 20..280
+  int _creativityInt = 5; // 0..10 => 0.0..1.0
+  int _lengthInt = 150; // 20..280
   bool _hasGenerated = false;
 
   void _onGeneratePressed() {
@@ -38,10 +40,9 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
     final desiredChars = _lengthInt;
 
     // Call AiTextNotifier => domain => data
-    ref.read(aiTextNotifierProvider.notifier)
-        .generateText(prompt, desiredChars: desiredChars, temperature: temperature);
+    ref.read(aiTextNotifierProvider.notifier).generateText(prompt,
+        desiredChars: desiredChars, temperature: temperature);
   }
-
 
   void _onRegeneratePressed() {
     _promptController.clear();
@@ -57,6 +58,12 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
     }
     ref.read(postTextProvider.notifier).state = text;
     Navigator.pop(context);
+  }
+
+  String _describeCreativity(int val) {
+    if (val <= 3) return "(Low)";
+    if (val <= 6) return "(Moderate)";
+    return "(High)";
   }
 
   @override
@@ -112,7 +119,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
             ),
             const SizedBox(height: 8),
 
-            Text("Describe your dream social media post:", style: secondaryTextStyle(size: 14)),
+            Text("Describe your dream social media post:",
+                style: secondaryTextStyle(size: 14)),
             const SizedBox(height: 8),
 
             // Prompt text
@@ -137,7 +145,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
             const SizedBox(height: 12),
 
             // Creativity slider
-            Text("Creativity: $_creativityInt ${_describeCreativity(_creativityInt)}",
+            Text(
+                "Creativity: $_creativityInt ${_describeCreativity(_creativityInt)}",
                 style: secondaryTextStyle()),
             Slider(
               value: _creativityInt.toDouble(),
@@ -154,7 +163,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
             const SizedBox(height: 12),
 
             // Length slider
-            Text("Desired Length: $_lengthInt chars", style: secondaryTextStyle()),
+            Text("Desired Length: $_lengthInt chars",
+                style: secondaryTextStyle()),
             Slider(
               value: _lengthInt.toDouble(),
               min: 20,
@@ -173,7 +183,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
 
             // Error or generating state
             if (error != null)
-              Text("Error: $error", style: primaryTextStyle(color: Colors.redAccent)),
+              Text("Error: $error",
+                  style: primaryTextStyle(color: Colors.redAccent)),
 
             if (isGenerating) ...[
               const SizedBox(height: 8),
@@ -229,11 +240,5 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
         ],
       );
     }
-  }
-
-  String _describeCreativity(int val) {
-    if (val <= 3) return "(Low)";
-    if (val <= 6) return "(Moderate)";
-    return "(High)";
   }
 }

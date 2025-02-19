@@ -49,9 +49,7 @@ Provider<ReverseGeocodeUseCase>((ref) {
   return ReverseGeocodeUseCase(ref.watch(locationRepositoryProvider));
 });
 
-// ----------------------------
-// Add these two new providers:
-// ----------------------------
+
 final searchPlacesUseCaseProvider = Provider<SearchPlacesUseCase>((ref) {
   return SearchPlacesUseCase(ref.watch(locationRepositoryProvider));
 });

@@ -52,7 +52,6 @@ $prompt
       generationConfig: GenerationConfig(
         maxOutputTokens: maxTokens,
         temperature: temperature,
-        // topK, topP, presencePenalty, frequencyPenalty, etc. if needed
       ),
     );
 

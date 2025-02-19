@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
 
@@ -31,6 +32,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       FlutterNativeSplash.remove();
     });
 
+    // Hide status/nav bars
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
     // Sets status bar color once the widget is built
     afterBuildCreated(() {
       setStatusBarColor(context.cardColor);
@@ -41,6 +47,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void dispose() {
     // Restore status bar color when leaving this screen
     setStatusBarColor(vAppLayoutBackground);
+
+    // Restore system UI
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+
     super.dispose();
   }
 

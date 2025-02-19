@@ -118,22 +118,7 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
 
                     toast("Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}");
 
-                    // 2) (Optional) Reverse geocode for an address
-                    // final result = await ref
-                    //   .read(reverseGeocodeUseCaseProvider)
-                    //   .call(params: ReverseGeocodeParams(chosenLatLng.latitude, chosenLatLng.longitude));
-                    //
-                    // if (result is DataSuccess<String>) {
-                    //   toast("Address: ${result.data}");
-                    // }
 
-                    // 3) Save to a post location provider, or hold it for final post submission
-                    // ref.read(postLocationProvider.notifier).state =
-                    //   PlaceLocationEntity(
-                    //     latitude: chosenLatLng.latitude,
-                    //     longitude: chosenLatLng.longitude,
-                    //     address: result.data ?? null,
-                    //   );
                   },
                 ),
 

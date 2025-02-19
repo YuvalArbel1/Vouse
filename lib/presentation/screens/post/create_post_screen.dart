@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:vouse_flutter/presentation/widgets/post/schedule_post_bottom_sheet.dart';
 
 import '../../../core/util/colors.dart';
 import '../../widgets/post/post_options.dart';
@@ -32,27 +33,46 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       FlutterNativeSplash.remove();
     });
 
-    // Hide status/nav bars
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [],
-    );
     // Sets status bar color once the widget is built
     afterBuildCreated(() {
       setStatusBarColor(context.cardColor);
     });
   }
 
+  void _openShareBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true, // optional
+      builder: (ctx) {
+        return FractionallySizedBox(
+          heightFactor: 0.7, // or 0.6, whichever height you prefer
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: const SharePostBottomSheet(), // <-- your refactored widget
+          ),
+        );
+      },
+    );
+  }
+
+
   @override
   void dispose() {
     // Restore status bar color when leaving this screen
     setStatusBarColor(vAppLayoutBackground);
-
-    // Restore system UI
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
 
     super.dispose();
   }
@@ -74,10 +94,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
             text: 'Post',
             textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-            onTap: () {
-              // For now, does nothing. In future, gather post data & save
-              // e.g., read text from PostText's controller, read images from postImagesProvider
-            },
+            onTap: () => _openShareBottomSheet(context),
             elevation: 0,
             color: vPrimaryColor,
             width: 50,

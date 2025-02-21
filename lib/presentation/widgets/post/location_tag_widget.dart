@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/google_maps/place_location_entity.dart';
 
 /// A small UI row for displaying a chosen location, with a remove icon,

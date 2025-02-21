@@ -101,11 +101,6 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
                   icon: Icons.location_on,
                   label: "Location",
                   onTap: () async {
-                    // 1) Optionally get current location first, or skip and let user choose:
-                    // final locationState = await ref
-                    //   .read(getCurrentLocationUseCaseProvider)
-                    //   .call();
-                    // If DataSuccess => animate map to that location, etc.
 
                     final chosenLatLng = await Navigator.push<LatLng>(
                       context,

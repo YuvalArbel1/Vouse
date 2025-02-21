@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:vouse_flutter/presentation/widgets/post/schedule_ai_dialog.dart';
 
 import '../../../core/util/colors.dart';
 import '../../providers/post/post_text_provider.dart';
-import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
 import '../../widgets/post/selected_images_preview.dart';
 import '../../widgets/post/location_tag_widget.dart';
-import '../../widgets/post/ai_text_generation_dialog.dart';
 
 class SharePostBottomSheet extends ConsumerStatefulWidget {
-  const SharePostBottomSheet({Key? key}) : super(key: key);
+  const SharePostBottomSheet({super.key});
 
   @override
   ConsumerState<SharePostBottomSheet> createState() =>
@@ -59,21 +58,19 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     final now = DateTime.now();
     final oneWeekLater = now.add(const Duration(days: 7));
 
-    // Pick Date
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: now,
       firstDate: now,
       lastDate: oneWeekLater,
     );
-    if (pickedDate == null) return;
+    if (pickedDate == null || !mounted) return;
 
-    // Pick Time
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (pickedTime == null) return;
+    if (pickedTime == null || !mounted) return;
 
     setState(() {
       _scheduledDateTime = DateTime(
@@ -89,21 +86,22 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
   /// Schedule post
   void _onSchedulePressed() {
     final title = _titleController.text.trim();
-    final postBody = ref.read(postTextProvider);
     final date = _scheduledDateTime;
 
-    // TODO: Implement scheduling logic
+    // If you have real scheduling logic, call it here
     Navigator.pop(context);
     toast('Post scheduled: $title at $date');
   }
 
   /// Open AI text generation dialog
   Future<void> _openAIDialog() async {
-    await showDialog<String>(
+    final bestTime = await showDialog<DateTime?>(
       context: context,
-      builder: (_) => const AiTextGenerationDialog(),
+      builder: (_) => const ScheduleAiDialog(),
     );
-    // AiTextNotifier updates postTextProvider automatically
+    if (bestTime != null) {
+      setState(() => _scheduledDateTime = bestTime);
+    }
   }
 
   @override
@@ -139,7 +137,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 borderRadius: radius(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha(20),
                     blurRadius: 6,
                     offset: const Offset(0, 4),
                   ),
@@ -147,8 +145,10 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               ),
               child: TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  hintText: "Post Title (optional)",
+                style: secondaryTextStyle(size: 12, color: vBodyWhite),
+                decoration: InputDecoration(
+                  hintText: "Give a title to your amazing post!",
+                  hintStyle: secondaryTextStyle(size: 12, color: vBodyWhite),
                   border: InputBorder.none,
                 ),
               ),
@@ -165,7 +165,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 borderRadius: radius(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha(20),
                     blurRadius: 6,
                     offset: const Offset(0, 4),
                   ),
@@ -223,7 +223,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                   label: const Text("Pick Date"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: vPrimaryColor.withOpacity(0.8),
+                    backgroundColor: vPrimaryColor.withAlpha(204), // ~0.8
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -237,7 +237,6 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               ],
             ),
 
-            // If date is chosen, show text below
             if (_scheduledDateTime != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -248,7 +247,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
 
             const SizedBox(height: 16),
 
-            /// Schedule Post button with semi-transparent color
+            /// Schedule Post button
             ElevatedButton(
               onPressed: _onSchedulePressed,
               style: ElevatedButton.styleFrom(
@@ -256,7 +255,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                backgroundColor: vPrimaryColor.withOpacity(0.8), // <== OPACITY
+                backgroundColor: vPrimaryColor.withAlpha(204), // ~0.8
                 foregroundColor: Colors.white,
               ),
               child: const Text("Schedule Post"),

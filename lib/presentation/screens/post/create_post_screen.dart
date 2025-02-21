@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:vouse_flutter/presentation/widgets/post/schedule_post_bottom_sheet.dart';
 
 import '../../../core/util/colors.dart';
+import '../../providers/post/post_text_provider.dart';
 import '../../widgets/post/post_options.dart';
 import '../../widgets/post/post_text.dart';
 import '../../widgets/post/selected_images_preview.dart';
+import '../../widgets/post/schedule_post_bottom_sheet.dart';
 
 /// A screen where the user can create a new post:
 ///  - Enter text in [PostText]
 ///  - See & manage selected images in [SelectedImagesPreview]
 ///  - Use bottom [PostOptions] for picking images or other actions.
 ///
-/// [FlutterNativeSplash.remove()] is called after the first frame,
-/// so the user doesn't see the splash forever. Also updates
-/// statusBar color to align with app theme.
-class CreatePostScreen extends StatefulWidget {
+class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
   void initState() {
     super.initState();
@@ -61,24 +60,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ],
             ),
-            child: const SharePostBottomSheet(), // <-- your refactored widget
+            child: const SharePostBottomSheet(), // your refactored widget
           ),
         );
       },
     );
   }
 
-
   @override
   void dispose() {
     // Restore status bar color when leaving this screen
     setStatusBarColor(vAppLayoutBackground);
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    /// Read the current text from the provider
+    final postText = ref.watch(postTextProvider);
+
     return Scaffold(
       backgroundColor: context.cardColor,
 
@@ -94,11 +94,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
             text: 'Post',
             textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-            onTap: () => _openShareBottomSheet(context),
+            onTap: () {
+              // 1) If user typed no text, show toast
+              if (postText.trim().isEmpty) {
+                toast('Write some text first!');
+                return;
+              }
+              // 2) Otherwise, open the scheduling bottom sheet
+              _openShareBottomSheet(context);
+            },
             elevation: 0,
             color: vPrimaryColor,
             width: 50,
-            padding: EdgeInsets.all(0),
+            padding: EdgeInsets.zero,
           ).paddingAll(16),
         ],
       ),

@@ -61,4 +61,20 @@ $prompt
       yield buffer.toString();
     }
   }
+
+  Future<String> predictOneShot({
+    required String prompt,
+    required int maxOutputTokens,
+    required double temperature,
+  }) async {
+    final promptList = [Content.text(prompt)];
+    final response = await _model.generateContent(
+      promptList,
+      generationConfig: GenerationConfig(
+        maxOutputTokens: maxOutputTokens,
+        temperature: temperature,
+      ),
+    );
+    return response.text;
+  }
 }

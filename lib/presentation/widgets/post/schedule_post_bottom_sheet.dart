@@ -223,7 +223,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                   label: const Text("Pick Date"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: vPrimaryColor.withAlpha(204), // ~0.8
+                    backgroundColor: vPrimaryColor.withAlpha(204),
                     foregroundColor: Colors.white,
                   ),
                 ),

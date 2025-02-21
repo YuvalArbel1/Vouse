@@ -103,9 +103,7 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
 
   /// If user is satisfied => apply location, return the final date/time
   void _onUsePressed() {
-    if (_selectedIndices.contains(0) && _aiLocation != null) {
-      ref.read(postLocationProvider.notifier).state = _aiLocation;
-    }
+
     Navigator.pop(context, _predictedDateTime);
   }
 

@@ -25,20 +25,43 @@ class UserLocalDataSource {
       dbPath,
       version: _dbVersion,
       onCreate: _onCreate,
-      // If you need to handle migrations in the future, add onUpgrade here
+      onOpen: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE $_tableName (
-        userId TEXT PRIMARY KEY,
-        fullName TEXT NOT NULL,
-        dateOfBirth TEXT NOT NULL,
-        gender TEXT NOT NULL,
-        avatarPath TEXT
-      )
-    ''');
+    CREATE TABLE user (
+      userId TEXT PRIMARY KEY,
+      fullName TEXT NOT NULL,
+      dateOfBirth TEXT NOT NULL,
+      gender TEXT NOT NULL,
+      avatarPath TEXT
+    )
+  ''');
+
+    // The "posts" table references "user(userId)" as a foreign key.
+    await db.execute('''
+    CREATE TABLE posts (
+      postIdLocal TEXT PRIMARY KEY,
+      postIdX TEXT,
+      userId TEXT NOT NULL,
+      content TEXT NOT NULL,
+      title TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT,
+      scheduledAt TEXT,
+      visibility TEXT,
+      localImagePaths TEXT,
+      cloudImageUrls TEXT,
+      locationLat REAL,
+      locationLng REAL,
+      locationAddress TEXT,
+      FOREIGN KEY(userId) REFERENCES user(userId)
+    )
+  ''');
   }
 
   /// Insert or replace a user in "users" table

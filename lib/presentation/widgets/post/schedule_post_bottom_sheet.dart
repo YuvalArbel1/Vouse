@@ -21,6 +21,16 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
   final TextEditingController _titleController = TextEditingController();
   DateTime? _scheduledDateTime;
 
+  /// Dropdown options for "Who can reply?"
+  final List<Map<String, dynamic>> _replyOptions = [
+    {'label': 'Everyone', 'icon': Icons.public},
+    {'label': 'Verified accounts', 'icon': Icons.verified},
+    {'label': 'Accounts you follow', 'icon': Icons.group},
+  ];
+
+  /// Holds the currently selected reply option
+  String _selectedReplyOption = 'Everyone';
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -153,7 +163,6 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
 
             /// Post snippet + location container
@@ -203,7 +212,50 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
 
+            /// Who can reply container (NEW)
+            Container(
+              width: context.width(),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: vAppLayoutBackground,
+                borderRadius: radius(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _selectedReplyOption,
+                  dropdownColor: vAppLayoutBackground,
+                  iconEnabledColor: vPrimaryColor,
+                  style: primaryTextStyle(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedReplyOption = value ?? 'Everyone';
+                    });
+                  },
+                  items: _replyOptions.map((option) {
+                    return DropdownMenuItem<String>(
+                      value: option['label'],
+                      child: Row(
+                        children: [
+                          Icon(option['icon'], color: vPrimaryColor),
+                          const SizedBox(width: 8),
+                          Text(option['label'], style: primaryTextStyle()),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             /// Selected Images

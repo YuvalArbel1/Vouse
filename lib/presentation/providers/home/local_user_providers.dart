@@ -1,8 +1,8 @@
 import 'package:riverpod/riverpod.dart';
-import 'package:vouse_flutter/data/repository/user_local_repository_impl.dart';
+import 'package:vouse_flutter/data/repository/local_db/user_local_repository_impl.dart';
 
-import '../../../data/data_sources/local/local_database.dart';
-import '../../../domain/repository/home/user_local_repository.dart';
+import '../../../data/clients/local_db/local_database.dart';
+import '../../../domain/repository/local_db/user_local_repository.dart';
 import '../../../domain/usecases/home/get_user_usecase.dart';
 import '../../../domain/usecases/home/save_user_usecase.dart';
 

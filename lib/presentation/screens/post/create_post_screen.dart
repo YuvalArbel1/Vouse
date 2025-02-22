@@ -1,10 +1,21 @@
+import 'dart:io';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 
+import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
+import '../../../domain/entities/locaal db/post_entity.dart';
+import '../../../domain/usecases/post/save_post_usecase.dart';
+import '../../providers/post/post_images_provider.dart';
+import '../../providers/post/post_local_providers.dart';
+import '../../providers/post/post_location_provider.dart';
 import '../../providers/post/post_text_provider.dart';
 import '../../widgets/post/post_options.dart';
 import '../../widgets/post/post_text.dart';
@@ -38,12 +49,197 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     });
   }
 
+  /// Shows a confirmation dialog to ensure the user really wants to clear everything.
+  /// Returns `true` if user pressed "Yes," or `false`/`null` if canceled.
+  Future<bool> _confirmClearPost() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Clear Post?', style: boldTextStyle()),
+          content: Text(
+            'Are you sure you want to clear all text, images, and location? '
+                'This is irreversible.',
+            style: primaryTextStyle(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+    return result == true;
+  }
+
+  /// Called when user presses the "Clear" button.
+  /// We show a dialog. If user confirms, we reset all post-related providers.
+  Future<void> _onClearPressed() async {
+    final shouldClear = await _confirmClearPost();
+    if (!shouldClear) return;
+
+    // Clear providers: text, images, location
+    ref.read(postTextProvider.notifier).state = '';
+    ref.read(postImagesProvider.notifier).clearAll();
+    ref.read(postLocationProvider.notifier).state = null;
+
+    toast('Post content cleared.');
+  }
+
+  Future<String?> _showDraftTitleDialog() async {
+    final titleController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Enter Draft Title', style: boldTextStyle()),
+          content: TextField(
+            controller: titleController,
+            decoration: InputDecoration(
+              hintText: 'E.g. My Awesome Draft',
+              // match the style from your post text's placeholder
+              hintStyle: secondaryTextStyle(size: 12, color: vBodyWhite),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                if (title.isEmpty) {
+                  toast('Please enter a draft title.');
+                  return;
+                }
+                Navigator.pop(ctx, title);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<String>> _moveImagesToPermanentFolder(
+      List<String> imagePaths) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final dirPath = docsDir.path;
+
+    final List<String> newPaths = [];
+    for (final originalPath in imagePaths) {
+      final fileName = p.basename(originalPath);
+      final newPath = p.join(dirPath, fileName);
+      final newFile = await File(originalPath).copy(newPath);
+      newPaths.add(newFile.path);
+    }
+    return newPaths;
+  }
+
+  Future<void> _onDraftPressed() async {
+    // 1) Check if user typed anything
+    final text = ref.read(postTextProvider).trim();
+    if (text.isEmpty) {
+      toast('Write some words first!');
+      return;
+    }
+
+    // 2) Grab the current user from FirebaseAuth
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      toast('No logged-in user found!');
+      return;
+    }
+
+    // 3) Prompt user for a title
+    final draftTitle = await _showDraftTitleDialog();
+    if (draftTitle == null) {
+      // user canceled
+      return;
+    }
+
+    // 4) Move local images from temp to a stable path
+    final images = ref.read(postImagesProvider);
+    final localPaths = await _moveImagesToPermanentFolder(images);
+
+    // 5) Read location if user picked one
+    final loc = ref.read(postLocationProvider);
+    double? lat;
+    double? lng;
+    String? addr;
+    if (loc != null) {
+      lat = loc.latitude;
+      lng = loc.longitude;
+      addr = loc.address;
+    }
+
+    // 6) Build the PostEntity for a DRAFT
+    final postEntity = PostEntity(
+      postIdLocal: const Uuid().v4(),
+      // random local ID
+      postIdX: null,
+      // not published to X yet
+      content: text,
+      title: draftTitle,
+      createdAt: DateTime.now(),
+      updatedAt: null,
+      scheduledAt: null,
+      // draft => no scheduled time
+      visibility: null,
+      // or 'everyone' if you prefer a default
+      localImagePaths: localPaths,
+      cloudImageUrls: [],
+      locationLat: lat,
+      locationLng: lng,
+      locationAddress: addr,
+    );
+
+    // 7) Save it via your local DB usecase
+    final saveUC = ref.read(savePostUseCaseProvider);
+
+    final result = await saveUC.call(
+      params: SavePostParams(
+        postEntity,
+        user.uid, // pass real user ID
+      ),
+    );
+
+    // 8) Check result
+    if (result is DataSuccess) {
+      // Optionally clear the text & images
+      ref.read(postTextProvider.notifier).state = '';
+      ref.read(postImagesProvider.notifier).clearAll();
+      ref.read(postLocationProvider.notifier).state = null;
+      Navigator.pop(context);
+    } else if (result is DataFailed) {
+      toast("Error saving draft: ${result.error?.error}");
+    }
+  }
+
   void _openShareBottomSheet(BuildContext context) {
+    // 1) Read the user's typed text
+    final currentText = ref.read(postTextProvider).trim();
+
+    // 2) If empty => show toast and return
+    if (currentText.isEmpty) {
+      toast('Please enter some text first!');
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      useSafeArea: true, // optional
+      useSafeArea: true,
+      // optional
       builder: (ctx) {
         return FractionallySizedBox(
           heightFactor: 0.7, // or 0.6, whichever height you prefer
@@ -60,7 +256,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 ),
               ],
             ),
-            child: const SharePostBottomSheet(), // your refactored widget
+            child: const SharePostBottomSheet(),
           ),
         );
       },
@@ -76,38 +272,82 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    /// Read the current text from the provider
-    final postText = ref.watch(postTextProvider);
-
     return Scaffold(
       backgroundColor: context.cardColor,
 
       /// AppBar for "New Post" title & "Post" button
       appBar: AppBar(
-        iconTheme: IconThemeData(color: context.iconColor),
+        automaticallyImplyLeading: false,
+        // We'll supply our own arrow
         backgroundColor: context.cardColor,
-        title: Text('New Post', style: boldTextStyle(size: 20)),
         elevation: 0,
         centerTitle: true,
+
+        // Enough room for arrow + spacing + "Clear" button
+        leadingWidth: 120,
+
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Back arrow
+            IconButton(
+              icon: Icon(Icons.arrow_back, color: context.iconColor),
+              onPressed: () => Navigator.pop(context),
+              // You can tweak these to reduce or expand spacing
+              padding: const EdgeInsets.all(0),
+              visualDensity: const VisualDensity(horizontal: -4),
+            ),
+            const SizedBox(width: 8), // bigger gap from arrow to Clear
+
+            // "Clear" with an outline + flexible so it won't overflow
+            Flexible(
+              child: AppButton(
+                shapeBorder: RoundedRectangleBorder(
+                  borderRadius: radius(4),
+                  side: BorderSide(color: vAccentColor),
+                ),
+                text: 'Clear',
+                textStyle: secondaryTextStyle(color: vAccentColor, size: 10),
+                onTap: _onClearPressed,
+                // define your logic
+                elevation: 0,
+                color: Colors.transparent,
+                // Enough width to look nice but flexible to shrink on small screens
+                width: 50,
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+
+        title: Text('New Post', style: boldTextStyle(size: 20)),
+
         actions: [
+          // "Draft"
+          AppButton(
+            shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
+            text: 'Draft',
+            textStyle: secondaryTextStyle(color: Colors.white, size: 10),
+            onTap: _onDraftPressed,
+            // define your logic
+            elevation: 0,
+            color: vAccentColor.withAlpha(220),
+            width: 50,
+            padding: EdgeInsets.zero,
+          ).paddingAll(4),
+
+          // "Post"
           AppButton(
             shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
             text: 'Post',
             textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-            onTap: () {
-              // 1) If user typed no text, show toast
-              if (postText.trim().isEmpty) {
-                toast('Write some text first!');
-                return;
-              }
-              // 2) Otherwise, open the scheduling bottom sheet
-              _openShareBottomSheet(context);
-            },
+            onTap: () => _openShareBottomSheet(context),
             elevation: 0,
-            color: vPrimaryColor,
+            color: vPrimaryColor.withAlpha(220),
             width: 50,
             padding: EdgeInsets.zero,
-          ).paddingAll(16),
+            margin: EdgeInsets.only(right: 13),
+          ).paddingAll(4),
         ],
       ),
 

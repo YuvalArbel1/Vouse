@@ -31,7 +31,7 @@ Widget buildOptionIcon({
           child: Icon(icon, color: vPrimaryColor),
         ),
         const SizedBox(height: 4),
-        Text(label, style: secondaryTextStyle(size: 12, color: vBodyWhite)),
+        Text(label, style: secondaryTextStyle(size: 12, color: vBodyGrey)),
       ],
     ),
   );

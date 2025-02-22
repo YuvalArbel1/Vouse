@@ -1,31 +1,63 @@
 class PostEntity {
-  final String postIdLocal;    // local PK, e.g. a UUID
-  final String? postIdX;       // null until posted to X
-  final String content;        // not empty for draft or scheduled
-  final String title;          // required for both
+  final String postIdLocal;
+  final String? postIdX;
+  final String content;
+  final String title;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? scheduledAt;
-  final String? visibility;    // "everyone", "verified", "followers", or null
+  final String? visibility;
   final List<String> localImagePaths;
   final List<String> cloudImageUrls;
   final double? locationLat;
   final double? locationLng;
   final String? locationAddress;
 
-  const PostEntity({
+  PostEntity({
     required this.postIdLocal,
-    this.postIdX,
+    required this.postIdX,
     required this.content,
     required this.title,
     required this.createdAt,
     this.updatedAt,
     this.scheduledAt,
     this.visibility,
-    this.localImagePaths = const [],
-    this.cloudImageUrls = const [],
+    required this.localImagePaths,
+    required this.cloudImageUrls,
     this.locationLat,
     this.locationLng,
     this.locationAddress,
   });
+
+  PostEntity copyWith({
+    String? postIdLocal,
+    String? postIdX,
+    String? content,
+    String? title,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? scheduledAt,
+    String? visibility,
+    List<String>? localImagePaths,
+    List<String>? cloudImageUrls,
+    double? locationLat,
+    double? locationLng,
+    String? locationAddress,
+  }) {
+    return PostEntity(
+      postIdLocal: postIdLocal ?? this.postIdLocal,
+      postIdX: postIdX ?? this.postIdX,
+      content: content ?? this.content,
+      title: title ?? this.title,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      visibility: visibility ?? this.visibility,
+      localImagePaths: localImagePaths ?? this.localImagePaths,
+      cloudImageUrls: cloudImageUrls ?? this.cloudImageUrls,
+      locationLat: locationLat ?? this.locationLat,
+      locationLng: locationLng ?? this.locationLng,
+      locationAddress: locationAddress ?? this.locationAddress,
+    );
+  }
 }

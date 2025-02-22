@@ -79,7 +79,7 @@ class _PostTextState extends ConsumerState<PostText> {
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: 'What’s On Your Mind?',
-              hintStyle: secondaryTextStyle(size: 12, color: vBodyWhite),
+              hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
             ),
           ),
 

@@ -63,8 +63,6 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
 
   @override
   void dispose() {
-    // Restore system UI to normal when leaving this screen.
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     // Cancel the debounce timer if it's still active.
     _debounce?.cancel();
@@ -182,11 +180,6 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     Navigator.pop(context);
   }
 
-  /// Called when the user presses the close FloatingActionButton.
-  /// Simply closes this screen without returning a location.
-  void _onCancel() {
-    Navigator.pop(context); // return null implicitly
-  }
 
   /// Called whenever the user types in the search bar.
   /// We use a debounce approach: wait 500ms, then call [searchPlacesUseCase].

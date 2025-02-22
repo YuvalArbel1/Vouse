@@ -48,11 +48,7 @@ class _FullScreenImagePreviewState
 
   @override
   void dispose() {
-    // Restore system UI
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
+
     super.dispose();
   }
 

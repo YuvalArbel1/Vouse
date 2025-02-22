@@ -2,15 +2,15 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
+import '../../../core/util/image_utils.dart';
 import '../../../domain/entities/locaal db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../providers/post/post_images_provider.dart';
@@ -43,10 +43,28 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       FlutterNativeSplash.remove();
     });
 
+    // Hide status/nav bars
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
+
     // Sets status bar color once the widget is built
     afterBuildCreated(() {
       setStatusBarColor(context.cardColor);
     });
+  }
+
+  @override
+  void dispose() {
+    // Restore status bar color when leaving this screen
+    setStatusBarColor(vAppLayoutBackground);
+    // Restore system UI
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+    super.dispose();
   }
 
   /// Shows a confirmation dialog to ensure the user really wants to clear everything.
@@ -59,7 +77,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           title: Text('Clear Post?', style: boldTextStyle()),
           content: Text(
             'Are you sure you want to clear all text, images, and location? '
-                'This is irreversible.',
+            'This is irreversible.',
             style: primaryTextStyle(),
           ),
           actions: [
@@ -104,7 +122,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             decoration: InputDecoration(
               hintText: 'E.g. My Awesome Draft',
               // match the style from your post text's placeholder
-              hintStyle: secondaryTextStyle(size: 12, color: vBodyWhite),
+              hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
             ),
           ),
           actions: [
@@ -127,21 +145,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         );
       },
     );
-  }
-
-  Future<List<String>> _moveImagesToPermanentFolder(
-      List<String> imagePaths) async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    final dirPath = docsDir.path;
-
-    final List<String> newPaths = [];
-    for (final originalPath in imagePaths) {
-      final fileName = p.basename(originalPath);
-      final newPath = p.join(dirPath, fileName);
-      final newFile = await File(originalPath).copy(newPath);
-      newPaths.add(newFile.path);
-    }
-    return newPaths;
   }
 
   Future<void> _onDraftPressed() async {
@@ -168,7 +171,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
     // 4) Move local images from temp to a stable path
     final images = ref.read(postImagesProvider);
-    final localPaths = await _moveImagesToPermanentFolder(images);
+    final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
 
     // 5) Read location if user picked one
     final loc = ref.read(postLocationProvider);
@@ -261,13 +264,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    // Restore status bar color when leaving this screen
-    setStatusBarColor(vAppLayoutBackground);
-    super.dispose();
   }
 
   @override

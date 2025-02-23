@@ -1,5 +1,10 @@
+// lib/data/models/local_db/user_model.dart
+
 import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
 
+/// Extends [UserEntity] to handle serialization for the local SQLite database.
+///
+/// Includes factory methods to convert to/from a [Map].
 class UserModel extends UserEntity {
   UserModel({
     required super.userId,
@@ -9,23 +14,25 @@ class UserModel extends UserEntity {
     super.avatarPath,
   });
 
+  /// Reconstructs a [UserModel] from a database [map].
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       userId: map['userId'] as String,
       fullName: map['fullName'] as String,
       dateOfBirth: DateTime.parse(map['dateOfBirth'] as String),
       gender: map['gender'] as String,
-      avatarPath: map['avatarPath'] as String?,  // read from db
+      avatarPath: map['avatarPath'] as String?,
     );
   }
 
+  /// Converts this [UserModel] into a map for database insertion.
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
       'fullName': fullName,
       'dateOfBirth': dateOfBirth.toIso8601String(),
       'gender': gender,
-      'avatarPath': avatarPath, // store in db
+      'avatarPath': avatarPath,
     };
   }
 }

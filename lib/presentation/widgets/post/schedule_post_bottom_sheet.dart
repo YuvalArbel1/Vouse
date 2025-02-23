@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 import '../../../core/util/image_utils.dart';
 import '../../../domain/entities/locaal db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_with_upload_usecase.dart';
@@ -410,14 +411,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               ],
             ),
           ),
-          // 2) If scheduling => show an overlay with spinner
-          if (_isScheduling)
-            Container(
-              color: Colors.black54, // semi-transparent overlay
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+          BlockingSpinnerOverlay(isVisible: _isScheduling),
         ],
       ),
     );

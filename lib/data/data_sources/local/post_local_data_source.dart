@@ -1,17 +1,19 @@
+// lib/data/data_sources/local/post_local_data_source.dart
+
 import 'package:sqflite/sqflite.dart';
 import 'package:vouse_flutter/data/models/local_db/post_model.dart';
 
-import '../../clients/local_db/local_database.dart';
-
+/// Provides CRUD operations on the 'posts' table in the local SQLite database.
 class PostLocalDataSource {
-  final UserLocalDataSource _dbProvider; // Reuse same DB instance
+  final Database db;
 
-  PostLocalDataSource(this._dbProvider);
+  /// Expects an initialized [Database] to interact with the 'posts' table.
+  PostLocalDataSource(this.db);
 
-  Future<Database> get _db async => _dbProvider.database;
-
+  /// Inserts or updates a [post] in the 'posts' table.
+  ///
+  /// Uses [ConflictAlgorithm.replace] to overwrite any existing row with the same primary key.
   Future<void> insertOrUpdatePost(PostModel post) async {
-    final db = await _db;
     await db.insert(
       'posts',
       post.toMap(),
@@ -19,8 +21,8 @@ class PostLocalDataSource {
     );
   }
 
+  /// Retrieves a post by its [postIdLocal], or returns `null` if not found.
   Future<PostModel?> getPostById(String postIdLocal) async {
-    final db = await _db;
     final maps = await db.query(
       'posts',
       where: 'postIdLocal = ?',
@@ -32,8 +34,8 @@ class PostLocalDataSource {
     return null;
   }
 
+  /// Returns a list of posts belonging to [userId], ordered by [createdAt] descending.
   Future<List<PostModel>> getPostsByUser(String userId) async {
-    final db = await _db;
     final maps = await db.query(
       'posts',
       where: 'userId = ?',
@@ -43,8 +45,8 @@ class PostLocalDataSource {
     return maps.map((m) => PostModel.fromMap(m)).toList();
   }
 
+  /// Deletes a post by its [postIdLocal].
   Future<void> deletePost(String postIdLocal) async {
-    final db = await _db;
     await db.delete(
       'posts',
       where: 'postIdLocal = ?',

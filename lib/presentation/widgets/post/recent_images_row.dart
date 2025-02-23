@@ -88,15 +88,10 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     }
 
     final XFile? pickedFile =
-    await _picker.pickImage(source: ImageSource.camera);
+        await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile == null) return;
 
     _attemptAddImage(pickedFile.path);
-  }
-
-  /// Placeholder for future AI generation
-  void _handleGenerateAIImage() {
-    toast("AI Generation tapped! (placeholder)");
   }
 
   @override
@@ -105,7 +100,6 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-
         // 2) Camera Icon
         buildItemContainer(
           child: Icon(Icons.camera_alt, color: vPrimaryColor),
@@ -122,10 +116,6 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
           );
         }),
 
-        // buildItemContainer(
-        //   child: Icon(Icons.auto_awesome, color: vPrimaryColor),
-        //   onTap: _handleGenerateAIImage,
-        // ),
       ],
     );
   }

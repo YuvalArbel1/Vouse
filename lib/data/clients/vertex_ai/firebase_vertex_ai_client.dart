@@ -3,38 +3,38 @@
 import 'dart:async';
 import 'package:firebase_vertexai/firebase_vertexai.dart';
 
-/// A client that configures a generative model with a systemInstruction.
-/// We embed token constraints in the user prompt for min length,
-/// and use `maxOutputTokens` for the upper bound.
+/// Configures a generative Vertex AI model with a system instruction
+/// and provides methods for streaming or one-shot text generation.
 class FirebaseVertexAiClient {
   final String modelId;
   final Content systemInstruction;
-
-  /// We store the model in a generic variable instead of a specific class
   late final dynamic _model;
 
+  /// Creates a client that uses [modelId] and [systemInstruction] for Vertex AI.
+  /// Defaults to model 'gemini-2.0-flash'.
   FirebaseVertexAiClient({
     this.modelId = 'gemini-2.0-flash',
     required this.systemInstruction,
   }) {
-    // Initialize the generative model once with system instructions
     _model = FirebaseVertexAI.instance.generativeModel(
       model: modelId,
       systemInstruction: systemInstruction,
     );
   }
 
-  /// Streams partial text, specifying approximate min tokens in the user prompt,
-  /// and using maxOutputTokens for the upper bound.
-  /// Temperature for creativity.
+  /// Streams partial text from the model, merging [prompt] with token constraints.
+  ///
+  /// - [minTokens] roughly sets a lower bound by embedding it in the user prompt.
+  /// - [maxTokens] is used in [GenerationConfig].
+  /// - [temperature] controls creativity.
+  ///
+  /// Yields incremental text chunks until the stream finishes.
   Stream<String> generateTextStream({
     required String prompt,
     required int minTokens,
     required int maxTokens,
     required double temperature,
   }) async* {
-    // Combine the user prompt with a note about minTokens
-    // (since the plugin doesn't have minOutputTokens).
     final userPrompt = """
 Write a social media post under $maxTokens tokens (~${maxTokens * 4} chars), 
 but at least $minTokens tokens (~${minTokens * 4} chars). 
@@ -43,8 +43,6 @@ Only final text, no disclaimers.
 $prompt
 """;
 
-    // We pass this userPrompt in addition to the system instruction
-    // that's already part of `_model`.
     final promptList = [Content.text(userPrompt)];
 
     final responseStream = _model.generateContentStream(
@@ -62,6 +60,7 @@ $prompt
     }
   }
 
+  /// Generates text in one shot, returning the entire result as a [String].
   Future<String> predictOneShot({
     required String prompt,
     required int maxOutputTokens,

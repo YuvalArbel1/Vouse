@@ -242,10 +242,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      // optional
+      enableDrag: true,
+      isDismissible: true,
       builder: (ctx) {
         return FractionallySizedBox(
-          heightFactor: 0.7, // or 0.6, whichever height you prefer
+          heightFactor: 0.8,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(

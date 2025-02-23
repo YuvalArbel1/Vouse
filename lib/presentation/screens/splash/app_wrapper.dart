@@ -5,13 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
-import 'package:vouse_flutter/presentation/providers/home/local_user_providers.dart';
 
 // Screens
 import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
+
+import '../../providers/local_db/local_user_providers.dart';
 
 // We won't import your old SplashScreen widget, because we rely on the native splash now.
 

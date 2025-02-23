@@ -9,7 +9,7 @@ import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verificat
 import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
 
-// NEW: Import the signOut use case
+// Import the signOut use case
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
 
 /// Provides a singleton instance of [FirebaseAuthRepository],

@@ -57,6 +57,8 @@ class _AiTextGenerationDialogState
       return;
     }
     ref.read(postTextProvider.notifier).state = text;
+    _promptController.clear();
+    ref.read(aiTextNotifierProvider.notifier).resetState();
     Navigator.pop(context);
   }
 

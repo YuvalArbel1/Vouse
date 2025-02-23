@@ -4,7 +4,8 @@ import 'package:vouse_flutter/data/data_sources/remote/firebase_storage/images_r
 import 'package:vouse_flutter/data/repository/firebase_storage/images_repository_impl.dart';
 import 'package:vouse_flutter/domain/repository/firebase_storage/images_repository.dart';
 import 'package:vouse_flutter/domain/usecases/post/save_post_with_upload_usecase.dart';
-import 'package:vouse_flutter/presentation/providers/post/post_local_providers.dart'; // For postLocalRepositoryProvider
+
+import '../local_db/local_post_providers.dart'; // For postLocalRepositoryProvider
 
 /// 1) Provide a FirebaseStorage instance.
 final firebaseStorageProvider = Provider<FirebaseStorage>((ref) {

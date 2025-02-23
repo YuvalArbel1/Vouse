@@ -6,6 +6,7 @@ import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 
 class VerificationPendingScreen extends ConsumerStatefulWidget {
   const VerificationPendingScreen({super.key});
@@ -18,7 +19,6 @@ class VerificationPendingScreen extends ConsumerStatefulWidget {
 class _VerificationPendingScreenState
     extends ConsumerState<VerificationPendingScreen> {
   bool _checking = false;
-
 
   @override
   void initState() {
@@ -75,59 +75,65 @@ class _VerificationPendingScreenState
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      body: Container(
-        width: screenWidth,
-        height: screenHeight,
-        // You can apply same background style as signIn / signUp
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/vouse_bg.jpg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Verify Your Email",
-                  style: boldTextStyle(size: 24, color: black)),
-              const SizedBox(height: 16),
-              Text(
-                "We have sent a verification link to your email.\n"
-                "Please click it before continuing.",
-                style: primaryTextStyle(color: Colors.grey),
-                textAlign: TextAlign.center,
+      body: Stack(
+        children: [
+          // 1) Your normal background/layout
+          Container(
+            width: screenWidth,
+            height: screenHeight,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/vouse_bg.jpg'),
+                fit: BoxFit.cover,
               ),
-              const SizedBox(height: 32),
-              if (_checking)
-                const CircularProgressIndicator()
-              else
-                Column(
-                  children: [
-                    AppButton(
-                      text: "Check Verification",
-                      color: vPrimaryColor,
-                      textColor: Colors.white,
-                      shapeBorder: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Verify Your Email",
+                      style: boldTextStyle(size: 24, color: black)),
+                  const SizedBox(height: 16),
+                  Text(
+                    "We have sent a verification link to your email.\n"
+                    "Please click it before continuing.",
+                    style: primaryTextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  // We removed the old "if (_checking)" around the spinner
+                  // and will rely on our overlay instead.
+                  Column(
+                    children: [
+                      AppButton(
+                        text: "Check Verification",
+                        color: vPrimaryColor,
+                        textColor: Colors.white,
+                        shapeBorder: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        onTap: _checkVerification,
                       ),
-                      onTap: _checkVerification,
-                    ),
-                    const SizedBox(height: 16),
-                    AppButton(
-                      text: "Resend Email",
-                      color: vPrimaryColor,
-                      textColor: Colors.white,
-                      shapeBorder: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        text: "Resend Email",
+                        color: vPrimaryColor,
+                        textColor: Colors.white,
+                        shapeBorder: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        onTap: _resendVerification,
                       ),
-                      onTap: _resendVerification,
-                    ),
-                  ],
-                )
-            ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+
+          // 2) The blocking spinner overlay
+          BlockingSpinnerOverlay(isVisible: _checking),
+        ],
       ),
     );
   }

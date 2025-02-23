@@ -1,10 +1,17 @@
+// lib/data/models/local_db/post_model.dart
+
 import 'dart:convert';
 
 import '../../../domain/entities/locaal db/post_entity.dart';
 
+/// A model that extends [PostEntity] and provides SQLite-friendly serialization.
+///
+/// Includes a [userId] field referencing the user's ID in the 'user' table.
 class PostModel extends PostEntity {
-  final String userId; // this is the foreign key referencing user.userId
+  /// References [user.userId].
+  final String userId;
 
+  /// Constructs a [PostModel], extending [PostEntity].
   PostModel({
     required this.userId,
     required super.postIdLocal,
@@ -22,6 +29,7 @@ class PostModel extends PostEntity {
     super.locationAddress,
   });
 
+  /// Creates a [PostModel] from a database [map].
   factory PostModel.fromMap(Map<String, dynamic> map) {
     return PostModel(
       userId: map['userId'],
@@ -30,8 +38,11 @@ class PostModel extends PostEntity {
       content: map['content'],
       title: map['title'],
       createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
-      scheduledAt: map['scheduledAt'] != null ? DateTime.parse(map['scheduledAt']) : null,
+      updatedAt:
+          map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
+      scheduledAt: map['scheduledAt'] != null
+          ? DateTime.parse(map['scheduledAt'])
+          : null,
       visibility: map['visibility'],
       localImagePaths: map['localImagePaths'] == null
           ? []
@@ -45,6 +56,7 @@ class PostModel extends PostEntity {
     );
   }
 
+  /// Converts this [PostModel] to a [Map] for database insertion.
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -64,7 +76,7 @@ class PostModel extends PostEntity {
     };
   }
 
-  // Utility: fromEntity => PostModel
+  /// Creates a [PostModel] from an existing [PostEntity], injecting [userId].
   static PostModel fromEntity(PostEntity entity, String userId) {
     return PostModel(
       userId: userId,
@@ -84,7 +96,7 @@ class PostModel extends PostEntity {
     );
   }
 
-  // Utility: toEntity => PostEntity
+  /// Converts this [PostModel] into a base [PostEntity].
   PostEntity toEntity() {
     return PostEntity(
       postIdLocal: postIdLocal,

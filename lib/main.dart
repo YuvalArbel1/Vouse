@@ -5,6 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:vouse_flutter/presentation/screens/splash/app_wrapper.dart';
 import 'firebase_options.dart';
 
+
+
 /// The main entry point of the Vouse app.
 ///
 /// This function performs the following steps:

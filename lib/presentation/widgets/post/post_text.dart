@@ -5,13 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 import '../../providers/post/post_text_provider.dart';
-
-// NEW: We'll import the location provider & entity
 import '../../providers/post/post_location_provider.dart';
 import 'location_tag_widget.dart';
 
+/// A widget that provides an input area for creating or editing a post.
+///
+/// This widget consists of a text field for the post content and,
+/// if a location is selected, displays a location tag below the text field.
+///
+/// The content is synchronized with [postTextProvider], and the current
+/// location is retrieved from [postLocationProvider].
 class PostText extends ConsumerStatefulWidget {
+  /// Creates a [PostText] widget.
   const PostText({super.key});
 
   @override
@@ -24,11 +31,11 @@ class _PostTextState extends ConsumerState<PostText> {
   @override
   void initState() {
     super.initState();
-    // read the current post text
+    // Initialize the controller with the current text from the provider.
     final initValue = ref.read(postTextProvider);
     _controller = TextEditingController(text: initValue);
 
-    // Whenever user types, update the provider
+    // Listen for changes in the text field and update the provider accordingly.
     _controller.addListener(() {
       ref.read(postTextProvider.notifier).state = _controller.text;
     });
@@ -42,36 +49,26 @@ class _PostTextState extends ConsumerState<PostText> {
 
   @override
   Widget build(BuildContext context) {
-    // 1) Watch for external text changes
+    // Watch for external updates to the post text.
     final postText = ref.watch(postTextProvider);
 
-    // 2) If text changed externally (like AI insertion), sync controller
+    // If the external text has changed (e.g., due to AI insertion), sync the controller.
     if (postText != _controller.text) {
       _controller.text = postText;
       _controller.selection = TextSelection.collapsed(offset: postText.length);
     }
 
-    // 3) Also watch the postLocationProvider for the chosen location
+    // Watch the post location provider for a selected location.
     final placeLocation = ref.watch(postLocationProvider);
 
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: vAppLayoutBackground,
-        borderRadius: radius(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: vouseBoxDecoration(),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The main text field
+          // Main text field for entering post content.
           TextField(
             controller: _controller,
             autofocus: false,
@@ -82,14 +79,13 @@ class _PostTextState extends ConsumerState<PostText> {
               hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
             ),
           ),
-
-          // If location is chosen, show the new widget
+          // If a location is selected, display the location tag below the text field.
           if (placeLocation != null) ...[
             const SizedBox(height: 8),
             LocationTagWidget(
               entity: placeLocation,
               onRemove: () {
-                // Reset the location provider
+                // Clear the selected location when the remove icon is tapped.
                 ref.read(postLocationProvider.notifier).state = null;
               },
             ),

@@ -1,26 +1,29 @@
+// lib/presentation/screens/home/edit_profile_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:nb_utils/nb_utils.dart'; // For AppTextField, boldTextStyle, etc.
-import 'package:intl/intl.dart'; // For formatting the chosen date
+import 'package:nb_utils/nb_utils.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
-// Our local user logic
-import '../../../domain/entities/locaal db/user_entity.dart';
 import '../../../core/resources/data_state.dart';
+import '../../../domain/entities/local_db/user_entity.dart';
 import '../../../domain/entities/secure_db/x_auth_tokens.dart';
-import '../../providers/auth/x_auth_providers.dart';
-import '../../providers/auth/x_token_providers.dart';
+import '../../providers/auth/x/x_auth_providers.dart';
+import '../../providers/auth/x/x_token_providers.dart';
 import '../../providers/local_db/local_user_providers.dart';
-import '../home/home_screen.dart';
-
+import 'home_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 
+/// A screen that allows the user to edit or create a local profile.
+/// It collects full name, date of birth, gender, and optionally links X (Twitter).
 class EditProfileScreen extends ConsumerStatefulWidget {
+  /// Indicates if we're editing an existing profile (`true`) or creating a new one (`false`).
   final bool isEditProfile;
 
   const EditProfileScreen({super.key, this.isEditProfile = false});
@@ -30,31 +33,33 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 }
 
 class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
-  /// A key to reference our Form
+  /// Key to reference our form, enabling validation.
   final _formKey = GlobalKey<FormState>();
 
-  /// Text controllers
+  /// Text controllers for full name, date of birth, and X connection status.
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController dateOfBirthController = TextEditingController();
   final TextEditingController connectXController = TextEditingController(
     text: 'Tap to connect your X account',
   );
 
-  /// Focus nodes
+  /// FocusNodes for controlling focus behavior in text fields.
   final FocusNode fullNameFocusNode = FocusNode();
   final FocusNode dateOfBirthFocusNode = FocusNode();
   final FocusNode connectXFocusNode = FocusNode();
 
-  /// User-chosen data
+  /// The user-chosen date of birth, gender, and local avatar image path.
   DateTime? selectedDOB;
   String? selectedGender;
   String? localAvatarPath;
 
-  /// Whether user has successfully connected X
+  /// Tracks if user has successfully connected an X account.
   bool _isXConnected = false;
 
+  /// Whether to show a processing spinner overlay.
   bool _isProcessing = false;
 
+  /// Possible gender options.
   final List<String> genderOptions = [
     'Female',
     'Male',
@@ -64,14 +69,12 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    init();
+    _initialize();
   }
 
-  Future<void> init() async {
-    setStatusBarColor(
-      Colors.white,
-      statusBarIconBrightness: Brightness.dark,
-    );
+  /// Removes the splash and configures the status bar color.
+  void _initialize() {
+    setStatusBarColor(Colors.white, statusBarIconBrightness: Brightness.dark);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
@@ -79,14 +82,13 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   void dispose() {
-    setStatusBarColor(
-      Colors.white,
-      statusBarIconBrightness: Brightness.dark,
-    );
+    // Restore the status bar color when leaving the screen.
+    setStatusBarColor(Colors.white, statusBarIconBrightness: Brightness.dark);
     super.dispose();
   }
 
-  /// Show a date picker for the user to choose a birth date
+  /// Opens a date picker for selecting the user's date of birth.
+  /// If chosen, updates [selectedDOB] and [dateOfBirthController].
   Future<void> _pickDateOfBirth() async {
     final now = DateTime.now();
     final initialDate = DateTime(2000, 1, 1);
@@ -97,6 +99,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       firstDate: DateTime(1900),
       lastDate: now,
     );
+    if (!mounted) return;
 
     if (picked != null) {
       setState(() {
@@ -106,18 +109,21 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  /// Initiates the Twitter OAuth 2.0 sign-in flow, retrieves access & refresh tokens, then saves them.
+  /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
+  /// If successful, updates UI state to reflect connected status.
   Future<void> _connectToX() async {
-    // Show spinner
     setState(() => _isProcessing = true);
 
     try {
+      // Start the sign-in flow.
       final result = await ref.read(signInToXUseCaseProvider).call();
+      if (!mounted) return;
 
       if (result is DataSuccess<XAuthTokens>) {
         final tokens = result.data!;
         final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
         final saveResult = await saveTokensUseCase.call(params: tokens);
+        if (!mounted) return;
 
         if (saveResult is DataSuccess<void>) {
           setState(() {
@@ -133,48 +139,52 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         toast("Twitter Auth Error: $errorMsg");
       }
     } finally {
-      // Hide spinner
       setState(() => _isProcessing = false);
     }
   }
 
-  /// Called when user taps "Continue"
+  /// Validates input, ensures there's a Firebase user, then saves user info locally.
+  /// - If [isEditProfile], simply pop; otherwise navigate to [HomeScreen].
   Future<void> _handleContinue() async {
-    // 1) Trigger form validation. If invalid, stop here.
     if (!_formKey.currentState!.validate()) return;
 
-    // 2) Make sure we have a Firebase user
+    // Check for a currently authenticated Firebase user
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       toast("No Firebase user found, cannot save local profile!");
       return;
     }
 
-    // 3) If valid, build our UserEntity
+    // Build a [UserEntity] from form data
     final entity = UserEntity(
       userId: user.uid,
       fullName: fullNameController.text.trim(),
       dateOfBirth: selectedDOB ?? DateTime(2000, 1, 1),
       gender: selectedGender ?? 'Prefer not to say',
-      avatarPath: localAvatarPath, // user photo not required
+      avatarPath: localAvatarPath,
     );
 
-    // 4) Save locally
-    final saveResult =
-        await ref.read(saveUserUseCaseProvider).call(params: entity);
+    // Save to local DB
+    setState(() => _isProcessing = true);
+    try {
+      final saveResult =
+          await ref.read(saveUserUseCaseProvider).call(params: entity);
+      if (!mounted) return;
 
-    if (saveResult is DataSuccess<void>) {
-      if (widget.isEditProfile) {
-        Navigator.pop(context);
-      } else {
-        // TODO navigate to next screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+      if (saveResult is DataSuccess<void>) {
+        if (widget.isEditProfile) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      } else if (saveResult is DataFailed<void>) {
+        toast("Error saving user: ${saveResult.error?.error}");
       }
-    } else if (saveResult is DataFailed<void>) {
-      toast("Error saving user: ${saveResult.error?.error}");
+    } finally {
+      setState(() => _isProcessing = false);
     }
   }
 
@@ -187,10 +197,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             extendBodyBehindAppBar: true,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
-              title: Text(
-                'Edit Profile',
-                style: boldTextStyle(color: Colors.black, size: 20),
-              ),
+              title: Text('Edit Profile',
+                  style: boldTextStyle(color: Colors.black, size: 20)),
               leading: Container(
                 margin: const EdgeInsets.all(8),
                 decoration: boxDecorationWithRoundedCorners(
@@ -212,7 +220,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               centerTitle: true,
               elevation: 0.0,
               systemOverlayStyle: const SystemUiOverlayStyle(
-                  statusBarBrightness: Brightness.dark),
+                statusBarBrightness: Brightness.dark,
+              ),
             ),
             body: Container(
               width: MediaQuery.of(context).size.width,
@@ -281,7 +290,6 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                         keyboardType: TextInputType.name,
                                         controller: fullNameController,
                                         focus: fullNameFocusNode,
-                                        // Validate name => required & max 20 chars
                                         validator: (value) {
                                           if (value == null ||
                                               value.trim().isEmpty) {
@@ -331,10 +339,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                             genderOptions.map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
-                                            child: Text(
-                                              value,
-                                              style: secondaryTextStyle(),
-                                            ),
+                                            child: Text(value,
+                                                style: secondaryTextStyle()),
                                           );
                                         }).toList(),
                                         onChanged: (value) {
@@ -402,6 +408,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
+
+                                // "Continue" button
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left:
@@ -413,10 +421,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     color: vPrimaryColor,
                                     width: MediaQuery.of(context).size.width,
                                     onTap: _handleContinue,
-                                    child: Text(
-                                      'Continue',
-                                      style: boldTextStyle(color: Colors.white),
-                                    ),
+                                    child: Text('Continue',
+                                        style:
+                                            boldTextStyle(color: Colors.white)),
                                   ),
                                 ),
                               ],
@@ -425,14 +432,14 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                       ),
                     ),
+
+                    // Profile avatar at the top
                     Positioned(
                       top: 0,
                       child: ProfileAvatarWidget(
                         initialAvatarPath: localAvatarPath,
                         onAvatarChanged: (newPath) {
-                          setState(() {
-                            localAvatarPath = newPath;
-                          });
+                          setState(() => localAvatarPath = newPath);
                         },
                         size: 110,
                       ),

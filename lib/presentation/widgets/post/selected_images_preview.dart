@@ -8,11 +8,18 @@ import '../../../core/util/colors.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../screens/post/full_screen_image_preview.dart';
 
+/// A widget that displays a horizontal list of selected images.
+///
+/// If no images are selected, this widget renders nothing.
+/// When images are available, it displays each image in a fixed container
+/// with a border and a small "X" icon to remove that image.
+/// Tapping an image opens a full-screen preview.
 class SelectedImagesPreview extends ConsumerWidget {
+  /// Creates a [SelectedImagesPreview] widget.
   const SelectedImagesPreview({super.key});
 
+  /// Opens a full-screen view of the selected images, starting at [index].
   void _openFullScreen(BuildContext context, List<String> images, int index) {
-    // We only pass 'index' since FullScreenImagePreview now reads from the provider
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -22,7 +29,6 @@ class SelectedImagesPreview extends ConsumerWidget {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -61,7 +67,8 @@ class SelectedImagesPreview extends ConsumerWidget {
                   color: context.cardColor,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: vPrimaryColor.withOpacity(0.3),
+                    // Replaced withOpacity(0.3) with withAlpha(77)
+                    color: vPrimaryColor.withAlpha(77),
                     width: 1.0,
                   ),
                 ),
@@ -76,8 +83,7 @@ class SelectedImagesPreview extends ConsumerWidget {
                         height: 80,
                       ),
                     ),
-
-                    // "X" to remove only THIS thumbnail from the provider
+                    // "X" to remove only this thumbnail from the provider.
                     Positioned(
                       top: 4,
                       right: 4,

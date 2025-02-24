@@ -7,14 +7,15 @@ import 'package:vouse_flutter/data/repository/local_db/user_local_repository_imp
 import 'package:vouse_flutter/domain/repository/local_db/user_local_repository.dart';
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/home/save_user_usecase.dart';
-
 import 'database_provider.dart';
 
-/// Creates a [UserLocalDataSource] by retrieving the [Database] from [localDatabaseProvider].
+/// Creates a [UserLocalDataSource] once the [Database] from [localDatabaseProvider] is initialized.
+///
+/// Throws an [Exception] if the database is not yet available. In a UI scenario,
+/// you may prefer to show a loading screen or handle the async state gracefully.
 final userLocalDataSourceProvider = Provider<UserLocalDataSource>((ref) {
   final dbAsyncValue = ref.watch(localDatabaseProvider);
 
-  // If the database isn't ready yet, you can throw or handle loading states.
   if (dbAsyncValue.value == null) {
     throw Exception("Database not initialized yet");
   }
@@ -23,19 +24,19 @@ final userLocalDataSourceProvider = Provider<UserLocalDataSource>((ref) {
   return UserLocalDataSource(db);
 });
 
-/// Creates a [UserLocalRepository] using the [UserLocalDataSource].
+/// Creates a [UserLocalRepository] using the above [UserLocalDataSource].
 final userLocalRepositoryProvider = Provider<UserLocalRepository>((ref) {
   final ds = ref.watch(userLocalDataSourceProvider);
   return UserLocalRepositoryImpl(ds);
 });
 
-/// UseCase provider: SaveUserUseCase
+/// Provides a [SaveUserUseCase] to insert or update user information in local DB.
 final saveUserUseCaseProvider = Provider<SaveUserUseCase>((ref) {
   final repo = ref.watch(userLocalRepositoryProvider);
   return SaveUserUseCase(repo);
 });
 
-/// UseCase provider: GetUserUseCase
+/// Provides a [GetUserUseCase] to retrieve a user by userId from local DB.
 final getUserUseCaseProvider = Provider<GetUserUseCase>((ref) {
   final repo = ref.watch(userLocalRepositoryProvider);
   return GetUserUseCase(repo);

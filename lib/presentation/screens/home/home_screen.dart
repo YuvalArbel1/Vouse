@@ -1,14 +1,21 @@
+// lib/presentation/screens/home/home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
-
 import '../../../core/resources/data_state.dart';
-import '../../providers/auth/firebase_auth_notifier.dart';
+import '../../providers/auth/firebase/firebase_auth_notifier.dart';
 import '../post/create_post_screen.dart';
 
-/// A sample Home screen with an AppBar, "Add post" icon, and a "Logout" button.
+/// A sample Home screen that displays an AppBar with a "Logout" button and
+/// a centered "Add post" icon.
+///
+/// When the "Logout" button is pressed, it attempts to sign the user out
+/// using [firebaseAuthNotifierProvider] and navigates to the [SignInScreen]
+/// on success. Pressing the "Add post" icon navigates to the [CreatePostScreen].
 class HomeScreen extends ConsumerStatefulWidget {
+  /// Creates a [HomeScreen] widget.
   const HomeScreen({super.key});
 
   @override
@@ -19,26 +26,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Remove the splash after the first frame has rendered
+    // Remove the native splash screen after the first frame is rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
   }
 
+  /// Handles the logout process.
+  ///
+  /// Calls [signOut] on the [firebaseAuthNotifierProvider]. If logout succeeds,
+  /// navigates to the [SignInScreen] by removing all previous routes.
+  /// Otherwise, displays a SnackBar with the error message.
   Future<void> _handleLogout() async {
-    // 1) Call signOut on the notifier
+    // Sign out asynchronously.
     await ref.read(firebaseAuthNotifierProvider.notifier).signOut();
+    // Ensure widget is still mounted before using BuildContext.
+    if (!mounted) return;
 
-    // 2) Check final state from the notifier
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
-      // If success => navigate to SignIn screen (and remove Home from stack)
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const SignInScreen()),
-            (route) => false, // remove all previous
+            (route) => false,
       );
     } else if (authState is DataFailed<void>) {
-      // If failed => show error or toast
       final errorMsg = authState.error?.error ?? 'Unknown error';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Logout failed: $errorMsg')),
@@ -51,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
-        // We add a "Logout" button on the right side in the AppBar
+        // Logout button in the AppBar.
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app),
@@ -60,6 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: Center(
+        // "Add post" icon navigates to the CreatePostScreen.
         child: IconButton(
           onPressed: () {
             Navigator.of(context).push(

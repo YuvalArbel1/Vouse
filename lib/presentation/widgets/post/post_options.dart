@@ -7,16 +7,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 import '../../screens/post/select_location_screen.dart';
 import 'ai_text_generation_dialog.dart';
 import 'post_option_icon.dart';
 import 'recent_images_row.dart';
 import '../../providers/post/post_images_provider.dart';
 
-/// The bottom section of "Create Post" screen. Contains:
-/// 1) A horizontally scrollable row of camera + last 4 images [RecentImagesRow]
-/// 2) Icons for Gallery, Location, AI, etc.
+/// A widget that displays the bottom options for the "Create Post" screen.
+///
+/// This widget includes:
+/// 1. A horizontally scrollable row containing the camera option and the most recent 4 images,
+///    provided by the [RecentImagesRow] widget.
+/// 2. A row of action icons for additional options:
+///    - **Gallery**: Opens the device gallery to select an image.
+///    - **Location**: Navigates to the location selection screen.
+///    - **AI**: Opens an AI text generation dialog.
+///
+/// The container uses a common shadow style from [vouseBoxDecoration] to maintain consistency.
 class PostOptions extends ConsumerStatefulWidget {
+  /// Creates a [PostOptions] widget.
   const PostOptions({super.key});
 
   @override
@@ -26,7 +36,10 @@ class PostOptions extends ConsumerStatefulWidget {
 class _PostOptionsState extends ConsumerState<PostOptions> {
   final ImagePicker _picker = ImagePicker();
 
-  /// Attempt to add an image path to the postImagesProvider if < 4
+  /// Attempts to add a new image to the post.
+  ///
+  /// If fewer than 4 images are currently selected, the image at the provided [path]
+  /// is added; otherwise, a toast message is shown.
   void _attemptAddImage(String path) {
     final currentImages = ref.read(postImagesProvider);
     if (currentImages.length >= 4) {
@@ -36,7 +49,9 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
     }
   }
 
-  /// Opens phone gallery for a single image
+  /// Opens the device gallery to allow the user to pick an image.
+  ///
+  /// If an image is selected, its file path is added via [_attemptAddImage].
   Future<void> _pickFromGallery() async {
     final XFile? pickedFile =
         await _picker.pickImage(source: ImageSource.gallery);
@@ -45,19 +60,17 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
     _attemptAddImage(pickedFile.path);
   }
 
+  /// Handles the AI option press by showing the [AiTextGenerationDialog].
+  ///
+  /// If the dialog returns generated text, a toast message is displayed.
   void _onAIPressed() async {
-    // Show the AiTextGenerationDialog and wait for user to Insert or close
     final generatedText = await showDialog<String>(
       context: context,
-      builder: (_) => AiTextGenerationDialog(),
+      builder: (_) => const AiTextGenerationDialog(),
     );
 
-    // If user canceled, generatedText == null
-    // If user inserted text, we have it in generatedText
+    // If non-empty text is returned, show a confirmation toast.
     if (generatedText != null && generatedText.isNotEmpty) {
-      // For demonstration, just show a toast
-      // In real usage, you might update your post text field:
-      // myTextController.text += "\n$generatedText";
       toast("AI text inserted: $generatedText");
     }
   }
@@ -65,30 +78,27 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: false, // only care about bottom safe area
+      top: false, // Only apply bottom safe area.
       child: Container(
         width: context.width(),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: vAppLayoutBackground,
-          borderRadius: radiusOnly(topRight: 32, topLeft: 32),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        // Using the common vouseBoxDecoration for shadow, and overriding the borderRadius
+        // to apply top-only rounding.
+        decoration: vouseBoxDecoration(
+          backgroundColor: vAppLayoutBackground,
+          shadowOpacity: 20,
+          blurRadius: 6,
+          offset: const Offset(0, 4),
+        ).copyWith(borderRadius: radiusOnly(topRight: 32, topLeft: 32)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1) The horizontally scrollable row for camera + last 4 images
+            // 1) Recent images row.
             const RecentImagesRow(),
             const SizedBox(height: 16),
 
-            // 2) The row of icons: Gallery, Location, AI
+            // 2) Row of option icons: Gallery, Location, and AI.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -101,24 +111,19 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
                   icon: Icons.location_on,
                   label: "Location",
                   onTap: () async {
-
                     final chosenLatLng = await Navigator.push<LatLng>(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const SelectLocationScreen(),
                       ),
                     );
-
                     if (chosenLatLng == null) return;
-
-                    toast("Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}");
-
-
+                    toast(
+                        "Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}");
                   },
                 ),
-
                 buildOptionIcon(
-                  icon: Icons.auto_awesome, // or any AI icon
+                  icon: Icons.auto_awesome,
                   label: "AI",
                   onTap: _onAIPressed,
                 ),

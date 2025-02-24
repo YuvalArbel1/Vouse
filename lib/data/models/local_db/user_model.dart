@@ -1,6 +1,6 @@
 // lib/data/models/local_db/user_model.dart
 
-import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
+import '../../../domain/entities/local_db/user_entity.dart';
 
 /// Extends [UserEntity] to handle serialization for the local SQLite database.
 ///

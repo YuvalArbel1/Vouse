@@ -1,16 +1,27 @@
+// lib/presentation/widgets/post/schedule_ai_dialog.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 import '../../../domain/usecases/ai/predict_best_time_usecase.dart';
 import '../../providers/ai/ai_schedule_providers.dart';
 import '../../providers/post/post_location_provider.dart';
 import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../screens/post/select_location_screen.dart';
 
+/// A dialog that helps predict the best time to post, optionally including location or post text.
+///
+/// Users can:
+/// - Enter a brief meta description (up to 50 characters).
+/// - Toggle whether to include location and/or post text context.
+/// - Click "Predict" to get an AI-suggested date/time.
+/// - Accept ("Use") or close the suggestion.
 class ScheduleAiDialog extends ConsumerStatefulWidget {
+  /// Creates a [ScheduleAiDialog].
   const ScheduleAiDialog({super.key});
 
   @override
@@ -18,20 +29,35 @@ class ScheduleAiDialog extends ConsumerStatefulWidget {
 }
 
 class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
+  /// Controller for the meta text input.
   final TextEditingController _metaController = TextEditingController();
 
+  /// Contextual toggles (by index):
+  ///   0 -> "Add location"
+  ///   1 -> "Add post text"
   final List<String> _contextOptions = [
     "Add location",
     "Add post text",
   ];
+
+  /// Tracks which context options are selected (by index).
   final Set<int> _selectedIndices = {};
 
+  /// Indicates whether AI prediction is in progress.
   bool _isPredicting = false;
+
+  /// Indicates whether a prediction has been successfully made.
   bool _hasPredicted = false;
+
+  /// Holds an error message if AI prediction fails.
   String? _errorMessage;
+
+  /// The AI-predicted date/time (if any).
   DateTime? _predictedDateTime;
 
-  PlaceLocationEntity? _aiLocation; // local location if user picks new
+  /// A temporary location chosen by the user for the AI context.
+  /// Will be applied if "Use" is tapped.
+  PlaceLocationEntity? _aiLocation;
 
   @override
   void dispose() {
@@ -39,6 +65,9 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
     super.dispose();
   }
 
+  /// Hides the keyboard and calls the AI prediction use case.
+  ///
+  /// The result is stored in [_predictedDateTime]. If an error occurs, [_errorMessage] is set.
   Future<void> _onPredictPressed() async {
     FocusScope.of(context).unfocus();
     final meta = _metaController.text.trim();
@@ -56,7 +85,6 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
 
     try {
       final useCase = ref.read(predictBestTimeOneShotUseCaseProvider);
-
       final bool addLoc = _selectedIndices.contains(0);
       final bool addTxt = _selectedIndices.contains(1);
 
@@ -65,7 +93,7 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
           meta: meta,
           addLocation: addLoc,
           addPostText: addTxt,
-          temperature: 0.3, // or whatever you want
+          temperature: 0.3,
         ),
       );
 
@@ -85,28 +113,33 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
     }
   }
 
-  /// Handle newlines or disclaimers; parse "YYYY-MM-DD HH:mm" => DateTime
+  /// Parses a date/time from a raw AI string formatted as "YYYY-MM-DD HH:mm".
+  ///
+  /// Returns a [DateTime] or `null` if parsing fails.
   DateTime? _tryParseDateTime(String raw) {
     try {
       final firstLine = raw.split('\n').first.trim();
       final isoString = firstLine.replaceFirst(' ', 'T');
       return DateTime.parse(isoString);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
 
-  /// If user wants to discard the AI suggestion, simply close the dialog
+  /// Discards the AI suggestion and closes the dialog.
   void _onClosePressed() {
-    Navigator.pop(context); // No result returned
+    Navigator.pop(context);
   }
 
-  /// If user is satisfied => apply location, return the final date/time
+  /// Accepts the AI suggestion, applies any chosen location, and returns the predicted date/time.
   void _onUsePressed() {
-
+    if (_aiLocation != null && _selectedIndices.contains(0)) {
+      ref.read(postLocationProvider.notifier).state = _aiLocation;
+    }
     Navigator.pop(context, _predictedDateTime);
   }
 
+  /// Opens the [SelectLocationScreen] for the user to choose a new location.
   Future<void> _chooseNewLocation() async {
     final newLoc = await Navigator.push<LatLng>(
       context,
@@ -132,27 +165,25 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
     );
   }
 
+  /// Builds the main dialog content including meta input, toggles, and action buttons.
   Widget _buildDialogContent(BuildContext context) {
     return Container(
       width: context.width() * 0.9,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(60),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      // Use the common container decoration for consistency.
+      decoration: vouseBoxDecoration(
+        backgroundColor: context.cardColor,
+        radius: 16,
+        shadowOpacity: 60,
+        blurRadius: 10,
+        offset: const Offset(0, 4),
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Title + close
+            // Title and close button.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -165,15 +196,13 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               ],
             ),
             const SizedBox(height: 8),
-
             Text(
               "Provide up to 50 characters describing your post. "
-                  "Optionally include location or post text. We'll suggest the best time to post.",
+              "Optionally include location or post text. We'll suggest the best time to post.",
               style: secondaryTextStyle(size: 14),
             ),
             const SizedBox(height: 12),
-
-            // Meta prompt
+            // Meta prompt input.
             AppTextField(
               controller: _metaController,
               maxLength: 50,
@@ -193,29 +222,27 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Toggles row
+            // Toggles row.
             _buildToggleRow(),
             const SizedBox(height: 16),
-
-            // Error if any
+            // Display error if any.
             if (_errorMessage != null)
-              Text("Error: $_errorMessage",
-                  style: primaryTextStyle(color: Colors.redAccent)),
-
-            // If predicting => spinner
+              Text(
+                "Error: $_errorMessage",
+                style: primaryTextStyle(color: Colors.redAccent),
+              ),
+            // Display loading spinner or prediction result, or show "Predict" button.
             if (_isPredicting) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(width: 8),
-                  Text("Predicting best date/time...", style: primaryTextStyle()),
+                  Text("Predicting best date/time...",
+                      style: primaryTextStyle()),
                 ],
               ),
-            ]
-            // If result is in
-            else if (_hasPredicted) ...[
+            ] else if (_hasPredicted) ...[
               const SizedBox(height: 8),
               Text(
                 _predictedDateTime == null
@@ -227,7 +254,6 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Replaced "Regenerate" => "Close"
                   AppButton(
                     color: vAccentColor.withAlpha(240),
                     text: "Close",
@@ -249,38 +275,43 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
                   ),
                 ],
               ),
-            ]
-            // Otherwise => "Predict"
-            else ...[
-                const SizedBox(height: 8),
-                AppButton(
-                  color: vPrimaryColor,
-                  text: "Predict",
-                  textColor: Colors.white,
-                  width: context.width(),
-                  shapeBorder: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onTap: _onPredictPressed,
+            ] else ...[
+              const SizedBox(height: 8),
+              AppButton(
+                color: vPrimaryColor,
+                text: "Predict",
+                textColor: Colors.white,
+                width: context.width(),
+                shapeBorder: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+                onTap: _onPredictPressed,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
+  /// Builds a row of toggle buttons based on [_contextOptions].
   Widget _buildToggleRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildToggleButton(0, "Add location"),
-        const SizedBox(width: 12),
-        _buildToggleButton(1, "Add post text"),
-      ],
+      children: List.generate(_contextOptions.length, (index) {
+        final label = _contextOptions[index];
+        return Padding(
+          padding: EdgeInsets.only(left: index > 0 ? 12 : 0),
+          child: _buildToggleButton(index, label),
+        );
+      }),
     );
   }
 
+  /// Builds an individual toggle button with the given [index] and [label].
+  ///
+  /// If "Add location" is toggled on and there's no existing location in [postLocationProvider],
+  /// prompts the user to pick a new location or reuse the existing one.
   Widget _buildToggleButton(int index, String label) {
     final isSelected = _selectedIndices.contains(index);
 
@@ -329,7 +360,9 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? vPrimaryColor.withAlpha(240) : vPrimaryColor.withAlpha(20),
+          color: isSelected
+              ? vPrimaryColor.withAlpha(240)
+              : vPrimaryColor.withAlpha(20),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(

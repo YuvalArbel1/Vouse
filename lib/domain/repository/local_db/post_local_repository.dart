@@ -1,17 +1,19 @@
+// lib/domain/repository/local_db/post_local_repository.dart
+
 import 'package:vouse_flutter/core/resources/data_state.dart';
+import '../../entities/local_db/post_entity.dart';
 
-import '../../entities/locaal db/post_entity.dart';
-
+/// Defines local storage operations for post data.
 abstract class PostLocalRepository {
-  /// Save (insert or update) a post. Needs the userId for the foreign key.
+  /// Inserts or updates [post], requiring a [userId] to maintain the foreign key relationship.
   Future<DataState<void>> savePost(PostEntity post, String userId);
 
-  /// Get all posts for a specific user
+  /// Retrieves all posts created by [userId].
   Future<DataState<List<PostEntity>>> getPostsByUser(String userId);
 
-  /// Get a single post by postIdLocal
+  /// Gets a single post by its [postIdLocal].
   Future<DataState<PostEntity?>> getPostById(String postIdLocal);
 
-  /// Delete a post
+  /// Deletes a post by its [postIdLocal].
   Future<DataState<void>> deletePost(String postIdLocal);
 }

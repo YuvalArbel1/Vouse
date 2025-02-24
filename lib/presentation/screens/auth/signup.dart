@@ -1,15 +1,17 @@
+// lib/presentation/screens/auth/signup.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 
 /// A screen to register (sign up) a new user with Firebase.
-/// Uses a Form for validation, plus the firebaseAuthNotifierProvider for sign-up logic.
+/// Uses a [Form] for validation, plus the [firebaseAuthNotifierProvider] for sign-up logic.
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
@@ -18,40 +20,47 @@ class SignUpScreen extends ConsumerStatefulWidget {
 }
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
-  /// Controllers for text fields.
+  /// Controllers for email & password input fields.
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
-  /// Focus nodes if you need focus control.
+  /// Focus nodes for controlling field focus.
   final FocusNode emailFocusNode = FocusNode();
   final FocusNode passWordFocusNode = FocusNode();
   final FocusNode confirmPassWordFocusNode = FocusNode();
 
-  /// Toggles for showing/hiding password text.
+  /// Toggles for showing/hiding password text fields.
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  /// Key to manage form validation.
+  /// Form key for validation.
   final _formKey = GlobalKey<FormState>();
 
+  /// Indicates whether we show a blocking spinner overlay.
   bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    init();
+    _removeSplashAfterFirstFrame();
   }
 
-  /// Optional additional initialization.
-  Future<void> init() async {
+  /// Remove the native splash after the widget’s first frame.
+  void _removeSplashAfterFirstFrame() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
   }
 
   /// Handles registration after validating the form fields.
+  ///
+  /// 1) Validate input.
+  /// 2) Show spinner.
+  /// 3) Call signUp from [firebaseAuthNotifierProvider].
+  /// 4) On [DataSuccess], go to [VerificationPendingScreen].
+  /// 5) Otherwise, show an error toast.
   Future<void> _handleRegister() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -61,10 +70,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     setState(() => _isProcessing = true);
 
     try {
+      // Perform sign-up
       await ref
           .read(firebaseAuthNotifierProvider.notifier)
           .signUp(email, password);
 
+      if (!mounted) return; // Avoid using context if unmounted
+
+      // Check the updated auth state
       final authState = ref.read(firebaseAuthNotifierProvider);
       if (authState is DataSuccess<void>) {
         Navigator.of(context).pushReplacement(
@@ -81,13 +94,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(firebaseAuthNotifierProvider);
+    // We don't actually use authState in build, so no need to watch:
+    // final authState = ref.watch(firebaseAuthNotifierProvider);
+
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Stack(
         children: [
+          // Background image
           Container(
             width: screenWidth,
             height: screenHeight,
@@ -101,6 +117,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 50),
+                  // Title
                   Text("Register New Account",
                       style: boldTextStyle(size: 24, color: black)),
                   Container(
@@ -108,7 +125,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     child: Stack(
                       alignment: Alignment.topCenter,
                       children: <Widget>[
-                        /// Main card
+                        // Main card
                         Container(
                           width: screenWidth,
                           padding: const EdgeInsets.only(
@@ -119,12 +136,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             backgroundColor: context.cardColor,
                           ),
                           child: Form(
-                            key: _formKey, // Link this Form to the _formKey
+                            key: _formKey,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 const SizedBox(height: 50),
-
                                 const SizedBox(height: 16),
 
                                 // Email
@@ -171,9 +187,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                         color: vPrimaryColor,
                                       ),
                                       onPressed: () {
-                                        setState(() {
-                                          _obscurePassword = !_obscurePassword;
-                                        });
+                                        setState(() => _obscurePassword =
+                                            !_obscurePassword);
                                       },
                                     ),
                                   ),
@@ -184,11 +199,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                     if (value.length < 6) {
                                       return 'Password must be at least 6 characters long';
                                     }
-                                    if (!RegExp(r'[!@#\$%\^&*(),.?":{}|<>]')
+                                    // Avoid redundant escapes for special chars
+                                    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]')
                                         .hasMatch(value)) {
                                       return 'Password must contain at least one special character';
                                     }
-
                                     return null;
                                   },
                                 ),
@@ -215,10 +230,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                         color: vPrimaryColor,
                                       ),
                                       onPressed: () {
-                                        setState(() {
-                                          _obscureConfirmPassword =
-                                              !_obscureConfirmPassword;
-                                        });
+                                        setState(() => _obscureConfirmPassword =
+                                            !_obscureConfirmPassword);
                                       },
                                     ),
                                   ),
@@ -249,7 +262,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       borderRadius: BorderRadius.circular(30),
                                     ),
                                     width: screenWidth,
-                                    onTap: _handleRegister, // Named function
+                                    onTap: _handleRegister,
                                   ),
                                 ),
 
@@ -258,15 +271,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 // "Already have an account?" link
                                 Center(
                                   child: InkWell(
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                    },
+                                    onTap: () => Navigator.pop(context),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
                                       children: [
                                         Text('Already have an account?',
                                             style: primaryTextStyle(
@@ -283,21 +292,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           ),
                         ),
 
-                        // App logo at the top
+                        // Logo at the top
                         Container(
                           alignment: Alignment.center,
                           height: 100,
                           width: 100,
-                          decoration: boxDecorationRoundedWithShadow(
-                            30,
+                          decoration: boxDecorationWithShadow(
+                            borderRadius: BorderRadius.circular(30),
                             backgroundColor: context.cardColor,
                           ),
                           child: Image.asset(
                             'assets/images/vouse_app_logo.png',
                             height: 60,
                             width: 60,
-                            fit: BoxFit.cover,
                             color: vPrimaryColor,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ],
@@ -308,8 +317,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               ),
             ),
           ),
-          BlockingSpinnerOverlay(isVisible: _isProcessing),
 
+          // Spinner overlay if processing
+          BlockingSpinnerOverlay(isVisible: _isProcessing),
         ],
       ),
     );

@@ -1,11 +1,13 @@
-import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
+// lib/domain/repository/local_db/user_local_repository.dart
 
-/// Defines local DB methods for user data
+import 'package:vouse_flutter/core/resources/data_state.dart';
+import '../../entities/local_db/user_entity.dart';
+
+/// Defines local storage operations for user data.
 abstract class UserLocalRepository {
-  /// Save (insert or update) the user in local DB
+  /// Saves or updates [user] in the local database.
   Future<DataState<void>> saveUser(UserEntity user);
 
-  /// Get user by their userId
+  /// Retrieves a user by [userId], returning a [DataState<UserEntity?>].
   Future<DataState<UserEntity?>> getUser(String userId);
 }

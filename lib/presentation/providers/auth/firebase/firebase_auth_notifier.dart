@@ -1,4 +1,4 @@
-// lib/presentation/providers/firebase_auth_notifier.dart
+// lib/presentation/providers/firebase/firebase_auth_notifier.dart
 
 import 'package:riverpod/riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
@@ -8,14 +8,12 @@ import 'package:vouse_flutter/domain/usecases/auth/firebase/forgot_password_usec
 import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verification_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
-import '../../../domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
+import '../../../../domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
 import 'firebase_auth_providers.dart';
 
-/// A [StateNotifier] that holds a [DataState<void>] describing the last
-/// auth operation (sign in, sign up, etc.).
+/// A [StateNotifierProvider] exposing a [FirebaseAuthNotifier] that handles all FirebaseAuth operations.
 ///
-/// We also provide methods like [checkEmailVerified] which returns a bool
-/// instead of updating [state] with [DataSuccess<bool>].
+/// The [DataState<void>] type describes the state of the most recent auth action.
 final firebaseAuthNotifierProvider =
     StateNotifierProvider<FirebaseAuthNotifier, DataState<void>>((ref) {
   final signInUC = ref.watch(signInWithFirebaseUseCaseProvider);
@@ -37,6 +35,9 @@ final firebaseAuthNotifierProvider =
   );
 });
 
+/// A [StateNotifier] managing FirebaseAuth-related actions like sign-in, sign-up,
+/// email verification, etc. The [state] is a [DataState<void>] describing the outcome
+/// of the last operation (success/failure).
 class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
   final SignInWithFirebaseUseCase _signInUseCase;
   final SignUpWithFirebaseUseCase _signUpUseCase;
@@ -46,6 +47,7 @@ class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
   final SignInWithGoogleUseCase _signInWithGoogleUseCase;
   final SignOutWithFirebaseUseCase _signOutUseCase;
 
+  /// Constructs a notifier with all needed Firebase-related use cases.
   FirebaseAuthNotifier(
     this._signInUseCase,
     this._signUpUseCase,
@@ -56,19 +58,22 @@ class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
     this._signOutUseCase,
   ) : super(const DataSuccess(null));
 
-  /// Attempts to sign in a user; updates [state] with success or failure.
+  /// Signs in a user with [email] and [password].
+  /// Sets [state] to [DataSuccess] or [DataFailed] depending on the result.
   Future<void> signIn(String email, String password) async {
-    state = const DataSuccess(null); // or show loading if you prefer
+    // Optionally set a loading state
+    state = const DataSuccess(null);
+
     final result = await _signInUseCase(
       params: SignInWithFirebaseParams(email: email, password: password),
     );
-    // result is DataSuccess<void> or DataFailed<void>
     state = result;
   }
 
-  /// Attempts to create a new user and send verification email.
+  /// Registers a new user with [email], [password], and sends a verification email.
   Future<void> signUp(String email, String password) async {
     state = const DataSuccess(null);
+
     final result = await _signUpUseCase(
       params: SignUpWithFirebaseParams(email: email, password: password),
     );
@@ -76,65 +81,52 @@ class FirebaseAuthNotifier extends StateNotifier<DataState<void>> {
   }
 
   /// Sends a password reset email to [email].
+  /// The returned [state] will reflect success/failure of that operation.
   Future<void> forgotPassword(String email) async {
     final result = await _forgotPasswordUseCase.call(
       params: ForgotPasswordParams(email: email),
     );
-    // store success or fail in [state]
     state = result;
   }
 
-  /// Manually trigger another verification email for the currently logged-in user.
+  /// Sends another verification email for the currently logged-in user.
+  /// If there's an error, sets [state] to [DataFailed]. Otherwise remains [DataSuccess].
   Future<void> sendVerificationEmail() async {
-    // Set a loading or success first
     state = const DataSuccess(null);
 
     final result = await _sendVerificationUseCase.call(params: null);
     if (result is DataFailed) {
-      // If error, store the fail state
       state = result;
     } else {
-      // On success, keep DataSuccess
       state = const DataSuccess(null);
     }
   }
 
-  /// Checks if the current user's email is verified by reloading from the server.
-  /// Returns `true` if verified, or `false` if not verified or error.
+  /// Checks if the current user's email is verified. Returns a bool instead of updating [state].
+  /// On error, returns false.
   Future<bool> checkEmailVerified() async {
     final result = await _isEmailVerifiedUseCase.call(params: null);
 
     if (result is DataSuccess<bool>) {
-      // If DataSuccess, we have a non-nullable bool in .data
-      return result.data!;
+      return result.data ?? false;
     } else {
-      // If DataFailed, we just treat it as "not verified"
       return false;
     }
   }
 
+  /// Signs in with Google. Updates [state] with success/failure.
   Future<void> signInWithGoogle() async {
-    // Optionally set a loading state
     state = const DataSuccess(null);
 
-    // Call the use case
     final result = await _signInWithGoogleUseCase.call(params: null);
-
-    // result is DataSuccess<void> or DataFailed<void>
     state = result;
   }
 
-
-  /// Signs out the currently logged-in user via [SignOutWithFirebaseUseCase].
-  /// If successful, returns [DataSuccess<void>] in [state],
-  /// otherwise sets [DataFailed<void>].
+  /// Signs out the currently logged-in user. If successful, sets [state] to [DataSuccess].
   Future<void> signOut() async {
-    // Optionally show a loading or success state
     state = const DataSuccess(null);
 
     final result = await _signOutUseCase.call(params: null);
-    state = result; // DataSuccess<void> or DataFailed<void>
+    state = result;
   }
-
-
 }

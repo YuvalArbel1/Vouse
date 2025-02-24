@@ -1,15 +1,16 @@
-// lib/domain/entities/place_location_entity.dart
+// lib/domain/entities/google_maps/place_location_entity.dart
 
-/// A simple entity to represent a chosen location:
-/// - latitude/longitude
-/// - optional address if reverse geocoded
-/// - optional name if you want to store e.g. place name
+/// Represents a chosen location in the app.
+///
+/// Includes [latitude], [longitude], and optional [address] or [name].
 class PlaceLocationEntity {
   final double latitude;
   final double longitude;
   final String? address;
   final String? name;
 
+  /// Creates a [PlaceLocationEntity] with [latitude], [longitude], and
+  /// optional [address] or [name].
   const PlaceLocationEntity({
     required this.latitude,
     required this.longitude,

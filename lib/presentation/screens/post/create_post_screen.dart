@@ -1,4 +1,4 @@
-import 'dart:io';
+// lib/presentation/screens/post/create_post_screen.dart
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +11,10 @@ import 'package:uuid/uuid.dart';
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/image_utils.dart';
-import '../../../domain/entities/locaal db/post_entity.dart';
+import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
+import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
-import '../../providers/post/post_local_providers.dart';
 import '../../providers/post/post_location_provider.dart';
 import '../../providers/post/post_text_provider.dart';
 import '../../widgets/post/post_options.dart';
@@ -23,10 +23,11 @@ import '../../widgets/post/selected_images_preview.dart';
 import '../../widgets/post/schedule_post_bottom_sheet.dart';
 
 /// A screen where the user can create a new post:
-///  - Enter text in [PostText]
-///  - See & manage selected images in [SelectedImagesPreview]
-///  - Use bottom [PostOptions] for picking images or other actions.
+/// - Enter text in [PostText]
+/// - View and manage selected images via [SelectedImagesPreview]
+/// - Pick images, location, or AI text from [PostOptions]
 ///
+/// The user can also save a draft or share the post.
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
@@ -38,7 +39,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
   void initState() {
     super.initState();
-    // Remove native splash after the first frame
+    _initializeScreen();
+  }
+
+  /// Removes the native splash, hides system UI overlays, and sets a custom status bar color.
+  void _initializeScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
@@ -49,7 +54,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       overlays: [],
     );
 
-    // Sets status bar color once the widget is built
+    // Once the widget is built, set the status bar color to match the card theme
     afterBuildCreated(() {
       setStatusBarColor(context.cardColor);
     });
@@ -57,9 +62,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   @override
   void dispose() {
-    // Restore status bar color when leaving this screen
+    // Restore the status bar color
     setStatusBarColor(vAppLayoutBackground);
-    // Restore system UI
+
+    // Restore default system overlays
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
@@ -67,8 +73,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     super.dispose();
   }
 
-  /// Shows a confirmation dialog to ensure the user really wants to clear everything.
-  /// Returns `true` if user pressed "Yes," or `false`/`null` if canceled.
+  /// Shows a confirmation dialog to ensure the user really wants to clear post data.
+  /// Returns `true` if the user pressed "Yes."
   Future<bool> _confirmClearPost() async {
     final result = await showDialog<bool>(
       context: context,
@@ -96,13 +102,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     return result == true;
   }
 
-  /// Called when user presses the "Clear" button.
-  /// We show a dialog. If user confirms, we reset all post-related providers.
+  /// Called when the user taps the "Clear" button.
+  /// Prompts the user, and if confirmed, clears the text, images, and location providers.
   Future<void> _onClearPressed() async {
     final shouldClear = await _confirmClearPost();
     if (!shouldClear) return;
 
-    // Clear providers: text, images, location
     ref.read(postTextProvider.notifier).state = '';
     ref.read(postImagesProvider.notifier).clearAll();
     ref.read(postLocationProvider.notifier).state = null;
@@ -110,6 +115,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     toast('Post content cleared.');
   }
 
+  /// Prompts the user to enter a draft title using a dialog. Returns the provided title, or null if canceled.
   Future<String?> _showDraftTitleDialog() async {
     final titleController = TextEditingController();
     return showDialog<String>(
@@ -121,7 +127,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             controller: titleController,
             decoration: InputDecoration(
               hintText: 'E.g. My Awesome Draft',
-              // match the style from your post text's placeholder
               hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
             ),
           ),
@@ -147,33 +152,35 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
+  /// Handles saving the current post as a draft:
+  /// - Ensures there's text
+  /// - Retrieves the current Firebase user
+  /// - Asks for a draft title
+  /// - Moves images to a stable path
+  /// - Builds and saves a draft [PostEntity]
+  /// - Clears the post content and closes the screen if successful
   Future<void> _onDraftPressed() async {
-    // 1) Check if user typed anything
     final text = ref.read(postTextProvider).trim();
     if (text.isEmpty) {
       toast('Write some words first!');
       return;
     }
 
-    // 2) Grab the current user from FirebaseAuth
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       toast('No logged-in user found!');
       return;
     }
 
-    // 3) Prompt user for a title
     final draftTitle = await _showDraftTitleDialog();
-    if (draftTitle == null) {
-      // user canceled
-      return;
-    }
+    if (!mounted) return; // Check if still mounted after dialog
+    if (draftTitle == null) return; // user canceled
 
-    // 4) Move local images from temp to a stable path
+    // Move images to permanent folder
     final images = ref.read(postImagesProvider);
     final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
+    if (!mounted) return;
 
-    // 5) Read location if user picked one
     final loc = ref.read(postLocationProvider);
     double? lat;
     double? lng;
@@ -184,20 +191,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       addr = loc.address;
     }
 
-    // 6) Build the PostEntity for a DRAFT
     final postEntity = PostEntity(
       postIdLocal: const Uuid().v4(),
-      // random local ID
       postIdX: null,
-      // not published to X yet
       content: text,
       title: draftTitle,
       createdAt: DateTime.now(),
       updatedAt: null,
       scheduledAt: null,
-      // draft => no scheduled time
       visibility: null,
-      // or 'everyone' if you prefer a default
       localImagePaths: localPaths,
       cloudImageUrls: [],
       locationLat: lat,
@@ -205,19 +207,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       locationAddress: addr,
     );
 
-    // 7) Save it via your local DB usecase
     final saveUC = ref.read(savePostUseCaseProvider);
-
     final result = await saveUC.call(
-      params: SavePostParams(
-        postEntity,
-        user.uid, // pass real user ID
-      ),
+      params: SavePostParams(postEntity, user.uid),
     );
+    if (!mounted) return;
 
-    // 8) Check result
     if (result is DataSuccess) {
-      // Optionally clear the text & images
+      // Clear everything
       ref.read(postTextProvider.notifier).state = '';
       ref.read(postImagesProvider.notifier).clearAll();
       ref.read(postLocationProvider.notifier).state = null;
@@ -227,11 +224,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     }
   }
 
+  /// Opens the bottom sheet to share or schedule the post, if there's text.
   void _openShareBottomSheet(BuildContext context) {
-    // 1) Read the user's typed text
     final currentText = ref.read(postTextProvider).trim();
-
-    // 2) If empty => show toast and return
     if (currentText.isEmpty) {
       toast('Please enter some text first!');
       return;
@@ -252,11 +247,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black26,
                   blurRadius: 10,
-                  offset: const Offset(0, -2),
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
@@ -271,18 +266,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.cardColor,
-
-      /// AppBar for "New Post" title & "Post" button
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        // We'll supply our own arrow
         backgroundColor: context.cardColor,
         elevation: 0,
         centerTitle: true,
-
-        // Enough room for arrow + spacing + "Clear" button
         leadingWidth: 120,
-
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -290,13 +279,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             IconButton(
               icon: Icon(Icons.arrow_back, color: context.iconColor),
               onPressed: () => Navigator.pop(context),
-              // You can tweak these to reduce or expand spacing
-              padding: const EdgeInsets.all(0),
+              padding: EdgeInsets.zero,
               visualDensity: const VisualDensity(horizontal: -4),
             ),
-            const SizedBox(width: 8), // bigger gap from arrow to Clear
-
-            // "Clear" with an outline + flexible so it won't overflow
+            const SizedBox(width: 8),
+            // Clear button
             Flexible(
               child: AppButton(
                 shapeBorder: RoundedRectangleBorder(
@@ -306,34 +293,29 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 text: 'Clear',
                 textStyle: secondaryTextStyle(color: vAccentColor, size: 10),
                 onTap: _onClearPressed,
-                // define your logic
                 elevation: 0,
                 color: Colors.transparent,
-                // Enough width to look nice but flexible to shrink on small screens
                 width: 50,
                 padding: EdgeInsets.zero,
               ),
             ),
           ],
         ),
-
         title: Text('New Post', style: boldTextStyle(size: 20)),
-
         actions: [
-          // "Draft"
+          // Draft
           AppButton(
             shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
             text: 'Draft',
             textStyle: secondaryTextStyle(color: Colors.white, size: 10),
             onTap: _onDraftPressed,
-            // define your logic
             elevation: 0,
             color: vAccentColor.withAlpha(220),
             width: 50,
             padding: EdgeInsets.zero,
           ).paddingAll(4),
 
-          // "Post"
+          // Post
           AppButton(
             shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
             text: 'Post',
@@ -343,39 +325,30 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             color: vPrimaryColor.withAlpha(220),
             width: 50,
             padding: EdgeInsets.zero,
-            margin: EdgeInsets.only(right: 13),
+            margin: const EdgeInsets.only(right: 13),
           ).paddingAll(4),
         ],
       ),
-
-      /// A Stack so we can pin [PostOptions] at the bottom
       body: SizedBox(
         height: context.height(),
         child: Stack(
           children: [
-            /// We can use a Column so content is scrolled if needed
+            // Scrollable main content
             SingleChildScrollView(
               child: Column(
-                children: [
-                  // Text input area for "What’s on your mind?"
-                  const PostText(),
-
-                  // The preview of selected images (0-4).
-                  // This will auto-update if user picks new images.
-                  const SelectedImagesPreview(),
-
-                  // Some space so the user sees everything above the pinned bottom bar
-                  const SizedBox(height: 100),
+                children: const [
+                  PostText(),
+                  SelectedImagesPreview(),
+                  SizedBox(height: 100), // Space above the pinned bottom bar
                 ],
               ),
             ),
-
-            /// The bottom bar with icons (camera row, location, AI, etc.)
-            Positioned(
+            // Pinned bottom bar
+            const Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: const PostOptions(),
+              child: PostOptions(),
             ),
           ],
         ),

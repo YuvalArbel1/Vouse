@@ -5,7 +5,7 @@ import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/data/data_sources/local/post_local_data_source.dart';
 import 'package:vouse_flutter/data/models/local_db/post_model.dart';
 
-import '../../../domain/entities/locaal db/post_entity.dart';
+import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/repository/local_db/post_local_repository.dart';
 
 /// Implements [PostLocalRepository], enabling CRUD operations on the local 'posts' table

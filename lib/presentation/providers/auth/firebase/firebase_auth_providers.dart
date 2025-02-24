@@ -1,3 +1,5 @@
+// lib/presentation/providers/firebase/firebase_auth_providers.dart
+
 import 'package:riverpod/riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/data/repository/auth/firebase_auth_repository_impl.dart';
@@ -8,55 +10,57 @@ import 'package:vouse_flutter/domain/usecases/auth/firebase/forgot_password_usec
 import 'package:vouse_flutter/domain/usecases/auth/firebase/send_email_verification_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/is_email_verified_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_in_with_google_usecase.dart';
-
-// Import the signOut use case
 import 'package:vouse_flutter/domain/usecases/auth/firebase/sign_out_with_firebase_usecase.dart';
 
-/// Provides a singleton instance of [FirebaseAuthRepository],
-/// which uses [FirebaseAuthRepositoryImpl].
+/// Provides a singleton [FirebaseAuthRepository] using [FirebaseAuthRepositoryImpl],
+/// which in turn wraps [FirebaseAuth.instance] for sign-in, sign-up, etc.
 final firebaseAuthRepositoryProvider = Provider<FirebaseAuthRepository>((ref) {
   return FirebaseAuthRepositoryImpl(FirebaseAuth.instance);
 });
 
-// Provide the signIn use case
-final signInWithFirebaseUseCaseProvider = Provider<SignInWithFirebaseUseCase>((ref) {
+/// Creates a [SignInWithFirebaseUseCase] that signs in a user with email/password.
+final signInWithFirebaseUseCaseProvider =
+    Provider<SignInWithFirebaseUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SignInWithFirebaseUseCase(repo);
 });
 
-// Provide the signUp use case
-final signUpWithFirebaseUseCaseProvider = Provider<SignUpWithFirebaseUseCase>((ref) {
+/// Creates a [SignUpWithFirebaseUseCase] to register a new user and send verification email.
+final signUpWithFirebaseUseCaseProvider =
+    Provider<SignUpWithFirebaseUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SignUpWithFirebaseUseCase(repo);
 });
 
-// Provide the forgotPassword use case
+/// Creates a [ForgotPasswordUseCase] for sending a password reset email.
 final forgotPasswordUseCaseProvider = Provider<ForgotPasswordUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return ForgotPasswordUseCase(repo);
 });
 
-// Provide the sendEmailVerification use case
-final sendEmailVerificationUseCaseProvider = Provider<SendEmailVerificationUseCase>((ref) {
+/// Creates a [SendEmailVerificationUseCase] to re-send a verification email.
+final sendEmailVerificationUseCaseProvider =
+    Provider<SendEmailVerificationUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SendEmailVerificationUseCase(repo);
 });
 
-// Provide the isEmailVerified use case
+/// Creates an [IsEmailVerifiedUseCase] to check the current user's verification status.
 final isEmailVerifiedUseCaseProvider = Provider<IsEmailVerifiedUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return IsEmailVerifiedUseCase(repo);
 });
 
-/// Provide signInWithGoogleUseCase
-final signInWithGoogleUseCaseProvider = Provider<SignInWithGoogleUseCase>((ref) {
+/// Creates a [SignInWithGoogleUseCase] to handle Google OAuth via FirebaseAuth.
+final signInWithGoogleUseCaseProvider =
+    Provider<SignInWithGoogleUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SignInWithGoogleUseCase(repo);
 });
 
-/// A provider that creates a [SignOutWithFirebaseUseCase]
-/// by injecting the [firebaseAuthRepositoryProvider].
-final signOutWithFirebaseUseCaseProvider = Provider<SignOutWithFirebaseUseCase>((ref) {
+/// Creates a [SignOutWithFirebaseUseCase] to sign out the current Firebase user.
+final signOutWithFirebaseUseCaseProvider =
+    Provider<SignOutWithFirebaseUseCase>((ref) {
   final repo = ref.watch(firebaseAuthRepositoryProvider);
   return SignOutWithFirebaseUseCase(repo);
 });

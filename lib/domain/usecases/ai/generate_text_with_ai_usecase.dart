@@ -3,13 +3,15 @@
 import 'package:vouse_flutter/core/usecases/usecase.dart';
 import 'package:vouse_flutter/domain/repository/ai/ai_text_repository.dart';
 
-/// Holds the user's prompt, desired character length, and temperature.
+/// Holds the user's [prompt], approximate [desiredChars], and a [temperature]
+/// value controlling creativity (0.0 => deterministic, 1.0 => highly creative).
 class GenerateTextParams {
   final String prompt;
-  final int desiredChars;   // e.g., 20..280
-  final double temperature; // 0..1
-  // Optionally keep maxChars if needed.
+  final int desiredChars;
+  final double temperature;
 
+  /// Creates parameters for generating text, with a default
+  /// [desiredChars] of 150 and [temperature] of 0.5.
   GenerateTextParams(
       this.prompt, {
         this.desiredChars = 150,
@@ -17,7 +19,9 @@ class GenerateTextParams {
       });
 }
 
-/// A use case that returns a Stream<String> of partial text.
+/// A [UseCase] that returns a `Stream<String>` of partial AI-generated text.
+///
+/// Uses [AiTextRepository] to produce text in real-time based on [GenerateTextParams].
 class GenerateTextUseCase extends UseCase<Stream<String>, GenerateTextParams> {
   final AiTextRepository _repo;
 

@@ -1,3 +1,5 @@
+// lib/presentation/screens/auth/signin.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,7 +7,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
 
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
@@ -13,13 +15,17 @@ import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../../../domain/entities/locaal db/user_entity.dart';
+import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
 import 'signup.dart';
 
 /// A screen that handles Firebase sign-in with form validation,
 /// plus a "Sign in with Google" button.
+///
+/// Validates user input and, on success, calls [firebaseAuthNotifierProvider]
+/// to complete sign-in. Depending on the result, navigates to [HomeScreen],
+/// [VerificationPendingScreen], or shows an error.
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
@@ -28,58 +34,63 @@ class SignInScreen extends ConsumerStatefulWidget {
 }
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
-  /// Controllers for email & password fields
+  /// Controllers for email & password input fields.
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  /// FocusNodes for controlling focus
+  /// FocusNodes for controlling text field focus.
   final FocusNode emailFocusNode = FocusNode();
   final FocusNode passWordFocusNode = FocusNode();
 
-  /// Toggles whether the password is obscured
+  /// Toggles whether the password is obscured in the UI.
   bool _obscurePassword = true;
 
-  /// Key for validating the form fields
+  /// Form key to validate email/password fields.
   final _formKey = GlobalKey<FormState>();
 
+  /// Indicates if we are currently processing (show a spinner).
   bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    init();
+    _removeSplashAfterFirstFrame();
   }
 
-  /// Remove the native splash after the first frame, so we don't see it forever
-  Future<void> init() async {
+  /// Removes the native splash screen after the first frame has been drawn.
+  void _removeSplashAfterFirstFrame() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
   }
 
-  /// Tries signing in with email/password after validating the form.
+  /// Attempts to sign in with email/password after validating the form.
   ///
-  /// Steps:
-  /// 1. Validate the form inputs.
-  /// 2. Call [firebaseAuthNotifierProvider]'s [signIn].
-  /// 3. If [DataSuccess], navigate to [HomeScreen].
-  /// 4. If "EMAIL_NOT_VERIFIED", show toast + navigate to [VerificationPendingScreen].
-  /// 5. Otherwise, show an error toast.
+  /// 1) Validates the form.
+  /// 2) Shows the loading spinner.
+  /// 3) Calls [firebaseAuthNotifierProvider]'s signIn.
+  /// 4) On success, navigates to [HomeScreen].
+  /// 5) If the error is "EMAIL_NOT_VERIFIED", goes to [VerificationPendingScreen].
+  /// 6) Otherwise, shows a toast with the error.
   Future<void> _handleLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    // 1) Show spinner
     setState(() => _isProcessing = true);
 
     try {
+      // Trigger sign-in from the FirebaseAuthNotifier.
       await ref
           .read(firebaseAuthNotifierProvider.notifier)
           .signIn(email, password);
 
+      // Check the latest state from the auth notifier.
       final authState = ref.read(firebaseAuthNotifierProvider);
+
+      if (!mounted) return; // Avoid using context if widget is unmounted.
+
       if (authState is DataSuccess<void>) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -98,25 +109,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         }
       }
     } finally {
-      // 2) Hide spinner
+      // Hide spinner regardless of success or error.
       setState(() => _isProcessing = false);
     }
   }
 
-  /// Called when the user taps "Sign in with Google."
-  /// 1) We trigger the signInWithGoogle use case.
-  /// 2) If successful, we check local DB:
-  ///    - If user not found => go to EditProfile
-  ///    - If user found => go to Home
-  /// 3) If failed => show error toast
+  /// Called when the user taps "Sign in with Google".
+  ///
+  /// If sign-in is successful, checks local DB for user:
+  ///  - If no user => go to [EditProfileScreen].
+  ///  - Else => [HomeScreen].
+  /// On failure, shows a toast with the error.
   Future<void> _handleGoogleSignIn() async {
-    // Also show spinner while signing in with Google
     setState(() => _isProcessing = true);
 
     try {
+      // Sign in with Google via the auth notifier.
       await ref.read(firebaseAuthNotifierProvider.notifier).signInWithGoogle();
 
       final authState = ref.read(firebaseAuthNotifierProvider);
+      if (!mounted) return;
+
       if (authState is DataSuccess<void>) {
         final currentUser = FirebaseAuth.instance.currentUser;
         if (currentUser == null) {
@@ -124,9 +137,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           return;
         }
 
+        // Check if the user exists locally in our DB.
         final getUserUC = ref.read(getUserUseCaseProvider);
         final result =
             await getUserUC.call(params: GetUserParams(currentUser.uid));
+        if (!mounted) return;
+
         if (result is DataSuccess<UserEntity?>) {
           final localUser = result.data;
           if (localUser == null) {
@@ -153,13 +169,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(firebaseAuthNotifierProvider);
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Stack(
         children: [
+          // Background image + scrollable content
           Container(
             width: screenWidth,
             height: screenHeight,
@@ -173,13 +189,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 50),
+                  // Title
                   Text("Log In", style: boldTextStyle(size: 24, color: black)),
+                  // Main card + logo at top
                   Container(
                     margin: const EdgeInsets.all(16),
                     child: Stack(
                       alignment: Alignment.topCenter,
                       children: <Widget>[
-                        // Main card
+                        // Card behind the logo
                         Container(
                           width: screenWidth,
                           padding: const EdgeInsets.only(
@@ -196,7 +214,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               children: <Widget>[
                                 const SizedBox(height: 50),
 
-                                // Email
+                                // Email label + field
                                 Text("Email", style: boldTextStyle(size: 14)),
                                 const SizedBox(height: 8),
                                 TextFormField(
@@ -220,7 +238,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
                                 const SizedBox(height: 16),
 
-                                // Password
+                                // Password label + field
                                 Text("Password",
                                     style: boldTextStyle(size: 14)),
                                 const SizedBox(height: 8),
@@ -276,7 +294,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
                                 const SizedBox(height: 30),
 
-                                // Log In button
+                                // Log in button
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left: screenWidth * 0.1,
@@ -296,7 +314,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
                                 const SizedBox(height: 30),
 
-                                // "or" divider
+                                // or divider
                                 Center(
                                   child: SizedBox(
                                     width: 200,
@@ -318,7 +336,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
                                 const SizedBox(height: 30),
 
-                                // "Sign in with Google"
+                                // Sign in with Google
                                 Center(
                                   child: InkWell(
                                     onTap: _handleGoogleSignIn,
@@ -350,8 +368,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                     onTap: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                            builder: (context) =>
-                                                const SignUpScreen()),
+                                          builder: (context) =>
+                                              const SignUpScreen(),
+                                        ),
                                       );
                                     },
                                     child: Row(
@@ -374,7 +393,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ),
                         ),
 
-                        // Logo at the top
+                        // Circle logo on top of the card
                         Container(
                           alignment: Alignment.center,
                           height: 100,
@@ -399,8 +418,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ),
             ),
           ),
-          BlockingSpinnerOverlay(isVisible: _isProcessing),
 
+          // Overlays a blocking spinner if _isProcessing is true
+          BlockingSpinnerOverlay(isVisible: _isProcessing),
         ],
       ),
     );

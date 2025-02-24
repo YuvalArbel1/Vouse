@@ -7,14 +7,6 @@ import 'package:vouse_flutter/domain/entities/google_maps/place_location_entity.
 /// A small UI row for displaying a chosen location, with a remove icon,
 /// a red location pin icon, and the address or name in red text.
 ///
-/// Example usage in a parent widget:
-///
-///   LocationTagWidget(
-///     entity: placeLocationEntity,
-///     onRemove: () {
-///       // Clear provider, etc.
-///     },
-///   ),
 ///
 class LocationTagWidget extends StatelessWidget {
   /// The location entity containing lat/long, address, name, etc.

@@ -1,13 +1,14 @@
-import 'dart:async';
+// lib/presentation/screens/post/select_location_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For SystemChrome
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:nb_utils/nb_utils.dart'; // For toast, etc.
+import 'package:nb_utils/nb_utils.dart';
 
-import '../../../core/util/colors.dart'; // Where vPrimaryColor is defined
 import '../../../core/resources/data_state.dart';
+import '../../../core/util/colors.dart';
 import '../../../domain/entities/google_maps/place_details_entity.dart';
 import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/google_maps/place_suggestion_entity.dart';
@@ -17,13 +18,17 @@ import '../../providers/google_maps/location_providers.dart';
 import '../../providers/post/post_location_provider.dart';
 
 /// A screen that allows the user to pick a location on a Google Map:
-/// - Requests user permission for location, placing a red marker at the current position.
-/// - Lets the user tap or drag the marker to adjust the position.
-/// - Includes a search bar powered by the Google Places Autocomplete API to jump to addresses.
-/// - Hides phone's nav bar (immersive mode) for a full-screen map experience.
-/// - Two FloatingActionButtons:
-///   - Left "Cancel" (X): closes without returning a location.
-///   - Right "Confirm" (check): returns the chosen [LatLng] to the caller.
+/// - Requests location permission, placing a red marker at the user's current position (if granted).
+/// - Lets the user tap or drag the marker to reposition.
+/// - Includes a search bar (Autocomplete) for jumping to addresses.
+/// - Hides system UI overlays in an immersive mode for a full-screen map experience.
+/// - Two floating action buttons:
+///   - Left "Confirm" (check): finalizes the chosen LatLng into [postLocationProvider].
+///   - (Optional) You could add a "Cancel" if needed, but here we only show confirm as an example.
+///
+/// Usage:
+///   Navigator.push(context, MaterialPageRoute(builder: (_) => const SelectLocationScreen()));
+///   // The chosen location is saved in [postLocationProvider].
 class SelectLocationScreen extends ConsumerStatefulWidget {
   const SelectLocationScreen({super.key});
 
@@ -33,57 +38,51 @@ class SelectLocationScreen extends ConsumerStatefulWidget {
 }
 
 class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
-  /// Controller for the GoogleMap widget.
+  /// Controller for the [GoogleMap].
   GoogleMapController? _mapController;
 
-  /// The currently picked location, stored as a LatLng for the final result.
+  /// The currently picked location, stored as a [LatLng].
   LatLng? _pickedLatLng;
 
-  /// Google Maps Marker placed on the map, initialized once the user location is known.
+  /// A marker displayed on the map at [_pickedLatLng], draggable by the user.
   Marker? _marker;
 
-  /// TextField controller for the search bar input.
+  /// For the search bar input text.
   final TextEditingController _searchController = TextEditingController();
 
-  /// Debounce timer used to delay autocomplete calls until the user stops typing.
+  /// A debounce timer to delay autocomplete calls while the user is typing.
   Timer? _debounce;
 
-  /// List of autocomplete suggestions returned by the Places API.
+  /// Holds autocomplete results from the Places API.
   List<PlaceSuggestionEntity> _suggestions = [];
 
   @override
   void initState() {
     super.initState();
-    // Enable immersive mode: hides both system status and nav bars.
+    // Enter full-immersive mode so the user sees a full-screen map.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    // Use a post-frame callback to request location once the widget has built.
+    // After the initial frame is built, request location.
     WidgetsBinding.instance.addPostFrameCallback((_) => _initLocation());
   }
 
   @override
   void dispose() {
-
-    // Cancel the debounce timer if it's still active.
+    // Cancel any scheduled debounce calls.
     _debounce?.cancel();
-
-    // Dispose the search controller.
     _searchController.dispose();
     super.dispose();
   }
 
-  /// Requests the user's location from [getCurrentLocationUseCaseProvider].
-  /// If granted and successful, places a red marker and animates the map camera.
+  /// Requests the user's current location via [getCurrentLocationUseCaseProvider].
+  /// If successful, places a marker and animates the map there.
+  /// If it fails, we toast an error message.
   Future<void> _initLocation() async {
     final getLocUseCase = ref.read(getCurrentLocationUseCaseProvider);
-
-    // Call the domain layer to request current location (plus permission).
     final result = await getLocUseCase();
 
-    // Check if we're still mounted before making setState calls.
     if (!mounted) return;
 
-    // If success, place the marker and center camera.
     if (result is DataSuccess<PlaceLocationEntity>) {
       final loc = result.data!;
       setState(() {
@@ -93,18 +92,16 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
           position: _pickedLatLng!,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
           draggable: true,
-          onDragEnd: (pos) => _pickedLatLng = pos, // update local on drag
+          onDragEnd: (pos) => _pickedLatLng = pos,
         );
       });
       _moveCamera(_pickedLatLng!, 16);
-    }
-    // If failure, show a toast with the error.
-    else if (result is DataFailed<PlaceLocationEntity>) {
+    } else if (result is DataFailed<PlaceLocationEntity>) {
       toast("Failed to get location: ${result.error?.error}");
     }
   }
 
-  /// Animates the map camera to the given [latLng] and [zoom] level.
+  /// Animates the map camera to [latLng] at the given [zoom] level.
   void _moveCamera(LatLng latLng, double zoom) {
     if (_mapController != null) {
       _mapController!.animateCamera(
@@ -113,8 +110,8 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     }
   }
 
-  /// Called once the map is created. We store the [controller], and
-  /// if we already have a picked location, move the camera there.
+  /// Called when the map is ready. Saves [controller], then re-centers on
+  /// any existing [_pickedLatLng].
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     if (_pickedLatLng != null) {
@@ -122,8 +119,7 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     }
   }
 
-  /// Called when the user taps somewhere on the map, updating
-  /// [_pickedLatLng] and re-placing the marker there.
+  /// Called when the user taps the map. Places a marker at [latLng].
   void _onMapTap(LatLng latLng) {
     setState(() {
       _pickedLatLng = latLng;
@@ -137,66 +133,54 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     });
   }
 
-  /// Called when the user presses the checkmark FAB.
-  /// If no location is chosen, we show a toast. Otherwise:
-  /// - Optionally reverse geocode the lat/lng to get an address.
-  /// - Build a [PlaceLocationEntity].
-  /// - Store it in [postLocationProvider].
-  /// - Pop this screen without returning a LatLng (the data is in the provider).
+  /// Confirms the location by optionally reverse-geocoding. Then sets
+  /// [postLocationProvider] and pops.
   Future<void> _onConfirm() async {
     if (_pickedLatLng == null) {
       toast("No location selected!");
       return;
     }
 
-    // Grab lat/lng
     final lat = _pickedLatLng!.latitude;
     final lng = _pickedLatLng!.longitude;
 
-    // Possibly do a reverse geocode
+    // Attempt reverse geocoding for an address.
     final reverseUC = ref.read(reverseGeocodeUseCaseProvider);
-    final reverseResult =
-        await reverseUC.call(params: ReverseGeocodeParams(lat, lng));
+    final reverseResult = await reverseUC.call(
+      params: ReverseGeocodeParams(lat, lng),
+    );
+    if (!mounted) return;
 
     String? address;
     if (reverseResult is DataSuccess<String>) {
       address = reverseResult.data;
     }
 
-    // Build the final location entity
-    // If you have a place name from search, you can set it here too
-    // For now, we'll rely on address alone
+    // Construct the final location entity, storing address if found.
     final locationEntity = PlaceLocationEntity(
       latitude: lat,
       longitude: lng,
       address: address,
-      name: null, // or some custom name
+      name: null,
     );
 
-    // Save to the postLocationProvider so the rest of the app sees it
+    // Save this to the provider for the rest of the app to see.
     ref.read(postLocationProvider.notifier).state = locationEntity;
 
-    // Finally pop
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
-
-  /// Called whenever the user types in the search bar.
-  /// We use a debounce approach: wait 500ms, then call [searchPlacesUseCase].
+  /// Triggered whenever the search input changes. Debounced by 500ms.
   void _onSearchChanged(String input) {
-    // Cancel any existing debounce timer.
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    // Start a new debounce.
+    _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () async {
       final query = input.trim();
-      // If empty, clear suggestions.
       if (query.isEmpty) {
         setState(() => _suggestions.clear());
         return;
       }
 
-      // Call the domain's SearchPlacesUseCase to get suggestions.
       final searchUC = ref.read(searchPlacesUseCaseProvider);
       final result = await searchUC.call(params: SearchPlacesParams(query));
 
@@ -210,9 +194,8 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     });
   }
 
-  /// Called when the user selects an autocomplete suggestion.
-  /// Fetches the final lat/lng via [getPlaceDetailsUseCaseProvider],
-  /// moves the marker, and centers the map.
+  /// Called when the user picks an autocomplete suggestion from the list.
+  /// We then fetch place details (lat/lng) and move the marker/camera there.
   Future<void> _selectSuggestion(PlaceSuggestionEntity suggestion) async {
     final placeDetailsUC = ref.read(getPlaceDetailsUseCaseProvider);
     final result = await placeDetailsUC.call(params: suggestion.placeId);
@@ -230,12 +213,9 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
           draggable: true,
           onDragEnd: (pos) => _pickedLatLng = pos,
         );
-        // Update the search bar text to the picked suggestion description.
         _searchController.text = suggestion.description;
-        // Clear the suggestions list.
         _suggestions.clear();
       });
-      // Move camera to the new location.
       _moveCamera(details.latLng, 16);
     } else if (result is DataFailed<PlaceDetailsEntity>) {
       toast("Failed to fetch place details: ${result.error?.error}");
@@ -244,32 +224,33 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If no marker is defined yet, pass an empty set.
+    // If no marker is defined, pass an empty set to GoogleMap.
     final markers = _marker == null ? <Marker>{} : {_marker!};
 
     return Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
-            /// 1) Google Map behind everything
+            // 1) Google Map behind everything
             GoogleMap(
               onMapCreated: _onMapCreated,
               onTap: _onMapTap,
               initialCameraPosition: const CameraPosition(
-                target: LatLng(0, 0), // Dummy coords; we animate later.
+                target: LatLng(0, 0),
+                // Dummy coords; we'll animate after creation
                 zoom: 2,
               ),
               markers: markers,
             ),
 
-            /// 2) Search bar at the top
+            // 2) The search bar & suggestions at the top
             Positioned(
               top: 10,
               left: 10,
               right: 10,
               child: Column(
                 children: [
-                  // Search text input
+                  // Search input
                   Container(
                     decoration: boxDecorationRoundedWithShadow(
                       12,
@@ -286,8 +267,7 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
                       ),
                     ),
                   ),
-
-                  // Suggestions list
+                  // Suggestions
                   if (_suggestions.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(top: 4),
@@ -306,18 +286,19 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
                           );
                         },
                       ),
-                    )
+                    ),
                 ],
               ),
             ),
 
-            /// 3) Confirm (check) button at bottom-left
+            // 3) Confirm FAB (lower-left)
             Positioned(
               bottom: 40,
               left: 10,
               child: FloatingActionButton(
                 onPressed: _onConfirm,
-                backgroundColor: vPrimaryColor.withOpacity(0.7),
+                // Replacing .withOpacity(0.7) => approximate alpha 178
+                backgroundColor: vPrimaryColor.withAlpha(178),
                 child: const Icon(
                   Icons.check,
                   color: vAccentColor,

@@ -9,12 +9,18 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../../core/util/colors.dart';
+import '../../../core/util/common.dart';
 import '../../providers/post/post_images_provider.dart';
 
-/// A row with exactly 2 icons + up to 4 images, all evenly spaced:
-///   [ AI icon | Camera icon | (0..4) images ]
-/// There's no scroll view, because we only display at most 6 items.
+/// A widget that displays a row containing two fixed icons and up to four recent images.
+///
+/// The row is composed of:
+/// - A camera icon that launches the camera to capture a new image.
+/// - Up to 4 recent images retrieved from the device's photo library.
+///
+/// Tapping an image or icon attempts to add that image's path to the post (if fewer than 4 images are selected).
 class RecentImagesRow extends ConsumerStatefulWidget {
+  /// Creates a [RecentImagesRow] widget.
   const RecentImagesRow({super.key});
 
   @override
@@ -28,13 +34,15 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
   @override
   void initState() {
     super.initState();
-    // Request permission & fetch images after the first frame
+    // Request necessary permissions and fetch recent images after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPermissionsAndFetchImages();
     });
   }
 
-  /// Requests camera/photos permission, if granted fetch last 4 images
+  /// Requests camera and photos permissions.
+  ///
+  /// If permissions are granted, it fetches the last 4 images from the device.
   Future<void> _initPermissionsAndFetchImages() async {
     final statusCamera = await Permission.camera.request();
     final statusPhotos = await Permission.photos.request();
@@ -47,7 +55,7 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     await _fetchLast4Images();
   }
 
-  /// Query device's album for up to 4 images
+  /// Retrieves up to 4 recent image files from the device's photo library.
   Future<void> _fetchLast4Images() async {
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image,
@@ -69,7 +77,9 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     setState(() => _recentImages = files);
   }
 
-  /// Add image path to postImagesProvider if <4 images
+  /// Attempts to add the image at [path] to the post.
+  ///
+  /// If there are already 4 images selected, a toast is displayed.
   void _attemptAddImage(String path) {
     final currentImages = ref.read(postImagesProvider);
     if (currentImages.length >= 4) {
@@ -79,7 +89,7 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     }
   }
 
-  /// Launch camera & add
+  /// Captures a new image using the device camera and adds it to the post.
   Future<void> _captureNewImage() async {
     final statusCamera = await Permission.camera.request();
     if (statusCamera.isDenied) {
@@ -96,16 +106,16 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
 
   @override
   Widget build(BuildContext context) {
-    // We'll display at most 6 items: [AI icon, Camera icon, up to 4 images]
+    // Display up to 6 items: a camera icon plus up to 4 images.
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // 2) Camera Icon
+        // Camera icon.
         buildItemContainer(
           child: Icon(Icons.camera_alt, color: vPrimaryColor),
           onTap: _captureNewImage,
         ),
-        // 3) Up to 4 images
+        // Map over recent images.
         ..._recentImages.map((file) {
           return buildItemContainer(
             child: ClipRRect(
@@ -115,12 +125,14 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
             onTap: () => _attemptAddImage(file.path),
           );
         }),
-
       ],
     );
   }
 
-  /// A helper that returns a 52×62 container for icons or images
+  /// A helper method that returns a container with fixed dimensions and styling.
+  ///
+  /// Uses the common [vouseBoxDecoration] with a zero shadow opacity (i.e. no shadow)
+  /// and a border radius of 8, preserving the UI look while leveraging shared styles.
   Widget buildItemContainer({
     required Widget child,
     required VoidCallback onTap,
@@ -130,9 +142,10 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
       child: Container(
         width: 52,
         height: 62,
-        decoration: BoxDecoration(
-          color: context.cardColor,
-          borderRadius: BorderRadius.circular(8),
+        decoration: vouseBoxDecoration(
+          radius: 8,
+          backgroundColor: context.cardColor,
+          shadowOpacity: 0, // No shadow for these items.
         ),
         child: child,
       ),

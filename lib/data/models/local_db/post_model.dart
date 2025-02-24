@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 
-import '../../../domain/entities/locaal db/post_entity.dart';
+import '../../../domain/entities/local_db/post_entity.dart';
 
 /// A model that extends [PostEntity] and provides SQLite-friendly serialization.
 ///

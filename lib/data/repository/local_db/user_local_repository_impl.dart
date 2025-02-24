@@ -2,10 +2,10 @@
 
 import 'package:dio/dio.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/entities/locaal%20db/user_entity.dart';
 import 'package:vouse_flutter/domain/repository/local_db/user_local_repository.dart';
 import 'package:vouse_flutter/data/models/local_db/user_model.dart';
 
+import '../../../domain/entities/local_db/user_entity.dart';
 import '../../data_sources/local/user_local_data_source.dart';
 
 /// Implements [UserLocalRepository], performing local CRUD on the 'user' table

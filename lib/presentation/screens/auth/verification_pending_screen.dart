@@ -1,13 +1,18 @@
+// lib/presentation/screens/auth/verification_pending_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vouse_flutter/presentation/providers/auth/firebase_auth_notifier.dart';
-import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:nb_utils/nb_utils.dart';
+
+import 'package:vouse_flutter/core/resources/data_state.dart';
+import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 
+/// A screen prompting the user to verify their email.
+/// Provides options to check verification status or resend the verification email.
 class VerificationPendingScreen extends ConsumerStatefulWidget {
   const VerificationPendingScreen({super.key});
 
@@ -18,28 +23,34 @@ class VerificationPendingScreen extends ConsumerStatefulWidget {
 
 class _VerificationPendingScreenState
     extends ConsumerState<VerificationPendingScreen> {
+  /// Indicates whether we show a processing spinner.
   bool _checking = false;
 
   @override
   void initState() {
     super.initState();
-    init();
+    _removeSplashAfterFirstFrame();
   }
 
-  Future<void> init() async {
+  /// Removes the native splash after the first frame is drawn.
+  void _removeSplashAfterFirstFrame() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
   }
 
-  /// Poll or manually check once user taps "Check Verification."
+  /// Checks if the user's email is verified by calling [checkEmailVerified].
+  /// If verified, navigates to [EditProfileScreen].
+  /// Otherwise, shows a toast urging the user to retry or resend the email.
   Future<void> _checkVerification() async {
     setState(() => _checking = true);
 
-    // Returns bool, not bool?
-    final bool isVerified = await ref
+    final isVerified = await ref
         .read(firebaseAuthNotifierProvider.notifier)
         .checkEmailVerified();
+
+    // If the widget got unmounted before we proceed, bail out to avoid context usage.
+    if (!mounted) return;
 
     setState(() => _checking = false);
 
@@ -48,17 +59,21 @@ class _VerificationPendingScreenState
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const EditProfileScreen()),
       );
-      // Navigate to home or whatever
     } else {
       toast("Still not verified. Try again soon or resend the email.");
     }
   }
 
-  /// Resend the verification email
+  /// Resends the verification email via [sendVerificationEmail].
+  /// If it fails, shows a toast with an error; otherwise, instructs the user to check their inbox.
   Future<void> _resendVerification() async {
     await ref
         .read(firebaseAuthNotifierProvider.notifier)
         .sendVerificationEmail();
+
+    // Check if widget is unmounted
+    if (!mounted) return;
+
     final state = ref.read(firebaseAuthNotifierProvider);
     if (state is DataFailed<void>) {
       final error = state.error?.error ?? 'Error';
@@ -70,14 +85,13 @@ class _VerificationPendingScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Use nb_utils or normal Flutter for layout
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Stack(
         children: [
-          // 1) Your normal background/layout
+          // Background + layout
           Container(
             width: screenWidth,
             height: screenHeight,
@@ -101,8 +115,6 @@ class _VerificationPendingScreenState
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  // We removed the old "if (_checking)" around the spinner
-                  // and will rely on our overlay instead.
                   Column(
                     children: [
                       AppButton(
@@ -131,7 +143,7 @@ class _VerificationPendingScreenState
             ),
           ),
 
-          // 2) The blocking spinner overlay
+          // Spinner overlay if checking
           BlockingSpinnerOverlay(isVisible: _checking),
         ],
       ),

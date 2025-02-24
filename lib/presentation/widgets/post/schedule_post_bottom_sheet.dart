@@ -1,3 +1,5 @@
+// lib/presentation/widgets/post/schedule_post_bottom_sheet.dart
+
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +11,7 @@ import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 import '../../../core/util/image_utils.dart';
-import '../../../domain/entities/locaal db/post_entity.dart';
+import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_with_upload_usecase.dart';
 import '../../providers/post/post_text_provider.dart';
 import '../../providers/post/post_images_provider.dart';
@@ -19,7 +21,18 @@ import '../../widgets/post/location_tag_widget.dart';
 import '../../widgets/post/selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
 
+/// A bottom sheet that allows the user to schedule a post for a future date/time,
+/// optionally leveraging AI suggestions.
+///
+/// The sheet provides:
+/// - A post title input field
+/// - A preview snippet of the main post text (with full text dialog)
+/// - An optional location tag
+/// - A dropdown to select who can reply
+/// - Controls to pick a date/time (within 7 days) or use AI for best time prediction
+/// - A final "Schedule Post" button that saves and uploads the post
 class SharePostBottomSheet extends ConsumerStatefulWidget {
+  /// Creates a [SharePostBottomSheet].
   const SharePostBottomSheet({super.key});
 
   @override
@@ -28,11 +41,16 @@ class SharePostBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
+  /// Controller for the post title.
   final TextEditingController _titleController = TextEditingController();
+
+  /// The chosen scheduled date/time.
   DateTime? _scheduledDateTime;
+
+  /// Whether the scheduling process is in progress.
   bool _isScheduling = false;
 
-  // Example who-can-reply options
+  /// Example "who can reply?" options.
   final List<Map<String, dynamic>> _replyOptions = [
     {'label': 'Everyone', 'icon': Icons.public},
     {'label': 'Verified accounts', 'icon': Icons.verified},
@@ -46,13 +64,13 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     super.dispose();
   }
 
-  /// Utility method to truncate text for UI preview
+  /// Truncates the [text] to [limit] characters, appending "..." if needed.
   String _truncateText(String text, int limit) {
     if (text.length <= limit) return text;
     return '${text.substring(0, limit)}...';
   }
 
-  /// Show the user's full typed text in a scrollable dialog
+  /// Displays the full post text in a scrollable dialog.
   void _showFullTextDialog(String fullText) {
     showDialog(
       context: context,
@@ -72,7 +90,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     );
   }
 
-  /// Let user pick date/time within next 7 days
+  /// Lets the user pick a date/time within the next 7 days.
   Future<void> _pickDateTime() async {
     final now = DateTime.now();
     final oneWeekLater = now.add(const Duration(days: 7));
@@ -83,13 +101,13 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       firstDate: now,
       lastDate: oneWeekLater,
     );
-    if (pickedDate == null) return;
+    if (!mounted || pickedDate == null) return;
 
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (pickedTime == null) return;
+    if (!mounted || pickedTime == null) return;
 
     setState(() {
       _scheduledDateTime = DateTime(
@@ -102,47 +120,44 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     });
   }
 
+  /// Handles scheduling the post.
+  ///
+  /// Validates the post title, text, and date/time, moves images to a permanent folder,
+  /// creates the post entity, and calls the "save + upload" use case.
   Future<void> _onSchedulePressed() async {
-    // 1) If already scheduling, bail out
     if (_isScheduling) return;
 
-    // 2) Mark scheduling = true, so we show a spinner overlay
     setState(() => _isScheduling = true);
 
     try {
-      // 3) Grab user
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         toast('No logged-in user found!');
         return;
       }
 
-      // 4) Title must not be empty
       final title = _titleController.text.trim();
       if (title.isEmpty) {
         toast('Please enter a post title!');
         return;
       }
 
-      // 5) Must pick a date/time
       if (_scheduledDateTime == null) {
         toast('Please pick a date & time first!');
         return;
       }
       final scheduledDate = _scheduledDateTime!;
 
-      // 6) The main post text
       final text = ref.read(postTextProvider).trim();
       if (text.isEmpty) {
         toast('Write some words first!');
         return;
       }
 
-      // 7) Move images to permanent folder
       final images = ref.read(postImagesProvider);
       final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
+      if (!mounted) return;
 
-      // 8) Build location
       final loc = ref.read(postLocationProvider);
       double? lat;
       double? lng;
@@ -153,7 +168,6 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         addr = loc.address;
       }
 
-      // 9) Create the post entity
       final postEntity = PostEntity(
         postIdLocal: const Uuid().v4(),
         postIdX: null,
@@ -163,7 +177,6 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         updatedAt: null,
         scheduledAt: scheduledDate,
         visibility: _selectedReplyOption,
-        // "Everyone" or the dropdown choice
         localImagePaths: localPaths,
         cloudImageUrls: [],
         locationLat: lat,
@@ -171,10 +184,8 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         locationAddress: addr,
       );
 
-      // 10) Convert these localPaths to actual Files for upload
       final localFiles = localPaths.map((p) => File(p)).toList();
 
-      // 11) Use the "save + upload" use case
       final savePostWithUploadUC = ref.read(savePostWithUploadUseCaseProvider);
       final result = await savePostWithUploadUC.call(
         params: SavePostWithUploadParams(
@@ -183,33 +194,31 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
           localImageFiles: localFiles,
         ),
       );
+      if (!mounted) return;
 
-      // 12) Check result
       if (result is DataSuccess) {
         toast('Post scheduled successfully!');
-        // Optionally clear everything
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
         ref.read(postLocationProvider.notifier).state = null;
-
-        // Dismiss the bottom sheet
         Navigator.pop(context);
       } else if (result is DataFailed) {
         toast("Error saving scheduled post: ${result.error?.error}");
       }
     } finally {
-      // 13) Turn off spinner
-      setState(() => _isScheduling = false);
+      if (mounted) {
+        setState(() => _isScheduling = false);
+      }
     }
   }
 
-  /// Possibly open your AI text generation dialog
+  /// Opens the AI dialog that can predict the best time to post.
   Future<void> _openAIDialog() async {
     final bestTime = await showDialog<DateTime?>(
       context: context,
       builder: (_) => const ScheduleAiDialog(),
     );
-    if (bestTime != null) {
+    if (mounted && bestTime != null) {
       setState(() => _scheduledDateTime = bestTime);
     }
   }
@@ -229,7 +238,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                /// The small "grab bar" at the top of the sheet
+                // Grab bar.
                 Container(
                   width: 50,
                   height: 5,
@@ -239,21 +248,16 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                /// Post Title input
+                // Post Title input using common decoration.
                 Container(
                   width: context.width(),
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: vAppLayoutBackground,
-                    borderRadius: radius(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(20),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                  decoration: vouseBoxDecoration(
+                    backgroundColor: vAppLayoutBackground,
+                    radius: 12,
+                    shadowOpacity: 20,
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
                   ),
                   child: TextField(
                     controller: _titleController,
@@ -265,26 +269,20 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                /// Post snippet + location container
+                // Post snippet + location container.
                 Container(
                   width: context.width(),
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: vAppLayoutBackground,
-                    borderRadius: radius(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(20),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                  decoration: vouseBoxDecoration(
+                    backgroundColor: vAppLayoutBackground,
+                    radius: 12,
+                    shadowOpacity: 20,
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Truncated snippet of main text
                       GestureDetector(
                         onTap: () {
                           if (postText.length > 30) {
@@ -316,21 +314,16 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                /// "Who can reply?" container
+                // "Who can reply?" container.
                 Container(
                   width: context.width(),
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: vAppLayoutBackground,
-                    borderRadius: radius(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(20),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                  decoration: vouseBoxDecoration(
+                    backgroundColor: vAppLayoutBackground,
+                    radius: 12,
+                    shadowOpacity: 20,
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -360,12 +353,10 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                /// Images
+                // Selected images preview.
                 const SelectedImagesPreview(),
                 const SizedBox(height: 16),
-
-                /// Row: pick date/time & AI
+                // Row: Pick date/time and AI.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -390,12 +381,13 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                 ),
                 if (_scheduledDateTime != null) ...[
                   const SizedBox(height: 8),
-                  Text("Scheduled for: $_scheduledDateTime",
-                      style: primaryTextStyle(color: vPrimaryColor)),
+                  Text(
+                    "Scheduled for: $_scheduledDateTime",
+                    style: primaryTextStyle(color: vPrimaryColor),
+                  ),
                 ],
                 const SizedBox(height: 16),
-
-                /// "Schedule Post" final button
+                // "Schedule Post" button.
                 ElevatedButton(
                   onPressed: _onSchedulePressed,
                   style: ElevatedButton.styleFrom(
@@ -411,6 +403,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               ],
             ),
           ),
+          // Spinner overlay while scheduling.
           BlockingSpinnerOverlay(isVisible: _isScheduling),
         ],
       ),

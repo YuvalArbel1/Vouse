@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 
 
 
+
 /// The main entry point of the Vouse app.
 ///
 /// This function performs the following steps:

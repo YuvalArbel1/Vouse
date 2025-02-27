@@ -8,18 +8,20 @@ import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/presentation/screens/post/full_screen_image_preview.dart';
 
 /// A post card that:
-/// - If it's a draft (no scheduledAt, no updatedAt), shows a "Draft" bar at the bottom.
-/// - If scheduled, shows a “Scheduled” row plus normal icons.
-/// - If posted, shows normal icons row.
+/// - If it's a draft, shows a "Draft" green button at the bottom.
+/// - If scheduled, shows a green button with the scheduled time.
+/// - If posted, shows normal posted time + action icons.
 ///
-/// Removes unnecessary null checks on [post.title], presuming your PostEntity
-/// always provides a non-null (possibly empty) title string.
+/// Also displays a special UI for posts without images, showing a green-outlined
+/// icon with custom text centered between the content and bottom bar.
 class PostCard extends StatelessWidget {
   final PostEntity post;
 
+  /// Standard dimensions for consistent card layout
   static const double cardWidth = 320;
   static const double cardHeight = 350;
 
+  /// Creates a [PostCard] for displaying a [post].
   const PostCard({super.key, required this.post});
 
   @override
@@ -44,7 +46,7 @@ class PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 1) Title. If you want to skip an empty string, check isNotEmpty.
+            // 1) Title. If empty string, doesn't display.
             if (post.title.isNotEmpty) _buildCenteredTitle(),
 
             // 2) Post text, fixed height for up to 6 lines
@@ -60,16 +62,19 @@ class PostCard extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: _buildLocationRow(),
               ),
-            const SizedBox(height: 4),
 
-            // 4) Images row
-            if (post.localImagePaths.isNotEmpty) _buildImagesRow(context),
-
+            // Add spacer to push content to the center
             const Spacer(),
 
-            // 5) Show bottom row depending on draft/scheduled/posted
+            // 4) Images row or "No images" indicator - centered vertically
+            _buildImagesRow(context),
+
+            // Add spacer to center the images section
+            const Spacer(),
+
+            // 5) Show bottom status based on post type:
             if (post.scheduledAt != null)
-              _buildScheduledRow()
+              _buildScheduledButton()
             else if (post.updatedAt != null)
               _buildIconsRowPosted()
             else
@@ -83,6 +88,7 @@ class PostCard extends StatelessWidget {
   //--------------------------------------------------------------------------
   // 1) Centered bold title
   //--------------------------------------------------------------------------
+  /// Builds a centered title with the post's title text.
   Widget _buildCenteredTitle() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -102,6 +108,7 @@ class PostCard extends StatelessWidget {
   //--------------------------------------------------------------------------
   // 2) Post text with a fixed height for 6 lines
   //--------------------------------------------------------------------------
+  /// Builds a fixed-height container for post content, showing up to 6 lines.
   Widget _buildFixedHeightText(BuildContext context) {
     const double lineHeightPx = 18.0;
     const double totalHeightPx = lineHeightPx * 6;
@@ -129,6 +136,7 @@ class PostCard extends StatelessWidget {
   //--------------------------------------------------------------------------
   // 3) Location
   //--------------------------------------------------------------------------
+  /// Builds a row showing the location icon and address.
   Widget _buildLocationRow() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -152,11 +160,57 @@ class PostCard extends StatelessWidget {
   //--------------------------------------------------------------------------
   // 4) Images row
   //--------------------------------------------------------------------------
+  /// Builds either:
+  /// - A row of images if the post has images
+  /// - A "No images" indicator with green outline if no images are present
   Widget _buildImagesRow(BuildContext context) {
-    final images = post.localImagePaths.take(4).toList();
+    final images = post.localImagePaths;
+
+    // If there are no images, show a placeholder with appropriate text
+    if (images.isEmpty) {
+      final isDraft = post.scheduledAt == null && post.updatedAt == null;
+      final message = isDraft
+          ? "No images added to this draft"
+          : "No images selected for this post";
+
+      return Container(
+        width: double.infinity,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: vAccentColor,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.image_not_supported_outlined,
+                color: vAccentColor,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                message,
+                style: secondaryTextStyle(
+                  color: vAccentColor,
+                  size: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // If the post has images, display them in a scrollable row
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -188,6 +242,8 @@ class PostCard extends StatelessWidget {
     );
   }
 
+  /// Opens a full-screen view of the selected images, starting at [index].
+  /// This view is read-only (cannot delete images).
   void _openFullScreen(BuildContext context, List<String> images, int index) {
     Navigator.push(
       context,
@@ -203,30 +259,48 @@ class PostCard extends StatelessWidget {
   }
 
   //--------------------------------------------------------------------------
-  // 5) Handling draft/scheduled/posted
+  // 5) Bottom status indicators
   //--------------------------------------------------------------------------
-  Widget _buildScheduledRow() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTimeInfo(),
-        const SizedBox(height: 4),
-        _buildActionIcons(),
-      ],
-    );
-  }
-
+  /// Builds a row for posted posts showing post time and action icons.
   Widget _buildIconsRowPosted() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTimeInfo(),
+        Text(
+          "Posted at ${post.updatedAt!.toIso8601String().substring(0, 10)}",
+          style: secondaryTextStyle(color: vAccentColor, size: 12),
+        ),
         const SizedBox(height: 4),
         _buildActionIcons(),
       ],
     );
   }
 
+  /// Builds a green button showing the scheduled date/time.
+  Widget _buildScheduledButton() {
+    final scheduledTime = post.scheduledAt!;
+    // Format: "2023-02-28 14:25"
+    final formattedTime = "${scheduledTime.toString().substring(0, 16)}";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: vAccentColor.withAlpha(180),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        formattedTime,
+        textAlign: TextAlign.center,
+        style: boldTextStyle(
+          color: Colors.white,
+          size: 13,
+        ),
+      ),
+    );
+  }
+
+  /// Builds a "Draft" indicator bar for draft posts.
   Widget _buildDraftIndicator() {
     return Container(
       width: double.infinity,
@@ -247,30 +321,9 @@ class PostCard extends StatelessWidget {
   }
 
   //--------------------------------------------------------------------------
-  // Time info
+  // Action icons row (only for posted content)
   //--------------------------------------------------------------------------
-  Widget _buildTimeInfo() {
-    if (post.scheduledAt != null) {
-      final dateStr = post.scheduledAt.toString().substring(0, 16);
-      return Text(
-        "Scheduled: $dateStr",
-        style: secondaryTextStyle(color: vAccentColor, size: 12),
-      );
-    } else if (post.updatedAt != null) {
-      final dateStr = post.updatedAt!.toIso8601String().substring(0, 10);
-      return Text(
-        "Posted at $dateStr",
-        style: secondaryTextStyle(color: vAccentColor, size: 12),
-      );
-    } else {
-      // draft => won't even call this
-      return const SizedBox.shrink();
-    }
-  }
-
-  //--------------------------------------------------------------------------
-  // Normal icons row
-  //--------------------------------------------------------------------------
+  /// Builds a row of action icons (comment, retweet, like, stats) with counts.
   Widget _buildActionIcons() {
     final iconColor = vPrimaryColor.withAlpha(120);
 
@@ -285,6 +338,7 @@ class PostCard extends StatelessWidget {
     );
   }
 
+  /// Builds a single icon with an associated count text.
   Widget _iconWithCount(IconData icon, String count, Color color) {
     return Row(
       children: [

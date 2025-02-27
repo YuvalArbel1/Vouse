@@ -75,6 +75,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   /// 2. Verifies the user's email.
   /// 3. Retrieves the user profile from the local database.
   /// 4. Navigates to the appropriate screen.
+  // lib/presentation/screens/splash/app_wrapper.dart
+
   Future<void> _initFlow() async {
     // Ensure the widget is still mounted before proceeding.
     if (!mounted) return;
@@ -100,7 +102,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
       return;
     }
 
-    // User is verified; now check the local database for user profile.
+    // User is verified; now check the local database for user profile
+    // specifically for this Firebase user ID.
     final getUserUC = ref.read(getUserUseCaseProvider);
     final result = await getUserUC.call(params: GetUserParams(user.uid));
     if (!mounted) return;
@@ -108,18 +111,19 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
     if (result is DataSuccess<UserEntity?>) {
       final localUser = result.data;
       if (localUser == null) {
+        // No profile for THIS specific user ID - go to EditProfileScreen
         _pushNext(const EditProfileScreen());
       } else {
-        // Delay before navigating to HomeScreen to allow for transitions.
+        // Profile exists for this user - go to HomeScreen
         await Future.delayed(_homeDelay);
         if (!mounted) return;
         _pushNext(const HomeScreen());
       }
     } else if (result is DataFailed<UserEntity?>) {
-      // On DB error, fallback to SignInScreen.
+      // On DB error, fallback to SignInScreen
       _pushNext(const SignInScreen());
     } else {
-      // Fallback navigation with a short delay.
+      // Fallback navigation with a short delay
       await Future.delayed(_shortDelay);
       if (!mounted) return;
       _pushNext(const SignInScreen());

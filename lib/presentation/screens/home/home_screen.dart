@@ -10,15 +10,16 @@ import '../../providers/auth/firebase/firebase_auth_notifier.dart';
 import '../../providers/home/home_posts_providers.dart';
 import '../post/create_post_screen.dart';
 
-// Import the new providers
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/presentation/widgets/post/post_card.dart';
 
-/// A sample Home screen that displays two horizontal "rows" of posts:
+/// A Home screen that displays three horizontal rows of posts:
 /// - Drafts
 /// - Scheduled
+/// - Posted
 ///
-/// Also includes an AppBar with a "Logout" button and a FAB for creating new posts.
+/// Includes an AppBar with refresh and logout buttons, plus a FAB for creating new posts.
+/// The screen automatically refreshes when returning from the Create Post screen.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,6 +35,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
+  }
+
+  /// Refreshes all post data by invalidating the providers.
+  /// This forces Riverpod to re-fetch the data from the repositories.
+  void _refreshData() {
+    ref.invalidate(draftPostsProvider);
+    ref.invalidate(scheduledPostsProvider);
+    ref.invalidate(postedPostsProvider);
+  }
+
+  /// Navigates to the Create Post screen and refreshes data when returning.
+  ///
+  /// This ensures that any newly created drafts or scheduled posts will
+  /// immediately appear in the UI when the user returns to this screen.
+  Future<void> _navigateToCreatePost() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+    );
+
+    // Refresh data when we return from create post screen
+    _refreshData();
   }
 
   /// Handles the logout process.
@@ -59,52 +81,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the new providers
+    // Watch the providers for real-time updates
     final draftsAsync = ref.watch(draftPostsProvider);
     final scheduledAsync = ref.watch(scheduledPostsProvider);
+    final postedAsync = ref.watch(postedPostsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
         actions: [
+          // Add refresh button to manually refresh the data
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshData,
+            tooltip: 'Refresh posts',
+          ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
             onPressed: _handleLogout,
+            tooltip: 'Sign out',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Drafts', style: boldTextStyle(size: 18)),
-            const SizedBox(height: 8),
-            // Show drafts in a horizontal row
-            draftsAsync.when(
-              data: (drafts) => _buildPostsRow(drafts),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, st) => Text('Error loading drafts: $err'),
-            ),
-            const SizedBox(height: 32),
-            Text('Scheduled', style: boldTextStyle(size: 18)),
-            const SizedBox(height: 8),
-            // Show scheduled in a horizontal row
-            scheduledAsync.when(
-              data: (scheduled) => _buildPostsRow(scheduled),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, st) => Text('Error loading scheduled: $err'),
-            ),
-          ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _refreshData();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(), // Required for RefreshIndicator to work
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Drafts', style: boldTextStyle(size: 18)),
+              const SizedBox(height: 8),
+              // Show drafts in a horizontal row
+              draftsAsync.when(
+                data: (drafts) => _buildPostsRow(drafts),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, st) => Text('Error loading drafts: $err'),
+              ),
+              const SizedBox(height: 32),
+
+              Text('Scheduled', style: boldTextStyle(size: 18)),
+              const SizedBox(height: 8),
+              // Show scheduled in a horizontal row
+              scheduledAsync.when(
+                data: (scheduled) => _buildPostsRow(scheduled),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, st) => Text('Error loading scheduled: $err'),
+              ),
+
+              const SizedBox(height: 32),
+              Text('Posted', style: boldTextStyle(size: 18)),
+              const SizedBox(height: 8),
+              // Show posted posts in a horizontal row
+              postedAsync.when(
+                data: (posted) => _buildPostsRow(posted),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, st) => Text('Error loading posted: $err'),
+              ),
+            ],
+          ),
         ),
       ),
       // Button to create new post
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-          );
-        },
+        onPressed: _navigateToCreatePost,
         child: const Icon(Icons.add),
       ),
     );
@@ -117,8 +160,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return const Text('No posts found.');
     }
 
-    // We know each card is 400 in height, let's give a bit of extra headroom
-    // or exact 400 is also fine. We'll pick 420 to have some margin
     return SizedBox(
       height: 350,
       child: ListView.builder(
@@ -131,5 +172,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
 }

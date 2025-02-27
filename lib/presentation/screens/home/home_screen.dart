@@ -18,8 +18,8 @@ import '../../providers/home/home_posts_providers.dart';
 import '../../widgets/post/post_preview/post_card.dart';
 import '../auth/signin.dart';
 import '../home/edit_profile_screen.dart';
-import '../post_history/post_history_screen.dart';
-import '../post_history/scheduled_posts_screen.dart';
+import '../post_history/published_posts_screen.dart';
+import '../post_history/upcoming_posts.dart';
 import '../profile/profile_screen.dart';
 import '../post/create_post_screen.dart';
 
@@ -327,15 +327,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// Builds the header section with user profile and greeting
   Widget _buildHeader() {
     // Time-based greeting
+    // Time-based greeting fix
     final hour = DateTime.now().hour;
     String greeting = '';
 
-    if (hour < 12) {
+    if (hour >= 5 && hour < 12) {
       greeting = '☀️ Good morning';
-    } else if (hour < 17) {
+    } else if (hour >= 12 && hour < 17) {
       greeting = '🌤️ Good afternoon';
-    } else {
+    } else if (hour >= 17 && hour < 22) {
       greeting = '🌙 Good evening';
+    } else {
+      greeting = '💫 Good night';
     }
 
     return Container(
@@ -976,13 +979,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _navigateToPostHistory() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PostHistoryScreen()),
+      MaterialPageRoute(builder: (_) => const PublishedPostsScreen()),
     );
   }
 
   void _navigateToScheduledPosts() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ScheduledPostsScreen()),
+      MaterialPageRoute(builder: (_) => const UpcomingPostsScreen()),
     );
   }
 

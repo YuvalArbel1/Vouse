@@ -1,12 +1,9 @@
 // lib/presentation/widgets/navigation/custom_bottom_nav.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/util/colors.dart';
-
-/// Provides the currently selected bottom navigation index
-final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
 /// A custom animated bottom navigation bar with a floating app logo button.
 ///
@@ -14,27 +11,28 @@ final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 /// - Smooth selection animations with scale and slide effects
 /// - Elevated center button with app logo
 /// - Custom accent color theming
-/// - Tab selection state management via Riverpod
 /// - Proper handling of system navigation bar insets
 /// - Beautiful ripple effects and transitions
-class CustomBottomNavBar extends ConsumerWidget {
+class CustomBottomNavBar extends StatelessWidget {
   /// Function to handle when a tab is selected
   final Function(int) onTabSelected;
 
   /// Function to handle when the create post button is pressed
   final VoidCallback onCreatePostPressed;
 
+  /// Currently selected index
+  final int currentIndex;
+
   /// Creates a [CustomBottomNavBar] with required callbacks
   const CustomBottomNavBar({
     super.key,
     required this.onTabSelected,
     required this.onCreatePostPressed,
+    required this.currentIndex,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentIndex = ref.watch(bottomNavIndexProvider);
-
+  Widget build(BuildContext context) {
     return Container(
       height: 70,
       decoration: BoxDecoration(
@@ -65,44 +63,40 @@ class CustomBottomNavBar extends ConsumerWidget {
                 selectedIcon: Icons.home,
                 label: 'Home',
                 index: 0,
-                currentIndex: currentIndex,
-                onTap: () => _handleTabTap(ref, 0),
+                onTap: () => _handleTabTap(0),
               ),
 
-              // Post History tab
+              // Published Posts tab (renamed from Post History)
               _buildNavItem(
                 context: context,
                 icon: Icons.history_outlined,
                 selectedIcon: Icons.history,
-                label: 'Posts',
+                label: 'Published',
                 index: 1,
-                currentIndex: currentIndex,
-                onTap: () => _handleTabTap(ref, 1),
+                onTap: () => _handleTabTap(1),
               ),
 
               // Empty space for center button
               const SizedBox(width: 60),
 
-              // Scheduled Posts tab
+              // Upcoming Posts tab (renamed from Scheduled)
               _buildNavItem(
                 context: context,
                 icon: Icons.schedule_outlined,
                 selectedIcon: Icons.schedule,
-                label: 'Scheduled',
+                label: 'Upcoming',
                 index: 2,
-                currentIndex: currentIndex,
-                onTap: () => _handleTabTap(ref, 2),
+                onTap: () => _handleTabTap(2),
               ),
 
-              // Settings tab (was Profile)
+              // Profile tab
               _buildNavItem(
                 context: context,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: 'Settings',
+                icon: Icons.person_outline,
+                selectedIcon: Icons.person,
+                label: 'Profile',
                 index: 3,
-                currentIndex: currentIndex,
-                onTap: () => _handleTabTap(ref, 3),
+                onTap: () => _handleTabTap(3),
               ),
             ],
           ),
@@ -126,7 +120,6 @@ class CustomBottomNavBar extends ConsumerWidget {
     required IconData selectedIcon,
     required String label,
     required int index,
-    required int currentIndex,
     required VoidCallback onTap,
   }) {
     final isSelected = currentIndex == index;
@@ -156,24 +149,14 @@ class CustomBottomNavBar extends ConsumerWidget {
                   color: bgColor,
                   shape: BoxShape.circle,
                 ),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0, end: isSelected ? 1.0 : 0.0),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.elasticOut,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 1.0 + (value * 0.2),
-                      child: Icon(
-                        isSelected ? selectedIcon : icon,
-                        color: iconColor,
-                        size: 24,
-                      ),
-                    );
-                  },
+                child: Icon(
+                  isSelected ? selectedIcon : icon,
+                  color: iconColor,
+                  size: 24,
                 ),
               ),
 
-              // Label text with slide and opacity transitions
+              // Label text with opacity transitions
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
@@ -213,7 +196,7 @@ class CustomBottomNavBar extends ConsumerWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: vPrimaryColor,
+              color: vAccentColor.withAlpha(26),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -245,13 +228,10 @@ class CustomBottomNavBar extends ConsumerWidget {
     );
   }
 
-  /// Handles tab selection
-  void _handleTabTap(WidgetRef ref, int index) {
-    // Add haptic feedback (optional)
-    // HapticFeedback.lightImpact();
-
-    // Update the provider state
-    ref.read(bottomNavIndexProvider.notifier).state = index;
+  /// Handles tab selection with optional haptic feedback
+  void _handleTabTap(int index) {
+    // Add haptic feedback for better user experience
+    HapticFeedback.selectionClick();
 
     // Call the callback
     onTabSelected(index);

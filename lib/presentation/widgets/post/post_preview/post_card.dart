@@ -173,7 +173,7 @@ class PostCard extends StatelessWidget {
           ? "No images added to this draft"
           : "No images selected for this post";
 
-      return Container(
+      return SizedBox(
         width: double.infinity,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -209,7 +209,7 @@ class PostCard extends StatelessWidget {
     }
 
     // If the post has images, display them in a scrollable row
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -280,7 +280,7 @@ class PostCard extends StatelessWidget {
   Widget _buildScheduledButton() {
     final scheduledTime = post.scheduledAt!;
     // Format: "2023-02-28 14:25"
-    final formattedTime = "${scheduledTime.toString().substring(0, 16)}";
+    final formattedTime = scheduledTime.toString().substring(0, 16);
 
     return Container(
       width: double.infinity,

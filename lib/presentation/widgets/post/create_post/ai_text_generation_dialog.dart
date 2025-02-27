@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 
-import '../../../core/util/colors.dart';
-import '../../providers/ai/ai_text_notifier.dart';
-import '../../providers/post/post_text_provider.dart';
+import '../../../../core/util/colors.dart';
+import '../../../providers/ai/ai_text_notifier.dart';
+import '../../../providers/post/post_text_provider.dart';
 
 /// A dialog widget that enables AI-based text generation for social media posts.
 ///

@@ -8,8 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import '../../../core/util/colors.dart';
-import '../../providers/post/post_images_provider.dart';
+import '../../../../core/util/colors.dart';
+import '../../../providers/post/post_images_provider.dart';
 
 /// A widget that displays:
 /// - A camera icon

@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:nb_utils/nb_utils.dart';
 
-import '../../../core/util/colors.dart';
-import '../../../core/util/common.dart';
-import '../../../domain/usecases/ai/predict_best_time_usecase.dart';
-import '../../providers/ai/ai_schedule_providers.dart';
-import '../../providers/post/post_location_provider.dart';
-import '../../../domain/entities/google_maps/place_location_entity.dart';
-import '../../screens/post/select_location_screen.dart';
+import '../../../../core/util/colors.dart';
+import '../../../../core/util/common.dart';
+import '../../../../domain/usecases/ai/predict_best_time_usecase.dart';
+import '../../../providers/ai/ai_schedule_providers.dart';
+import '../../../providers/post/post_location_provider.dart';
+import '../../../../domain/entities/google_maps/place_location_entity.dart';
+import '../../../screens/post/select_location_screen.dart';
 
 /// A dialog that helps predict the best time to post, optionally including location or post text.
 ///

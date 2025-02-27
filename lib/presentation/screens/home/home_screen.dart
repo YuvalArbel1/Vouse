@@ -6,30 +6,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
-import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
-import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
-import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
-import '../../../core/resources/data_state.dart';
+
 import '../../../core/util/colors.dart';
-import '../../providers/auth/firebase/firebase_auth_notifier.dart';
-import '../../providers/home/home_posts_providers.dart';
+import '../../../core/resources/data_state.dart';
+import '../../../domain/usecases/home/get_user_usecase.dart';
+import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
+import '../../providers/auth/firebase/firebase_auth_notifier.dart';
+import '../../widgets/post/post_preview/multi_browse_carousel.dart';
 import '../post/create_post_screen.dart';
+import '../auth/signin.dart';
+import '../home/edit_profile_screen.dart';
 
-import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
-import 'package:vouse_flutter/presentation/widgets/post/post_card.dart';
-
-/// An enhanced Home screen that displays:
-/// - User profile with avatar and greeting
-/// - Three horizontal rows of posts:
-///   - Posted
-///   - Scheduled
-///   - Drafts
+/// A comprehensive home screen with a dynamic, multi-browse carousel layout.
 ///
-/// Includes an AppBar with refresh and logout buttons, plus a FAB for creating new posts.
-/// The screen automatically refreshes when returning from the Create Post screen.
+/// Features:
+/// - Sleek user profile information
+/// - Dynamic multi-browse carousel
+/// - Refresh and logout actions
+/// - Floating action button for creating new posts
 class HomeScreen extends ConsumerStatefulWidget {
+  /// Creates a [HomeScreen] with default configuration.
   const HomeScreen({super.key});
 
   @override
@@ -37,20 +34,23 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Current user profile information.
   UserEntity? _userProfile;
+
+  /// Loading state for initial profile fetch.
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Remove the native splash screen after the first frame is rendered.
+    // Remove splash screen and load user profile after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
       _loadUserProfile();
     });
   }
 
-  /// Loads the user profile from the local database
+  /// Fetches the current user's profile from local database.
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
 
@@ -73,42 +73,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  /// Refreshes all post data by invalidating the providers.
-  /// This forces Riverpod to re-fetch the data from the repositories.
+  /// Refreshes user data and post providers.
   void _refreshData() {
-    ref.invalidate(draftPostsProvider);
-    ref.invalidate(scheduledPostsProvider);
-    ref.invalidate(postedPostsProvider);
     _loadUserProfile();
   }
 
-  /// Navigates to the Create Post screen and refreshes data when returning.
-  ///
-  /// This ensures that any newly created drafts or scheduled posts will
-  /// immediately appear in the UI when the user returns to this screen.
+  /// Navigates to the Create Post screen.
   Future<void> _navigateToCreatePost() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
     );
-
-    // Refresh data when we return from create post screen
     _refreshData();
   }
 
-  /// Navigates to the Edit Profile screen and refreshes data when returning.
-  Future<void> _navigateToEditProfile() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const EditProfileScreen(isEditProfile: true)),
-    );
-
-    // Refresh user profile when we return
-    _loadUserProfile();
-  }
-
-  /// Handles the logout process.
-  /// Uses [firebaseAuthNotifierProvider] to sign out. If successful, navigates to [SignInScreen].
+  /// Handles user logout process.
   Future<void> _handleLogout() async {
-    // Sign out asynchronously.
     await ref.read(firebaseAuthNotifierProvider.notifier).signOut();
     if (!mounted) return;
 
@@ -128,18 +107,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the providers for real-time updates
-    final draftsAsync = ref.watch(draftPostsProvider);
-    final scheduledAsync = ref.watch(scheduledPostsProvider);
-    final postedAsync = ref.watch(postedPostsProvider);
-
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: () async {
-          _refreshData();
-        },
+        onRefresh: () async => _refreshData(),
         child: SafeArea(
           child: Container(
             width: context.width(),
@@ -160,41 +132,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // Main content
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.only(top: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Posted section
-                        _buildSectionHeader('Posted', Icons.check_circle),
-                        const SizedBox(height: 8),
-                        postedAsync.when(
-                          data: (posted) => _buildPostsRow(posted),
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (err, st) => Text('Error loading posted: $err'),
-                        ),
-                        const SizedBox(height: 24),
+                      children: const [
+                        // Dynamic Multi-Browse Carousel
+                        DynamicMultiBrowseCarousel(),
 
-                        // Scheduled section
-                        _buildSectionHeader('Scheduled', Icons.schedule),
-                        const SizedBox(height: 8),
-                        scheduledAsync.when(
-                          data: (scheduled) => _buildPostsRow(scheduled),
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (err, st) => Text('Error loading scheduled: $err'),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Drafts section
-                        _buildSectionHeader('Drafts', Icons.edit_note),
-                        const SizedBox(height: 8),
-                        draftsAsync.when(
-                          data: (drafts) => _buildPostsRow(drafts),
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (err, st) => Text('Error loading drafts: $err'),
-                        ),
-
-                        // Extra space at bottom for FAB
-                        const SizedBox(height: 80),
+                        // Extra space at bottom
+                        SizedBox(height: 80),
                       ],
                     ),
                   ),
@@ -204,7 +150,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
-      // Button to create new post
+
+      // Floating Action Button for creating new posts
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _navigateToCreatePost,
         icon: const Icon(Icons.add),
@@ -214,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// Builds a custom app bar with user profile information and actions.
+  /// Builds the custom app bar with user profile and actions.
   Widget _buildCustomAppBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -230,9 +177,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Avatar
+          // User Avatar
           GestureDetector(
-            onTap: _navigateToEditProfile,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const EditProfileScreen(isEditProfile: true),
+              ),
+            ),
             child: Container(
               width: 50,
               height: 50,
@@ -253,7 +204,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(width: 12),
 
-          // User info
+          // User Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +221,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Action buttons
+          // Action Buttons
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshData,
@@ -282,57 +233,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             tooltip: 'Sign out',
           ),
         ],
-      ),
-    );
-  }
-
-  /// Builds a section header with title and icon.
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: vPrimaryColor),
-        const SizedBox(width: 8),
-        Text(title, style: boldTextStyle(size: 18)),
-      ],
-    );
-  }
-
-  /// Builds a horizontally scrolling row of [PostCard]s.
-  /// If empty => show a quick customized empty state.
-  Widget _buildPostsRow(List<PostEntity> posts) {
-    if (posts.isEmpty) {
-      return Container(
-        height: 120,
-        alignment: Alignment.center,
-        margin: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(200),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: vPrimaryColor.withAlpha(50)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox, size: 40, color: vPrimaryColor.withAlpha(150)),
-            const SizedBox(height: 8),
-            Text(
-              'No posts yet',
-              style: secondaryTextStyle(color: vBodyGrey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 350,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: posts.length,
-        itemBuilder: (ctx, index) {
-          final p = posts[index];
-          return PostCard(post: p); // each card is 320x350
-        },
       ),
     );
   }

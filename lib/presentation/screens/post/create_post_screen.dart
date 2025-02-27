@@ -17,10 +17,10 @@ import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
 import '../../providers/post/post_text_provider.dart';
-import '../../widgets/post/post_options.dart';
-import '../../widgets/post/post_text.dart';
-import '../../widgets/post/selected_images_preview.dart';
-import '../../widgets/post/schedule_post_bottom_sheet.dart';
+import '../../widgets/post/create_post/post_options.dart';
+import '../../widgets/post/create_post/post_text.dart';
+import '../../widgets/post/create_post/selected_images_preview.dart';
+import '../../widgets/post/create_post/schedule_post_bottom_sheet.dart';
 
 /// A screen where the user can create a new post:
 /// - Enter text in [PostText]

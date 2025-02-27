@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 
-import '../../../core/util/colors.dart';
-import '../../../core/util/common.dart';
-import '../../providers/post/post_text_provider.dart';
-import '../../providers/post/post_location_provider.dart';
+import '../../../../core/util/colors.dart';
+import '../../../../core/util/common.dart';
+import '../../../providers/post/post_text_provider.dart';
+import '../../../providers/post/post_location_provider.dart';
 import 'location_tag_widget.dart';
 
 /// A widget that provides an input area for creating or editing a post.

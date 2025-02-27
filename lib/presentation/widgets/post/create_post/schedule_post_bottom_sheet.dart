@@ -7,18 +7,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/resources/data_state.dart';
-import '../../../core/util/colors.dart';
-import '../../../core/util/common.dart';
-import '../../../core/util/image_utils.dart';
-import '../../../domain/entities/local_db/post_entity.dart';
-import '../../../domain/usecases/post/save_post_with_upload_usecase.dart';
-import '../../providers/post/post_text_provider.dart';
-import '../../providers/post/post_images_provider.dart';
-import '../../providers/post/post_location_provider.dart';
-import '../../providers/post/save_post_with_upload_provider.dart';
-import '../../widgets/post/location_tag_widget.dart';
-import '../../widgets/post/selected_images_preview.dart';
+import '../../../../core/resources/data_state.dart';
+import '../../../../core/util/colors.dart';
+import '../../../../core/util/common.dart';
+import '../../../../core/util/image_utils.dart';
+import '../../../../domain/entities/local_db/post_entity.dart';
+import '../../../../domain/usecases/post/save_post_with_upload_usecase.dart';
+import '../../../providers/post/post_text_provider.dart';
+import '../../../providers/post/post_images_provider.dart';
+import '../../../providers/post/post_location_provider.dart';
+import '../../../providers/post/save_post_with_upload_provider.dart';
+import 'location_tag_widget.dart';
+import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
 
 /// A bottom sheet that allows the user to schedule a post for a future date/time,

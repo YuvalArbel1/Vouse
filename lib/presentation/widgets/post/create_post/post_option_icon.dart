@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
 
-import '../../../core/util/colors.dart';
+import '../../../../core/util/colors.dart';
 
 /// A reusable widget function that creates a small icon with label below.
 Widget buildOptionIcon({

@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
-import '../../../core/util/colors.dart';
-import '../../providers/post/post_images_provider.dart';
-import '../../screens/post/full_screen_image_preview.dart';
+import '../../../../core/util/colors.dart';
+import '../../../providers/post/post_images_provider.dart';
+import '../../../screens/post/full_screen_image_preview.dart';
 
 /// A widget that displays a horizontal list of selected images.
 ///

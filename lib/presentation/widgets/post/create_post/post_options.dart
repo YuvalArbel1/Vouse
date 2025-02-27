@@ -6,13 +6,13 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/util/colors.dart';
-import '../../../core/util/common.dart';
-import '../../screens/post/select_location_screen.dart';
+import '../../../../core/util/colors.dart';
+import '../../../../core/util/common.dart';
+import '../../../screens/post/select_location_screen.dart';
 import 'ai_text_generation_dialog.dart';
 import 'post_option_icon.dart';
 import 'recent_images_row.dart';
-import '../../providers/post/post_images_provider.dart';
+import '../../../providers/post/post_images_provider.dart';
 
 /// A widget that displays the bottom options for the "Create Post" screen.
 ///

@@ -98,7 +98,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/vouse_bg.jpg
-    - assets/images/wa_facebook.png
     - assets/images/vouse_app_logo.png
     - assets/images/background_image.png
     - assets/images/vouse_app_logo_white.png

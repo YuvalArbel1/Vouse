@@ -2,9 +2,9 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:nb_utils/nb_utils.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/util/colors.dart';
@@ -14,7 +14,6 @@ import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../providers/auth/firebase/firebase_auth_notifier.dart';
 import '../../widgets/post/post_preview/multi_browse_carousel.dart';
-import '../post/create_post_screen.dart';
 import '../auth/signin.dart';
 import '../home/edit_profile_screen.dart';
 
@@ -24,7 +23,6 @@ import '../home/edit_profile_screen.dart';
 /// - Sleek user profile information
 /// - Dynamic multi-browse carousel
 /// - Refresh and logout actions
-/// - Floating action button for creating new posts
 class HomeScreen extends ConsumerStatefulWidget {
   /// Creates a [HomeScreen] with default configuration.
   const HomeScreen({super.key});
@@ -48,6 +46,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       FlutterNativeSplash.remove();
       _loadUserProfile();
     });
+
+    // Hide status/nav bars
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
   }
 
   /// Fetches the current user's profile from local database.
@@ -78,14 +82,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _loadUserProfile();
   }
 
-  /// Navigates to the Create Post screen.
-  Future<void> _navigateToCreatePost() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
-    _refreshData();
-  }
-
   /// Handles user logout process.
   Future<void> _handleLogout() async {
     await ref.read(firebaseAuthNotifierProvider.notifier).signOut();
@@ -107,6 +103,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -114,8 +113,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () async => _refreshData(),
         child: SafeArea(
           child: Container(
-            width: context.width(),
-            height: context.height(),
+            width: width,
+            height: height,
             decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/images/vouse_bg.jpg'),
@@ -150,14 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
-
-      // Floating Action Button for creating new posts
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToCreatePost,
-        icon: const Icon(Icons.add),
-        label: const Text("New Post"),
-        backgroundColor: vPrimaryColor,
-      ),
+      // No floating action button anymore as requested
     );
   }
 
@@ -189,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 50,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: vPrimaryColor.withAlpha(30),
+                color: vPrimaryColor.withAlpha(26),
                 image: _userProfile?.avatarPath != null
                     ? DecorationImage(
                   image: FileImage(File(_userProfile!.avatarPath!)),
@@ -211,11 +203,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Text(
                   'Hey ${_userProfile?.fullName ?? 'there'}!',
-                  style: boldTextStyle(size: 18),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   FirebaseAuth.instance.currentUser?.email ?? '',
-                  style: secondaryTextStyle(size: 12),
+                  style: TextStyle(fontSize: 12, color: vBodyGrey),
                 ),
               ],
             ),

@@ -79,12 +79,6 @@ class _FullScreenImagePreviewState
     if (widget.useDirectList) {
       // Clear the local images list
       _localImages.clear();
-
-      // Restore default system overlays
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
-      );
     }
 
     super.dispose();

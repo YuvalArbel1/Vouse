@@ -1,7 +1,5 @@
 // lib/presentation/widgets/post/post_preview/dynamic_multi_browse_carousel.dart
 
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -20,7 +18,7 @@ class DynamicMultiBrowseCarousel extends ConsumerStatefulWidget {
   const DynamicMultiBrowseCarousel({super.key});
 
   @override
-  _DynamicMultiBrowseCarouselState createState() =>
+  ConsumerState<DynamicMultiBrowseCarousel> createState() =>
       _DynamicMultiBrowseCarouselState();
 }
 
@@ -30,6 +28,11 @@ class _DynamicMultiBrowseCarouselState
   late PageController _postedController;
   late PageController _scheduledController;
   late PageController _draftsController;
+
+  // Track current page for each carousel
+  int _currentPostedPage = 0;
+  int _currentScheduledPage = 0;
+  int _currentDraftsPage = 0;
 
   @override
   void initState() {
@@ -68,6 +71,8 @@ class _DynamicMultiBrowseCarouselState
         _buildCarouselSection(
           ref.watch(postedPostsProvider),
           _postedController,
+          currentPage: _currentPostedPage,
+          onPageChanged: (page) => setState(() => _currentPostedPage = page),
         ),
 
         const SizedBox(height: 16),
@@ -77,6 +82,8 @@ class _DynamicMultiBrowseCarouselState
         _buildCarouselSection(
           ref.watch(scheduledPostsProvider),
           _scheduledController,
+          currentPage: _currentScheduledPage,
+          onPageChanged: (page) => setState(() => _currentScheduledPage = page),
         ),
 
         const SizedBox(height: 16),
@@ -86,6 +93,8 @@ class _DynamicMultiBrowseCarouselState
         _buildCarouselSection(
           ref.watch(draftPostsProvider),
           _draftsController,
+          currentPage: _currentDraftsPage,
+          onPageChanged: (page) => setState(() => _currentDraftsPage = page),
         ),
       ],
     );
@@ -108,8 +117,10 @@ class _DynamicMultiBrowseCarouselState
   /// Builds a carousel section with intelligent navigation
   Widget _buildCarouselSection(
     AsyncValue<List<PostEntity>> asyncPosts,
-    PageController controller,
-  ) {
+    PageController controller, {
+    required int currentPage,
+    required Function(int) onPageChanged,
+  }) {
     return asyncPosts.when(
       data: (posts) {
         if (posts.isEmpty) {
@@ -124,6 +135,7 @@ class _DynamicMultiBrowseCarouselState
               child: PageView.builder(
                 controller: controller,
                 itemCount: posts.length,
+                onPageChanged: onPageChanged,
                 itemBuilder: (context, index) {
                   return AnimatedBuilder(
                     animation: controller,
@@ -158,8 +170,15 @@ class _DynamicMultiBrowseCarouselState
                 left: 0,
                 child: _buildNavigationIndicator(
                   direction: -1,
-                  controller: controller,
+                  currentPage: currentPage,
                   postCount: posts.length,
+                  onTap: (direction) {
+                    controller.animateToPage(
+                      currentPage + direction,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
                 ),
               ),
 
@@ -168,8 +187,15 @@ class _DynamicMultiBrowseCarouselState
                 right: 0,
                 child: _buildNavigationIndicator(
                   direction: 1,
-                  controller: controller,
+                  currentPage: currentPage,
                   postCount: posts.length,
+                  onTap: (direction) {
+                    controller.animateToPage(
+                      currentPage + direction,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
                 ),
               ),
             ]
@@ -184,46 +210,32 @@ class _DynamicMultiBrowseCarouselState
   /// Builds a context-aware navigation indicator
   Widget _buildNavigationIndicator({
     required int direction,
-    required PageController controller,
+    required int currentPage,
     required int postCount,
+    required Function(int) onTap,
   }) {
-    // Calculate the current page based on the controller's current state
-    int currentPage = controller.hasClients ? controller.page?.round() ?? 0 : 0;
-
     // Determine if navigation is possible
-    bool canNavigate =
-        direction > 0 ? currentPage < postCount - 1 : currentPage > 0;
+    bool canNavigate = direction > 0
+        ? currentPage < postCount - 1 // Show right arrow if not at last item
+        : currentPage > 0; // Show left arrow if not at first item
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: canNavigate ? 1.0 : 0.0,
-      child: GestureDetector(
-        onTap: canNavigate
-            ? () {
-                controller.animateToPage(
-                  currentPage + direction,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              }
-            : null,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color:
-                vPrimaryColor.withAlpha((canNavigate ? 51 : 0)),
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          // Ensure perfect centering
-          child: Icon(
-            direction > 0 ? Icons.arrow_forward_ios : Icons.arrow_back_ios,
-            color:
-                canNavigate ? vPrimaryColor.withAlpha(178) : Colors.transparent,
-            size: 20,
-          ),
+    return GestureDetector(
+      onTap: canNavigate ? () => onTap(direction) : null,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: canNavigate ? vPrimaryColor.withAlpha(51) : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        // Ensure perfect centering
+        child: Icon(
+          direction > 0 ? Icons.arrow_forward : Icons.arrow_back,
+          color:
+              canNavigate ? vPrimaryColor.withAlpha(178) : Colors.transparent,
+          size: 20,
         ),
       ),
     );

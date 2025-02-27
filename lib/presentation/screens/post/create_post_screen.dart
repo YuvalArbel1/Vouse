@@ -65,11 +65,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     // Restore the status bar color
     setStatusBarColor(vAppLayoutBackground);
 
-    // Restore default system overlays
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
+
     super.dispose();
   }
 

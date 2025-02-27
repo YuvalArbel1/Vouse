@@ -11,7 +11,7 @@ import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
-import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
+import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
@@ -24,7 +24,7 @@ import '../../providers/local_db/database_provider.dart';
 /// 2. If the user is not verified, navigate to [VerificationPendingScreen].
 /// 3. If the user is verified, check the local DB:
 ///    - If no profile exists, navigate to [EditProfileScreen].
-///    - Otherwise, navigate to [HomeScreen].
+///    - Otherwise, navigate to [AppNavigator] which handles the main app navigation.
 class AppWrapper extends ConsumerStatefulWidget {
   const AppWrapper({super.key});
 
@@ -75,8 +75,6 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   /// 2. Verifies the user's email.
   /// 3. Retrieves the user profile from the local database.
   /// 4. Navigates to the appropriate screen.
-  // lib/presentation/screens/splash/app_wrapper.dart
-
   Future<void> _initFlow() async {
     // Ensure the widget is still mounted before proceeding.
     if (!mounted) return;
@@ -114,10 +112,10 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         // No profile for THIS specific user ID - go to EditProfileScreen
         _pushNext(const EditProfileScreen());
       } else {
-        // Profile exists for this user - go to HomeScreen
+        // Profile exists for this user - go to main app with bottom navigation
         await Future.delayed(_homeDelay);
         if (!mounted) return;
-        _pushNext(const HomeScreen());
+        _pushNext(const AppNavigator());
       }
     } else if (result is DataFailed<UserEntity?>) {
       // On DB error, fallback to SignInScreen

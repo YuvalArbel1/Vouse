@@ -8,14 +8,15 @@ import '../../../core/util/colors.dart';
 /// Provides the currently selected bottom navigation index
 final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
-/// A custom animated bottom navigation bar with a floating center button.
+/// A custom animated bottom navigation bar with a floating app logo button.
 ///
 /// Features:
-/// - Smooth selection animations
-/// - Elevated center button for post creation
-/// - Accent color theme
+/// - Smooth selection animations with scale and slide effects
+/// - Elevated center button with app logo
+/// - Custom accent color theming
 /// - Tab selection state management via Riverpod
-/// - Proper respect for system navigation insets
+/// - Proper handling of system navigation bar insets
+/// - Beautiful ripple effects and transitions
 class CustomBottomNavBar extends ConsumerWidget {
   /// Function to handle when a tab is selected
   final Function(int) onTabSelected;
@@ -47,8 +48,8 @@ class CustomBottomNavBar extends ConsumerWidget {
         ],
         // Add rounded top corners for better visual separation
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
       ),
       child: Stack(
@@ -93,12 +94,12 @@ class CustomBottomNavBar extends ConsumerWidget {
                 onTap: () => _handleTabTap(ref, 2),
               ),
 
-              // Profile tab
+              // Settings tab (was Profile)
               _buildNavItem(
                 context: context,
-                icon: Icons.person_outline,
-                selectedIcon: Icons.person,
-                label: 'Profile',
+                icon: Icons.settings_outlined,
+                selectedIcon: Icons.settings,
+                label: 'Settings',
                 index: 3,
                 currentIndex: currentIndex,
                 onTap: () => _handleTabTap(ref, 3),
@@ -106,7 +107,7 @@ class CustomBottomNavBar extends ConsumerWidget {
             ],
           ),
 
-          // Centered floating button
+          // Centered floating button with app logo
           Positioned.fill(
             child: Align(
               alignment: Alignment.topCenter,
@@ -130,88 +131,114 @@ class CustomBottomNavBar extends ConsumerWidget {
   }) {
     final isSelected = currentIndex == index;
 
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Animated icon with scale effect
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              padding: EdgeInsets.all(isSelected ? 8 : 0),
-              decoration: BoxDecoration(
-                color: isSelected ? vAccentColor.withAlpha(26) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0, end: isSelected ? 1.0 : 0.0),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: 1.0 + (value * 0.2),
-                    child: Icon(
-                      isSelected ? selectedIcon : icon,
-                      color: isSelected ? vAccentColor : Colors.grey,
-                      size: 24,
-                    ),
-                  );
-                },
-              ),
-            ),
+    // Define colors based on selection state
+    final Color iconColor = isSelected ? vAccentColor : Colors.grey;
+    final Color textColor = isSelected ? vAccentColor : Colors.grey;
+    final Color bgColor = isSelected ? vAccentColor.withAlpha(26) : Colors.transparent;
 
-            // Label text with slide-up animation
-            AnimatedOpacity(
-              opacity: isSelected ? 1.0 : 0.6,
-              duration: const Duration(milliseconds: 200),
-              child: AnimatedContainer(
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          splashColor: vAccentColor.withAlpha(40),
+          highlightColor: vAccentColor.withAlpha(20),
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated icon container with scale and background
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.all(isSelected ? 10 : 8),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: isSelected ? 1.0 : 0.0),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 1.0 + (value * 0.2),
+                      child: Icon(
+                        isSelected ? selectedIcon : icon,
+                        color: iconColor,
+                        size: 24,
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Label text with slide and opacity transitions
+              AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
-                transform: Matrix4.translationValues(0, isSelected ? 0 : 4, 0),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected ? vAccentColor : Colors.grey,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: isSelected ? 12 : 11,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                child: AnimatedOpacity(
+                  opacity: isSelected ? 1.0 : 0.7,
+                  duration: const Duration(milliseconds: 200),
+                  child: AnimatedPadding(
+                    padding: EdgeInsets.only(top: isSelected ? 4 : 6),
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(label),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// Builds the elevated center button for post creation
+  /// Builds the elevated center button with app logo
   Widget _buildCenterButton() {
     return Transform.translate(
       offset: const Offset(0, -20),
-      child: GestureDetector(
-        onTap: onCreatePostPressed,
-        child: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: vAccentColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: vAccentColor.withAlpha(77),
-                blurRadius: 8,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onCreatePostPressed,
+          customBorder: const CircleBorder(),
+          splashColor: vAccentColor.withAlpha(40),
+          highlightColor: vAccentColor.withAlpha(20),
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: vPrimaryColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: vPrimaryColor.withAlpha(77),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              // Ensure perfect centering with explicit sizing and alignment
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: Image.asset(
+                    'assets/images/vouse_app_logo_white.png',
+                    width: 30,
+                    height: 30,
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 30,
+            ),
           ),
         ),
       ),
@@ -220,7 +247,13 @@ class CustomBottomNavBar extends ConsumerWidget {
 
   /// Handles tab selection
   void _handleTabTap(WidgetRef ref, int index) {
+    // Add haptic feedback (optional)
+    // HapticFeedback.lightImpact();
+
+    // Update the provider state
     ref.read(bottomNavIndexProvider.notifier).state = index;
+
+    // Call the callback
     onTabSelected(index);
   }
 }

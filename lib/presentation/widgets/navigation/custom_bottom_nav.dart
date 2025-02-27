@@ -15,6 +15,7 @@ final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 /// - Elevated center button for post creation
 /// - Accent color theme
 /// - Tab selection state management via Riverpod
+/// - Proper respect for system navigation insets
 class CustomBottomNavBar extends ConsumerWidget {
   /// Function to handle when a tab is selected
   final Function(int) onTabSelected;
@@ -44,6 +45,11 @@ class CustomBottomNavBar extends ConsumerWidget {
             offset: const Offset(0, -5),
           ),
         ],
+        // Add rounded top corners for better visual separation
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Stack(
         children: [

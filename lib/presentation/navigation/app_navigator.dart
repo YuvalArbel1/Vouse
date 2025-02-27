@@ -1,6 +1,7 @@
 // lib/presentation/navigation/app_navigator.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
 import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
@@ -15,23 +16,52 @@ import '../screens/post_history/scheduled_posts_screen.dart';
 final currentScreenProvider = StateProvider<Widget>((ref) => const HomeScreen());
 
 /// An app-wide navigator that handles main navigation with bottom nav bar
-class AppNavigator extends ConsumerWidget {
+class AppNavigator extends ConsumerStatefulWidget {
   const AppNavigator({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppNavigator> createState() => _AppNavigatorState();
+}
+
+class _AppNavigatorState extends ConsumerState<AppNavigator> {
+  @override
+  void initState() {
+    super.initState();
+    // Ensure system UI is properly configured for bottom nav
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+
+    // Make status bar transparent
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentScreen = ref.watch(currentScreenProvider);
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final bottomPadding = mediaQuery.padding.bottom;
 
     return Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: currentScreen,
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        onTabSelected: (index) => _navigateToTab(ref, index),
-        onCreatePostPressed: () => _navigateToCreatePost(context),
+      // SafeArea only on bottom to respect system navigation
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: CustomBottomNavBar(
+          onTabSelected: (index) => _navigateToTab(ref, index),
+          onCreatePostPressed: () => _navigateToCreatePost(context),
+        ),
       ),
-      extendBody: true, // Makes the bottom nav bar transparent for better floating effect
+      extendBody: true, // Makes content go behind the bottom nav for transparency
     );
   }
 

@@ -156,6 +156,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
 
       final images = ref.read(postImagesProvider);
       final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
+
       if (!mounted) return;
 
       final loc = ref.read(postLocationProvider);

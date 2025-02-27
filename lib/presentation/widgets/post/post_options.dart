@@ -16,17 +16,15 @@ import '../../providers/post/post_images_provider.dart';
 
 /// A widget that displays the bottom options for the "Create Post" screen.
 ///
-/// This widget includes:
-/// 1. A horizontally scrollable row containing the camera option and the most recent 4 images,
-///    provided by the [RecentImagesRow] widget.
-/// 2. A row of action icons for additional options:
-///    - **Gallery**: Opens the device gallery to select an image.
-///    - **Location**: Navigates to the location selection screen.
-///    - **AI**: Opens an AI text generation dialog.
+/// This includes:
+/// 1. [RecentImagesRow] for camera + recent local images.
+/// 2. A row of extra icons for:
+///   - Gallery
+///   - Location
+///   - AI text generation
 ///
-/// The container uses a common shadow style from [vouseBoxDecoration] to maintain consistency.
+/// The container uses a shadow style from [vouseBoxDecoration] with top-only rounding.
 class PostOptions extends ConsumerStatefulWidget {
-  /// Creates a [PostOptions] widget.
   const PostOptions({super.key});
 
   @override
@@ -36,40 +34,49 @@ class PostOptions extends ConsumerStatefulWidget {
 class _PostOptionsState extends ConsumerState<PostOptions> {
   final ImagePicker _picker = ImagePicker();
 
-  /// Attempts to add a new image to the post.
-  ///
-  /// If fewer than 4 images are currently selected, the image at the provided [path]
-  /// is added; otherwise, a toast message is shown.
-  void _attemptAddImage(String path) {
-    final currentImages = ref.read(postImagesProvider);
-    if (currentImages.length >= 4) {
-      toast("You can't add more than 4 images");
-    } else {
-      ref.read(postImagesProvider.notifier).addImage(path);
-    }
-  }
-
-  /// Opens the device gallery to allow the user to pick an image.
-  ///
-  /// If an image is selected, its file path is added via [_attemptAddImage].
+  /// Picks an image from the system gallery and calls [addImageFromGallery]
+  /// to store ephemeral path + MD5 deduping.
   Future<void> _pickFromGallery() async {
     final XFile? pickedFile =
         await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
-    _attemptAddImage(pickedFile.path);
+    final path = pickedFile.path;
+    final images = ref.read(postImagesProvider);
+
+    // If user picks an already selected ephemeral path (less likely from the system UI),
+    // we remove it. Typically ephemeral path from gallery is unique each pick.
+    // But let's handle the scenario:
+    if (images.contains(path)) {
+      // remove
+      ref.read(postImagesProvider.notifier).removeImage(path);
+      return;
+    }
+
+    // else attempt to add
+    final result =
+        await ref.read(postImagesProvider.notifier).addImageFromGallery(path);
+
+    switch (result) {
+      case AddImageResult.duplicate:
+        toast("You've already selected this image!");
+        break;
+      case AddImageResult.maxReached:
+        toast("You can't add more than 4 images");
+        break;
+      case AddImageResult.success:
+        // no toast needed
+        break;
+    }
   }
 
-  /// Handles the AI option press by showing the [AiTextGenerationDialog].
-  ///
-  /// If the dialog returns generated text, a toast message is displayed.
-  void _onAIPressed() async {
+  /// Opens an [AiTextGenerationDialog] for generating post text via AI.
+  Future<void> _onAIPressed() async {
     final generatedText = await showDialog<String>(
       context: context,
       builder: (_) => const AiTextGenerationDialog(),
     );
 
-    // If non-empty text is returned, show a confirmation toast.
     if (generatedText != null && generatedText.isNotEmpty) {
       toast("AI text inserted: $generatedText");
     }
@@ -78,12 +85,10 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: false, // Only apply bottom safe area.
+      top: false,
       child: Container(
         width: context.width(),
         padding: const EdgeInsets.all(16),
-        // Using the common vouseBoxDecoration for shadow, and overriding the borderRadius
-        // to apply top-only rounding.
         decoration: vouseBoxDecoration(
           backgroundColor: vAppLayoutBackground,
           shadowOpacity: 20,
@@ -94,11 +99,11 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1) Recent images row.
+            // The row with camera + recent images
             const RecentImagesRow(),
             const SizedBox(height: 16),
 
-            // 2) Row of option icons: Gallery, Location, and AI.
+            // Additional icons: Gallery, Location, AI
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -119,7 +124,8 @@ class _PostOptionsState extends ConsumerState<PostOptions> {
                     );
                     if (chosenLatLng == null) return;
                     toast(
-                        "Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}");
+                      "Location chosen: ${chosenLatLng.latitude},${chosenLatLng.longitude}",
+                    );
                   },
                 ),
                 buildOptionIcon(

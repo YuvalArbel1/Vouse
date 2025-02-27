@@ -25,6 +25,8 @@ class SelectedImagesPreview extends ConsumerWidget {
       MaterialPageRoute(
         builder: (_) => FullScreenImagePreview(
           initialIndex: index,
+          useDirectList: false,
+          allowDeletion: true,
         ),
       ),
     );

@@ -9,18 +9,15 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../../core/util/colors.dart';
-import '../../../core/util/common.dart';
 import '../../providers/post/post_images_provider.dart';
 
-/// A widget that displays a row containing two fixed icons and up to four recent images.
-///
-/// The row is composed of:
-/// - A camera icon that launches the camera to capture a new image.
-/// - Up to 4 recent images retrieved from the device's photo library.
-///
-/// Tapping an image or icon attempts to add that image's path to the post (if fewer than 4 images are selected).
+/// A widget that displays:
+/// - A camera icon
+/// - Up to 4 recent images from the device
+/// The user can tap:
+///   - if not selected => try to add (with MD5 check),
+///   - if selected => remove it (green border gone).
 class RecentImagesRow extends ConsumerStatefulWidget {
-  /// Creates a [RecentImagesRow] widget.
   const RecentImagesRow({super.key});
 
   @override
@@ -34,15 +31,11 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
   @override
   void initState() {
     super.initState();
-    // Request necessary permissions and fetch recent images after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPermissionsAndFetchImages();
     });
   }
 
-  /// Requests camera and photos permissions.
-  ///
-  /// If permissions are granted, it fetches the last 4 images from the device.
   Future<void> _initPermissionsAndFetchImages() async {
     final statusCamera = await Permission.camera.request();
     final statusPhotos = await Permission.photos.request();
@@ -51,11 +44,9 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
       toast("Need camera & photos permission to access images");
       return;
     }
-
     await _fetchLast4Images();
   }
 
-  /// Retrieves up to 4 recent image files from the device's photo library.
   Future<void> _fetchLast4Images() async {
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image,
@@ -69,86 +60,128 @@ class _RecentImagesRowState extends ConsumerState<RecentImagesRow> {
     final files = <File>[];
     for (final asset in assets) {
       final file = await asset.file;
-      if (file != null) {
-        files.add(file);
-      }
+      if (file != null) files.add(file);
     }
 
     setState(() => _recentImages = files);
   }
 
-  /// Attempts to add the image at [path] to the post.
-  ///
-  /// If there are already 4 images selected, a toast is displayed.
-  void _attemptAddImage(String path) {
-    final currentImages = ref.read(postImagesProvider);
-    if (currentImages.length >= 4) {
-      toast("You can't add more than 4 images");
-    } else {
-      ref.read(postImagesProvider.notifier).addImage(path);
-    }
-  }
-
-  /// Captures a new image using the device camera and adds it to the post.
   Future<void> _captureNewImage() async {
     final statusCamera = await Permission.camera.request();
     if (statusCamera.isDenied) {
       toast("Camera permission denied");
       return;
     }
+    final XFile? picked = await _picker.pickImage(source: ImageSource.camera);
+    if (picked == null) return;
 
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.camera);
-    if (pickedFile == null) return;
+    _onImageTapped(picked.path);
+  }
 
-    _attemptAddImage(pickedFile.path);
+  /// Called when user taps a "recent" image or camera result.
+  /// If it's already selected => remove.
+  /// If it's new => add it and interpret the [AddImageResult].
+  Future<void> _onImageTapped(String ephemeralPath) async {
+    final images = ref.read(postImagesProvider);
+
+    // If already selected => remove
+    if (images.contains(ephemeralPath)) {
+      ref.read(postImagesProvider.notifier).removeImage(ephemeralPath);
+      return;
+    }
+
+    // Otherwise attempt to add
+    final notifier = ref.read(postImagesProvider.notifier);
+    final result = await notifier.addImageFromRecent(ephemeralPath);
+
+    // Show toast based on result
+    switch (result) {
+      case AddImageResult.duplicate:
+        toast("You've already selected this image!");
+        break;
+      case AddImageResult.maxReached:
+        toast("You can't add more than 4 images");
+        break;
+      case AddImageResult.success:
+        // no toast needed, but you can if you want
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Display up to 6 items: a camera icon plus up to 4 images.
+    final imagesInPost = ref.watch(postImagesProvider);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Camera icon.
-        buildItemContainer(
-          child: Icon(Icons.camera_alt, color: vPrimaryColor),
+        _buildIconContainer(
+          child: const Icon(Icons.camera_alt),
           onTap: _captureNewImage,
         ),
-        // Map over recent images.
         ..._recentImages.map((file) {
-          return buildItemContainer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(file, fit: BoxFit.cover),
-            ),
-            onTap: () => _attemptAddImage(file.path),
+          final path = file.path;
+          final alreadySelected = imagesInPost.contains(path);
+          return _buildIconContainer(
+            child: _buildImageThumbnail(file, alreadySelected),
+            onTap: () => _onImageTapped(path),
+            isSelected: alreadySelected,
           );
         }),
       ],
     );
   }
 
-  /// A helper method that returns a container with fixed dimensions and styling.
-  ///
-  /// Uses the common [vouseBoxDecoration] with a zero shadow opacity (i.e. no shadow)
-  /// and a border radius of 8, preserving the UI look while leveraging shared styles.
-  Widget buildItemContainer({
+  /// Container for each item (camera or thumbnail), with optional green border
+  Widget _buildIconContainer({
     required Widget child,
     required VoidCallback onTap,
+    bool isSelected = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 52,
         height: 62,
-        decoration: vouseBoxDecoration(
-          radius: 8,
-          backgroundColor: context.cardColor,
-          shadowOpacity: 0, // No shadow for these items.
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected ? Border.all(color: vAccentColor, width: 1) : null,
         ),
         child: child,
       ),
+    );
+  }
+
+  /// Adds a partial overlay if selected, plus a green check
+  Widget _buildImageThumbnail(File file, bool alreadySelected) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(file, fit: BoxFit.cover),
+        ),
+        if (alreadySelected)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withAlpha(76),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        if (alreadySelected)
+          Positioned(
+            top: 4,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: vAccentColor,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, size: 12, color: Colors.white),
+            ),
+          ),
+      ],
     );
   }
 }

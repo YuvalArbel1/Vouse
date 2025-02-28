@@ -13,6 +13,7 @@ import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.da
 import '../../../core/resources/data_state.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../../domain/entities/secure_db/x_auth_tokens.dart';
+import '../../navigation/app_navigator.dart';
 import '../../providers/auth/x/x_auth_providers.dart';
 import '../../providers/auth/x/x_token_providers.dart';
 import '../../providers/local_db/local_user_providers.dart';
@@ -177,7 +178,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            MaterialPageRoute(builder: (_) => const AppNavigator()),
           );
         }
       } else if (saveResult is DataFailed<void>) {

@@ -16,6 +16,7 @@ import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
+import '../../navigation/app_navigator.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
 import 'signup.dart';
@@ -72,6 +73,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   /// 4) On success, navigates to [HomeScreen].
   /// 5) If the error is "EMAIL_NOT_VERIFIED", goes to [VerificationPendingScreen].
   /// 6) Otherwise, shows a toast with the error.
+// lib/presentation/screens/auth/signin.dart - modify _handleLogin method
+
   Future<void> _handleLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -92,10 +95,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       if (!mounted) return; // Avoid using context if widget is unmounted.
 
       if (authState is DataSuccess<void>) {
+        // CHANGE THIS LINE: Navigate to AppNavigator, not HomeScreen
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const AppNavigator()),
         );
       } else if (authState is DataFailed<void>) {
+        // Keep your existing error handling
         final errorMsg = authState.error?.error ?? 'Unknown error';
 
         if (errorMsg == 'EMAIL_NOT_VERIFIED') {
@@ -151,7 +156,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             );
           } else {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => const AppNavigator()),
             );
           }
         } else {

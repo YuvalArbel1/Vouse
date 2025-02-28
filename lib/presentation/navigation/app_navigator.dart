@@ -10,6 +10,7 @@ import 'package:vouse_flutter/presentation/widgets/navigation/custom_bottom_nav.
 import 'package:vouse_flutter/core/util/colors.dart';
 
 // Updated imports to use the renamed screens
+import '../../core/util/ui_settings.dart';
 import '../screens/post_history/published_posts_screen.dart';
 import '../screens/post_history/upcoming_posts.dart';
 
@@ -37,36 +38,8 @@ class _AppNavigatorState extends ConsumerState<AppNavigator> {
   @override
   void initState() {
     super.initState();
-    // Configure edge-to-edge display
-    _configureEdgeToEdgeUI();
-  }
-
-  /// Configures the app for edge-to-edge UI experience
-  void _configureEdgeToEdgeUI() {
-    // Enable edge-to-edge display
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
-
-    // Make status bar and navigation bar transparent
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        // Make status bar transparent with light icons
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-
-        // Make navigation bar transparent with dark icons that work well on light backgrounds
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
-
-        // Remove dividers for cleaner look
-        systemNavigationBarDividerColor: Colors.transparent,
-
-        // Support both light and dark status bar styles based on content
-        statusBarBrightness: Brightness.dark,
-      ),
-    );
+    // Ensure proper UI settings are applied
+    UiSettings.applyEdgeToEdgeUI();
   }
 
   /// Navigate to create post screen
@@ -117,7 +90,8 @@ class _AppNavigatorState extends ConsumerState<AppNavigator> {
           // Add bottom padding for system navigation
           padding: EdgeInsets.only(bottom: bottomPadding),
           child: CustomBottomNavBar(
-            onTabSelected: (index) => ref.read(currentScreenProvider.notifier).state = index,
+            onTabSelected: (index) =>
+                ref.read(currentScreenProvider.notifier).state = index,
             onCreatePostPressed: () => _navigateToCreatePost(context),
             currentIndex: currentIndex,
           ),

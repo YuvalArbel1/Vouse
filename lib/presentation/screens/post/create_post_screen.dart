@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/image_utils.dart';
+import '../../../core/util/ui_settings.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../providers/local_db/local_post_providers.dart';
@@ -37,22 +38,21 @@ class CreatePostScreen extends ConsumerStatefulWidget {
 
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
+// lib/presentation/screens/post/create_post_screen.dart
+
+  @override
   void initState() {
     super.initState();
     _initializeScreen();
   }
 
-  /// Removes the native splash, hides system UI overlays, and sets a custom status bar color.
   void _initializeScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
     });
 
-    // Hide status/nav bars
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [],
-    );
+    // Modified to use centralized settings
+    UiSettings.applyEdgeToEdgeUI();
 
     // Once the widget is built, set the status bar color to match the card theme
     afterBuildCreated(() {
@@ -62,9 +62,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   @override
   void dispose() {
+    // IMPORTANT: Restore UI settings
+    UiSettings.restoreDefaultUI();
+
     // Restore the status bar color
     setStatusBarColor(vAppLayoutBackground);
-
 
     super.dispose();
   }

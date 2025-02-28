@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/util/colors.dart';
+import '../../../core/util/ui_settings.dart';
 import '../../providers/post/post_images_provider.dart';
 
 /// A full-screen viewer for images, which can operate in two modes:
@@ -56,28 +57,27 @@ class _FullScreenImagePreviewState
   List<String> _localImages = [];
 
   @override
+// lib/presentation/screens/post/full_screen_image_preview.dart
+
+  @override
   void initState() {
     super.initState();
-
-    // Hide status/nav bars for a fully immersive preview
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [],
-    );
+    UiSettings.applyFullImmersiveUI();
 
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _currentIndex);
 
     if (widget.useDirectList) {
-      // Copy the directImages into a local list so we can do removals easily
       _localImages = List<String>.from(widget.directImages ?? []);
     }
   }
 
   @override
   void dispose() {
+    // IMPORTANT: Restore UI settings when screen is disposed
+    UiSettings.restoreDefaultUI();
+
     if (widget.useDirectList) {
-      // Clear the local images list
       _localImages.clear();
     }
 

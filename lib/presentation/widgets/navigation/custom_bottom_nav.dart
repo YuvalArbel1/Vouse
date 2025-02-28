@@ -34,8 +34,10 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return Container(
-      height: 65, // Slight height reduction for better ergonomics
+      height: 65,
+
       // Remove full background color and shadows for a cleaner look
       // This helps with edge-to-edge design
       decoration: BoxDecoration(
@@ -59,52 +61,54 @@ class CustomBottomNavBar extends StatelessWidget {
       child: Stack(
         children: [
           // Main navigation row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // Home tab
-              _buildNavItem(
-                context: context,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: 'Home',
-                index: 0,
-                onTap: () => _handleTabTap(0),
-              ),
+          Positioned(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                // Home tab
+                _buildNavItem(
+                  context: context,
+                  icon: Icons.home_outlined,
+                  selectedIcon: Icons.home,
+                  label: 'Home',
+                  index: 0,
+                  onTap: () => _handleTabTap(0),
+                ),
 
-              // Published Posts tab (renamed from Post History)
-              _buildNavItem(
-                context: context,
-                icon: Icons.history_outlined,
-                selectedIcon: Icons.history,
-                label: 'Published',
-                index: 1,
-                onTap: () => _handleTabTap(1),
-              ),
+                // Published Posts tab (renamed from Post History)
+                _buildNavItem(
+                  context: context,
+                  icon: Icons.history_outlined,
+                  selectedIcon: Icons.history,
+                  label: 'Published',
+                  index: 1,
+                  onTap: () => _handleTabTap(1),
+                ),
 
-              // Empty space for center button
-              const SizedBox(width: 60),
+                // Empty space for center button
+                const SizedBox(width: 60),
 
-              // Upcoming Posts tab (renamed from Scheduled)
-              _buildNavItem(
-                context: context,
-                icon: Icons.schedule_outlined,
-                selectedIcon: Icons.schedule,
-                label: 'Upcoming',
-                index: 2,
-                onTap: () => _handleTabTap(2),
-              ),
+                // Upcoming Posts tab (renamed from Scheduled)
+                _buildNavItem(
+                  context: context,
+                  icon: Icons.schedule_outlined,
+                  selectedIcon: Icons.schedule,
+                  label: 'Upcoming',
+                  index: 2,
+                  onTap: () => _handleTabTap(2),
+                ),
 
-              // Profile tab
-              _buildNavItem(
-                context: context,
-                icon: Icons.person_outline,
-                selectedIcon: Icons.person,
-                label: 'Profile',
-                index: 3,
-                onTap: () => _handleTabTap(3),
-              ),
-            ],
+                // Profile tab
+                _buildNavItem(
+                  context: context,
+                  icon: Icons.person_outline,
+                  selectedIcon: Icons.person,
+                  label: 'Profile',
+                  index: 3,
+                  onTap: () => _handleTabTap(3),
+                ),
+              ],
+            ),
           ),
 
           // Centered floating button with app logo
@@ -133,7 +137,8 @@ class CustomBottomNavBar extends StatelessWidget {
     // Define colors based on selection state
     final Color iconColor = isSelected ? vAccentColor : Colors.grey;
     final Color textColor = isSelected ? vAccentColor : Colors.grey;
-    final Color bgColor = isSelected ? vAccentColor.withAlpha(26) : Colors.transparent;
+    final Color bgColor =
+        isSelected ? vAccentColor.withAlpha(26) : Colors.transparent;
 
     return Expanded(
       child: Material(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:vouse_flutter/presentation/screens/splash/app_wrapper.dart';
+import 'core/util/ui_settings.dart';
 import 'firebase_options.dart';
 
 /// The main entry point of the Vouse app.
@@ -17,6 +18,9 @@ void main() async {
 
   // Preserve the native splash screen so that it can be manually removed later.
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Apply edge-to-edge UI immediately at app start
+  UiSettings.applyEdgeToEdgeUI();
 
   // Initialize Firebase with the current platform's configuration.
   await Firebase.initializeApp(

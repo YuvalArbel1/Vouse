@@ -20,13 +20,13 @@ import 'package:vouse_flutter/presentation/widgets/home/motivation_card.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../providers/auth/firebase/firebase_auth_notifier.dart';
 import '../../providers/home/home_posts_providers.dart';
-import '../../widgets/post/post_preview/post_card.dart';
-import '../auth/signin.dart';
-import '../home/edit_profile_screen.dart';
-import '../post_history/published_posts_screen.dart';
-import '../post_history/upcoming_posts.dart';
-import '../profile/profile_screen.dart';
-import '../post/create_post_screen.dart';
+import '../../screens/auth/signin.dart';
+import '../../screens/home/edit_profile_screen.dart';
+import '../../screens/post/create_post_screen.dart';
+import '../../screens/post_history/published_posts_screen.dart';
+import '../../screens/post_history/upcoming_posts.dart';
+import '../../screens/profile/profile_screen.dart';
+import '../post/post_preview/post_card.dart';
 
 /// Home screen provider to manage loading state
 final homeScreenLoadingProvider = StateProvider<bool>((ref) => true);

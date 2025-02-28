@@ -2,7 +2,6 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -11,7 +10,6 @@ import 'package:uuid/uuid.dart';
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/image_utils.dart';
-import '../../../core/util/ui_settings.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../providers/local_db/local_post_providers.dart';
@@ -51,9 +49,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       FlutterNativeSplash.remove();
     });
 
-    // Modified to use centralized settings
-    UiSettings.applyEdgeToEdgeUI();
-
     // Once the widget is built, set the status bar color to match the card theme
     afterBuildCreated(() {
       setStatusBarColor(context.cardColor);
@@ -62,9 +57,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   @override
   void dispose() {
-    // IMPORTANT: Restore UI settings
-    UiSettings.restoreDefaultUI();
-
     // Restore the status bar color
     setStatusBarColor(vAppLayoutBackground);
 

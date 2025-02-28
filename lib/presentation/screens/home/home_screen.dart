@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 
 import '../../../core/util/colors.dart';
 import '../../../core/resources/data_state.dart';
-import '../../../core/util/ui_settings.dart';
 import '../../../domain/usecases/home/get_user_usecase.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
@@ -60,9 +59,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-
-    // Ensure main app UI settings are applied
-    UiSettings.applyEdgeToEdgeUI();
 
     // Setup animations
     _animationController = AnimationController(

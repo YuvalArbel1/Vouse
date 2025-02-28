@@ -2,7 +2,6 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/util/colors.dart';
@@ -62,7 +61,7 @@ class _FullScreenImagePreviewState
   @override
   void initState() {
     super.initState();
-    UiSettings.applyFullImmersiveUI();
+    UiSettings.hideAllSystemUI();
 
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _currentIndex);
@@ -75,7 +74,7 @@ class _FullScreenImagePreviewState
   @override
   void dispose() {
     // IMPORTANT: Restore UI settings when screen is disposed
-    UiSettings.restoreDefaultUI();
+    UiSettings.showAllSystemUI();
 
     if (widget.useDirectList) {
       _localImages.clear();

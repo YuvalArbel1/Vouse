@@ -13,7 +13,6 @@ import 'package:vouse_flutter/presentation/screens/auth/verification_pending_scr
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
-import '../../../core/util/ui_settings.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../providers/local_db/database_provider.dart';
@@ -113,8 +112,6 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         // No profile for THIS specific user ID - go to EditProfileScreen
         _pushNext(const EditProfileScreen());
       } else {
-        // Profile exists for this user - go to main app with bottom navigation
-        UiSettings.applyEdgeToEdgeUI();
         await Future.delayed(_homeDelay);
         if (!mounted) return;
         _pushNext(const AppNavigator());
@@ -137,9 +134,6 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
   void _pushNext(Widget screen) {
     if (!mounted) return;
-
-    // Ensure UI settings are applied before navigation
-    UiSettings.applyEdgeToEdgeUI();
 
     Navigator.pushReplacement(
       context,

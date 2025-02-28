@@ -1,36 +1,41 @@
 // lib/core/util/ui_settings.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Centralizes system UI settings for consistent navigation bar and status bar appearance
 class UiSettings {
-  /// Apply true edge-to-edge UI that hides system navigation bar
-  static void applyEdgeToEdgeUI() {
-    // This is the critical setting that was missing
+  /// Hide the system navigation bar but keep the status bar
+  static void hideSystemNavBar() {
     SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: [],
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top], // Only show status bar
     );
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
+        // Status bar settings
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        // These settings ensure transparency even if nav bar appears
+
+        // Navigation bar settings (these will apply if it ever shows)
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarContrastEnforced: false,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
   }
 
-  /// For screens that need all UI elements hidden (like fullscreen image)
-  static void applyFullImmersiveUI() {
+  /// Hide all system UI (for immersive screens like image preview)
+  static void hideAllSystemUI() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
-  /// Reset to default edge-to-edge
-  static void restoreDefaultUI() {
-    applyEdgeToEdgeUI();
+  /// Show both system bars (usually not needed in this app)
+  static void showAllSystemUI() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
   }
 }

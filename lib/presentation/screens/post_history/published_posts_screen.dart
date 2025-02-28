@@ -1,5 +1,4 @@
 // lib/presentation/screens/post_history/published_posts_screen.dart
-// Renamed from post_history_screen.dart for better clarity
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -32,7 +31,8 @@ class PublishedPostsScreen extends ConsumerStatefulWidget {
   const PublishedPostsScreen({super.key});
 
   @override
-  ConsumerState<PublishedPostsScreen> createState() => _PublishedPostsScreenState();
+  ConsumerState<PublishedPostsScreen> createState() =>
+      _PublishedPostsScreenState();
 }
 
 class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
@@ -50,7 +50,12 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
   String _activeFilter = 'All Time';
 
   /// Options for timeframe filtering
-  final List<String> _filterOptions = ['All Time', 'This Month', 'This Week', 'Today'];
+  final List<String> _filterOptions = [
+    'All Time',
+    'This Month',
+    'This Week',
+    'Today'
+  ];
 
   /// Current user profile data
   UserEntity? _userProfile;
@@ -157,8 +162,7 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     switch (_activeFilter) {
       case 'Today':
         _filteredPosts = postsAsync.where((post) {
-          return post.updatedAt != null &&
-              post.updatedAt!.isAfter(today) ||
+          return post.updatedAt != null && post.updatedAt!.isAfter(today) ||
               isSameDay(post.updatedAt!, today);
         }).toList();
         break;
@@ -250,173 +254,187 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: vPrimaryColor,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // App Bar
-            SliverAppBar(
-              expandedHeight: 180,
-              pinned: true,
-              backgroundColor: vPrimaryColor,
-              flexibleSpace: FlexibleSpaceBar(
-                title: const Text(
-                  'Published Posts',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Background with gradient overlay
-                    Image.asset(
-                      'assets/images/vouse_bg.jpg',
-                      fit: BoxFit.cover,
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            vPrimaryColor.withAlpha(100),
-                            vPrimaryColor.withAlpha(200),
-                          ],
-                        ),
+      // Use extendBodyBehindAppBar for edge-to-edge design
+      extendBodyBehindAppBar: true,
+      extendBody: true,
+      body: SafeArea(
+        top: false, // Allow content to extend under status bar
+        bottom: false, // Allow content to extend all the way to the bottom
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: vPrimaryColor,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            // Critical for proper scrolling
+            slivers: [
+              // App Bar
+              SliverAppBar(
+                expandedHeight: 180,
+                pinned: true,
+                backgroundColor: vPrimaryColor,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: const Text(
+                    'Published Posts',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Background with gradient overlay
+                      Image.asset(
+                        'assets/images/vouse_bg.jpg',
+                        fit: BoxFit.cover,
                       ),
-                    ),
-
-                    // Avatar and welcome text
-                    Positioned(
-                      left: 16,
-                      bottom: 60,
-                      child: Row(
-                        children: [
-                          if (_userProfile?.avatarPath != null)
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                                image: DecorationImage(
-                                  image: FileImage(File(_userProfile!.avatarPath!)),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            )
-                          else
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withAlpha(100),
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: const Icon(Icons.person, color: Colors.white),
-                            ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Your Story',
-                                style: TextStyle(
-                                  color: Colors.white.withAlpha(200),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                _userProfile?.fullName ?? 'User',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              vPrimaryColor.withAlpha(100),
+                              vPrimaryColor.withAlpha(200),
                             ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
-            // Filter chips
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _FilterHeaderDelegate(
-                filterOptions: _filterOptions,
-                activeFilter: _activeFilter,
-                onFilterChanged: _changeFilter,
-              ),
-            ),
-
-            // Content area
-            SliverToBoxAdapter(
-              child: _isLoading
-                  ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-                  : FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Engagement metrics
-                        _buildEngagementMetricsCard(),
-                        const SizedBox(height: 20),
-
-                        // Posts count
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Avatar and welcome text
+                      Positioned(
+                        left: 16,
+                        bottom: 60,
+                        child: Row(
                           children: [
-                            Text(
-                              '${_filteredPosts.length} ${_filteredPosts.length == 1 ? 'Post' : 'Posts'} ${_activeFilter != 'All Time' ? 'in $_activeFilter' : ''}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (_filteredPosts.isNotEmpty)
-                              TextButton.icon(
-                                onPressed: _navigateToCreatePost,
-                                icon: const Icon(Icons.add),
-                                label: const Text('New Post'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: vPrimaryColor,
+                            if (_userProfile?.avatarPath != null)
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
+                                  image: DecorationImage(
+                                    image: FileImage(
+                                        File(_userProfile!.avatarPath!)),
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
+                              )
+                            else
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withAlpha(100),
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(Icons.person,
+                                    color: Colors.white),
                               ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Your Story',
+                                  style: TextStyle(
+                                    color: Colors.white.withAlpha(200),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  _userProfile?.fullName ?? 'User',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-
-                        // Posts grid or empty state
-                        _filteredPosts.isEmpty
-                            ? _buildEmptyState()
-                            : _buildPostsGrid(),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+
+              // Filter chips
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _FilterHeaderDelegate(
+                  filterOptions: _filterOptions,
+                  activeFilter: _activeFilter,
+                  onFilterChanged: _changeFilter,
+                ),
+              ),
+
+              // Content area
+              SliverToBoxAdapter(
+                child: _isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                16.0, 16.0, 16.0, 100.0),
+                            // Add bottom padding for nav bar
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Engagement metrics
+                                _buildEngagementMetricsCard(),
+                                const SizedBox(height: 20),
+
+                                // Posts count
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${_filteredPosts.length} ${_filteredPosts.length == 1 ? 'Post' : 'Posts'} ${_activeFilter != 'All Time' ? 'in $_activeFilter' : ''}',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (_filteredPosts.isNotEmpty)
+                                      TextButton.icon(
+                                        onPressed: _navigateToCreatePost,
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('New Post'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: vPrimaryColor,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Posts grid or empty state
+                                _filteredPosts.isEmpty
+                                    ? _buildEmptyState()
+                                    : _buildPostsGrid(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
-      // Remove floating action button as it conflicts with bottom nav bar
     );
   }
 
@@ -436,14 +454,15 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Engagement Overview',
+                  '✨ Engagement Overview',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vPrimaryColor.withAlpha(30),
                     borderRadius: BorderRadius.circular(12),
@@ -461,7 +480,7 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
             ),
             const SizedBox(height: 16),
 
-            // Engagement metrics grid
+            // Engagement metrics grid with emojis
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -470,16 +489,29 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               children: [
-                _buildMetricItem('Likes', _engagementData['Likes']!.toInt(), Icons.favorite, Colors.red),
-                _buildMetricItem('Comments', _engagementData['Comments']!.toInt(), Icons.chat_bubble, Colors.blue),
-                _buildMetricItem('Reposts', _engagementData['Reposts']!.toInt(), Icons.repeat, Colors.green),
-                _buildMetricItem('Impressions', _engagementData['Impressions']!.toInt(), Icons.visibility, Colors.purple),
+                _buildMetricItem('❤️ Likes', _engagementData['Likes']!.toInt(),
+                    Icons.favorite, Colors.red),
+                _buildMetricItem(
+                    '💬 Comments',
+                    _engagementData['Comments']!.toInt(),
+                    Icons.chat_bubble,
+                    Colors.blue),
+                _buildMetricItem(
+                    '🔄 Reposts',
+                    _engagementData['Reposts']!.toInt(),
+                    Icons.repeat,
+                    Colors.green),
+                _buildMetricItem(
+                    '👁️ Views',
+                    _engagementData['Impressions']!.toInt(),
+                    Icons.visibility,
+                    Colors.purple),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // Mini chart placeholder - in a real app, this would be an actual chart
+            // Mini chart placeholder
             Container(
               height: 60,
               width: double.infinity,
@@ -539,19 +571,17 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
 
   /// Builds the posts grid layout
   Widget _buildPostsGrid() {
-    return GridView.builder(
+    return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 1,
-        childAspectRatio: 0.9,
-        mainAxisSpacing: 24,
-        crossAxisSpacing: 16,
-      ),
+      // Important to prevent nested scrolling conflicts
       itemCount: _filteredPosts.length,
       itemBuilder: (context, index) {
         final post = _filteredPosts[index];
-        return _buildPostItem(post);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: _buildPostItem(post),
+        );
       },
     );
   }
@@ -712,7 +742,7 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
             ),
             const SizedBox(height: 24),
             const Text(
-              'No published posts yet',
+              '📝 No published posts yet',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -722,8 +752,8 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
             const SizedBox(height: 12),
             Text(
               _activeFilter != 'All Time'
-                  ? 'There are no posts from $_activeFilter'
-                  : 'Start creating and posting content',
+                  ? '✨ There are no posts from $_activeFilter'
+                  : '✨ Time to share your first brilliant post!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -738,7 +768,8 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: vPrimaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -764,7 +795,24 @@ class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // Helper to get emoji for each filter
+    String _getFilterEmoji(String filter) {
+      switch (filter) {
+        case 'All Time':
+          return '🗓️ ';
+        case 'This Month':
+          return '📅 ';
+        case 'This Week':
+          return '📆 ';
+        case 'Today':
+          return '📌 ';
+        default:
+          return '';
+      }
+    }
+
     return Container(
       height: 60,
       color: Colors.white,
@@ -779,7 +827,14 @@ class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: ChoiceChip(
-                  label: Text(filter),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Add emoji based on filter
+                      Text(_getFilterEmoji(filter)),
+                      Text(filter),
+                    ],
+                  ),
                   selected: isActive,
                   onSelected: (selected) {
                     if (selected) {
@@ -795,7 +850,8 @@ class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: isActive ? vPrimaryColor : Colors.grey.withAlpha(100),
+                      color:
+                          isActive ? vPrimaryColor : Colors.grey.withAlpha(100),
                     ),
                   ),
                   elevation: isActive ? 2 : 0,
@@ -864,9 +920,12 @@ class _MiniChartPainter extends CustomPainter {
       final p1 = points[i];
 
       path.cubicTo(
-        p0.dx + (p1.dx - p0.dx) / 2, p0.dy,
-        p0.dx + (p1.dx - p0.dx) / 2, p1.dy,
-        p1.dx, p1.dy,
+        p0.dx + (p1.dx - p0.dx) / 2,
+        p0.dy,
+        p0.dx + (p1.dx - p0.dx) / 2,
+        p1.dy,
+        p1.dx,
+        p1.dy,
       );
     }
 

@@ -13,6 +13,7 @@ import '../../../core/util/colors.dart';
 /// - Custom accent color theming
 /// - Proper handling of system navigation bar insets
 /// - Beautiful ripple effects and transitions
+/// - Improved edge-to-edge design
 class CustomBottomNavBar extends StatelessWidget {
   /// Function to handle when a tab is selected
   final Function(int) onTabSelected;
@@ -34,20 +35,25 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 70,
+      height: 65, // Slight height reduction for better ergonomics
+      // Remove full background color and shadows for a cleaner look
+      // This helps with edge-to-edge design
       decoration: BoxDecoration(
-        color: Colors.white,
+        // Subtle glass-like effect with light blur
+        color: Colors.white.withAlpha(217),
+        // Add minimal shadow for depth
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(26),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
+            color: Colors.black.withAlpha(10),
+            blurRadius: 6,
+            spreadRadius: 0,
+            offset: const Offset(0, -2),
           ),
         ],
         // Add rounded top corners for better visual separation
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
         ),
       ),
       child: Stack(
@@ -152,7 +158,7 @@ class CustomBottomNavBar extends StatelessWidget {
                 child: Icon(
                   isSelected ? selectedIcon : icon,
                   color: iconColor,
-                  size: 24,
+                  size: 22, // Slightly smaller size
                 ),
               ),
 
@@ -161,15 +167,14 @@ class CustomBottomNavBar extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 style: TextStyle(
                   color: textColor,
-                  fontSize: isSelected ? 12 : 11,
+                  fontSize: isSelected ? 11 : 10, // Slightly smaller size
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
                 child: AnimatedOpacity(
                   opacity: isSelected ? 1.0 : 0.7,
                   duration: const Duration(milliseconds: 200),
-                  child: AnimatedPadding(
-                    padding: EdgeInsets.only(top: isSelected ? 4 : 6),
-                    duration: const Duration(milliseconds: 200),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(label),
                   ),
                 ),
@@ -184,42 +189,53 @@ class CustomBottomNavBar extends StatelessWidget {
   /// Builds the elevated center button with app logo
   Widget _buildCenterButton() {
     return Transform.translate(
-      offset: const Offset(0, -20),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onCreatePostPressed,
-          customBorder: const CircleBorder(),
-          splashColor: vAccentColor.withAlpha(40),
-          highlightColor: vAccentColor.withAlpha(20),
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: vAccentColor.withAlpha(26),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: vPrimaryColor.withAlpha(77),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 4),
-                ),
+      offset: const Offset(0, -20), // Move up for emphasis
+      child: GestureDetector(
+        onTap: () {
+          // Add haptic feedback for better user experience
+          HapticFeedback.mediumImpact();
+          onCreatePostPressed();
+        },
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            // Use gradient for more visual appeal
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                vAccentColor,
+                vPrimaryColor,
               ],
             ),
-            child: Center(
-              // Ensure perfect centering with explicit sizing and alignment
-              child: SizedBox(
-                width: 30,
-                height: 30,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: Image.asset(
-                    'assets/images/vouse_app_logo_white.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                ),
+            shape: BoxShape.circle,
+            // Enhanced shadow for better visibility
+            boxShadow: [
+              BoxShadow(
+                color: vPrimaryColor.withAlpha(100),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            // Add a pulsing animation effect
+            child: TweenAnimationBuilder(
+              tween: Tween<double>(begin: 0.9, end: 1.0),
+              duration: const Duration(seconds: 2),
+              curve: Curves.easeInOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: child,
+                );
+              },
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 30,
               ),
             ),
           ),

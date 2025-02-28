@@ -1,5 +1,4 @@
-// lib/presentation/screens/post_history/upcoming_posts_screen.dart
-// Renamed from scheduled_posts_screen.dart for better clarity
+// lib/presentation/screens/post_history/upcoming_posts.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.dart';
 import 'package:vouse_flutter/presentation/widgets/post/post_preview/post_card.dart';
 import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
+import 'package:vouse_flutter/presentation/widgets/post/post_preview/draft_card.dart';
 
 /// A modern, visually appealing screen showing upcoming scheduled posts and drafts
 /// with tab navigation, animated transitions, and contextual actions.
@@ -106,6 +106,9 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
+      // Use extendBodyBehindAppBar to get edge-to-edge design
+      extendBodyBehindAppBar: true,
+      extendBody: true,
       appBar: AppBar(
         title: const Text(
           'Upcoming Posts',
@@ -137,6 +140,9 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
         ),
       ),
       body: SafeArea(
+        // Remove top and bottom edges to go edge-to-edge
+        top: false,
+        bottom: false,
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -167,7 +173,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
           ),
         ),
       ),
-      // Remove floating action button as it conflicts with bottom nav bar
+      // We're removing the floating action button as it conflicts with bottom nav bar
     );
   }
 
@@ -195,7 +201,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
 
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 16, bottom: 80),
+              padding: const EdgeInsets.only(top: 16, bottom: 100), // Add extra bottom padding for nav bar
               itemCount: sortedPosts.length,
               itemBuilder: (context, index) {
                 return _buildScheduledPostTimelineItem(sortedPosts[index], index, sortedPosts.length);
@@ -209,7 +215,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
     );
   }
 
-  /// Builds the drafts tab content
+  /// Builds the drafts tab content - UPDATED WITH NEW DRAFT CARDS
   Widget _buildDraftsTab() {
     return Consumer(
       builder: (context, ref, child) {
@@ -231,18 +237,17 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
             final sortedDrafts = List<PostEntity>.from(posts)
               ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-            return GridView.builder(
+            // Use ListView instead of GridView for better scrolling
+            return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 1,
-                childAspectRatio: 0.9,
-                mainAxisSpacing: 24,
-                crossAxisSpacing: 16,
-              ),
+              padding: const EdgeInsets.only(top: 16, bottom: 100), // Add extra bottom padding for nav bar
               itemCount: sortedDrafts.length,
               itemBuilder: (context, index) {
-                return _buildDraftItem(sortedDrafts[index]);
+                // Use the new DraftCard widget instead of the old implementation
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DraftCard(post: sortedDrafts[index]),
+                );
               },
             );
           },
@@ -329,7 +334,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Date/time header
+                // Date/time header with emoji
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -346,6 +351,12 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Add emoji based on time of day
+                      Text(
+                        _getTimeEmoji(scheduledTime),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
                         dateLabel,
                         style: const TextStyle(
@@ -388,131 +399,19 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen> with 
     );
   }
 
-  /// Builds a draft post item
-  Widget _buildDraftItem(PostEntity post) {
-    // Calculate time since creation
-    final now = DateTime.now();
-    final difference = now.difference(post.createdAt);
+  /// Returns an emoji based on the time of day
+  String _getTimeEmoji(DateTime dateTime) {
+    final hour = dateTime.hour;
 
-    String timeAgo;
-    if (difference.inDays > 0) {
-      timeAgo = '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (difference.inHours > 0) {
-      timeAgo = '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inMinutes > 0) {
-      timeAgo = '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+    if (hour >= 5 && hour < 12) {
+      return '🌅 '; // Morning (sunrise)
+    } else if (hour >= 12 && hour < 17) {
+      return '☀️ '; // Afternoon (sun)
+    } else if (hour >= 17 && hour < 21) {
+      return '🌆 '; // Evening (sunset)
     } else {
-      timeAgo = 'Just now';
+      return '🌙 '; // Night (moon)
     }
-
-    // Check if post has images
-    final hasImages = post.localImagePaths.isNotEmpty;
-
-    return Stack(
-      children: [
-        // Post card
-        PostCard(post: post),
-
-        // Draft badge
-        Positioned(
-          top: 10,
-          right: 10,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(40),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.edit_note,
-                  size: 14,
-                  color: vPrimaryColor,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'DRAFT',
-                  style: TextStyle(
-                    color: vPrimaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Created time
-        Positioned(
-          bottom: 10,
-          left: 10,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.black.withAlpha(100),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  size: 12,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  timeAgo,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Has images indicator
-        if (hasImages)
-          Positioned(
-            bottom: 10,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(100),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.image,
-                    size: 12,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${post.localImagePaths.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
   }
 
   /// Builds an empty state widget with action button

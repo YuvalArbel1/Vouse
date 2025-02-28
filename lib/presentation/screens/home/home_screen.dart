@@ -247,6 +247,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(homeScreenLoadingProvider);
     final userProfile = ref.watch(homeUserProfileProvider);
@@ -267,13 +268,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 opacity: 0.8,
               ),
             ),
-            child: SingleChildScrollView(
+            child: CustomScrollView(  // Replace SingleChildScrollView with CustomScrollView
               physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Animated Header Section
-                  FadeTransition(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: FadeTransition(
                     opacity: _headerAnimation,
                     child: SlideTransition(
                       position: Tween<Offset>(
@@ -283,11 +282,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       child: _buildHeader(userProfile, postCounts),
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // Quick Action Buttons
-                  FadeTransition(
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
                     opacity: _actionsAnimation,
                     child: SlideTransition(
                       position: Tween<Offset>(
@@ -302,11 +299,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Content Sections
-                  FadeTransition(
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
                     opacity: _contentAnimation,
                     child: SlideTransition(
                       position: Tween<Offset>(
@@ -315,37 +310,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       ).animate(_contentAnimation),
                       child: Column(
                         children: [
-                          // Recent Posts Section
                           SectionHeader(
                             title: '📊 Recent Activity',
                             onActionTap: _navigateToPostHistory,
                           ),
-                          const SizedBox(height: 8),
                           _buildRecentPostsSection(),
-
-                          const SizedBox(height: 24),
-
-                          // Upcoming Section
                           SectionHeader(
                             title: '🗓️ Upcoming Posts',
                             onActionTap: _navigateToScheduledPosts,
                           ),
-                          const SizedBox(height: 8),
                           _buildUpcomingPostsSection(),
-
-                          const SizedBox(height: 24),
-
-                          // Motivation Section
                           MotivationCard(tip: _getRandomTip()),
                         ],
                       ),
                     ),
                   ),
-
-                  // Extra space at bottom
-                  const SizedBox(height: 100),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

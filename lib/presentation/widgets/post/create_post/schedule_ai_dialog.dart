@@ -12,6 +12,7 @@ import '../../../providers/ai/ai_schedule_providers.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../screens/post/select_location_screen.dart';
+import '../../navigation/navigation_service.dart';
 
 /// A dialog that helps predict the best time to post, optionally including location or post text.
 ///
@@ -128,7 +129,7 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
 
   /// Discards the AI suggestion and closes the dialog.
   void _onClosePressed() {
-    Navigator.pop(context);
+    ref.read(navigationServiceProvider).navigateBack(context);
   }
 
   /// Accepts the AI suggestion, applies any chosen location, and returns the predicted date/time.

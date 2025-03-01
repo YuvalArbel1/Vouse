@@ -174,6 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   // Navigation helpers - now using the navigation service
+// Navigation helpers - now using the navigation service with tab switching
   void _navigateToCreatePost() {
     ref.read(navigationServiceProvider).navigateToCreatePost(context);
   }
@@ -192,10 +193,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _navigateToEditProfile() {
     ref.read(navigationServiceProvider).navigateToEditProfile(
-          context,
-          isEditProfile: true,
-          clearStack: false,
-        );
+      context,
+      isEditProfile: true,
+      clearStack: false,
+    );
   }
 
   void _showFeatureComingSoon(String feature) {

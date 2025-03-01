@@ -10,9 +10,6 @@ import 'package:vouse_flutter/presentation/screens/auth/verification_pending_scr
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
 import 'package:vouse_flutter/presentation/screens/post/select_location_screen.dart';
-import 'package:vouse_flutter/presentation/screens/post_history/published_posts_screen.dart';
-import 'package:vouse_flutter/presentation/screens/post_history/upcoming_posts.dart';
-import 'package:vouse_flutter/presentation/screens/profile/profile_screen.dart';
 import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
 /// A service that manages app navigation.
@@ -26,10 +23,41 @@ import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 /// - Support for route transitions
 /// - Named routes support
 /// - Stack management
+/// A service that manages app navigation.
+///
+/// This centralizes navigation logic and provides consistent
+/// navigation methods for use throughout the app.
+///
+/// Features:
+/// - Consistent navigation patterns
+/// - Support for both tab switching and direct navigation
+/// - Stack management
+/// - Dialog helpers
 class NavigationService {
+  final Ref _ref;
+
+  /// Constructor that receives Ref for provider access
+  NavigationService(this._ref);
+
+  /// Navigate to a specific tab in the main app navigator
+  /// This preserves the bottom navigation bar
+  void navigateToMainTab(BuildContext context, int tabIndex) {
+    // Update the tab index in the provider
+    _ref.read(currentScreenProvider.notifier).state = tabIndex;
+
+    // If we've navigated away from AppNavigator, return to it
+    Navigator.of(context).popUntil((route) =>
+    route.settings.name == 'app_navigator' || route.isFirst);
+  }
+
   /// Navigate to the app navigator (main flow)
   void navigateToAppNavigator(BuildContext context, {bool clearStack = false}) {
-    _navigate(context, const AppNavigator(), clearStack: clearStack);
+    _navigate(
+        context,
+        const AppNavigator(),
+        routeName: 'app_navigator',
+        clearStack: clearStack
+    );
   }
 
   /// Navigate to the sign in screen
@@ -43,10 +71,8 @@ class NavigationService {
   }
 
   /// Navigate to the verification pending screen
-  void navigateToVerificationPending(BuildContext context,
-      {bool clearStack = false}) {
-    _navigate(context, const VerificationPendingScreen(),
-        clearStack: clearStack);
+  void navigateToVerificationPending(BuildContext context, {bool clearStack = false}) {
+    _navigate(context, const VerificationPendingScreen(), clearStack: clearStack);
   }
 
   /// Navigate to the create post screen
@@ -58,26 +84,24 @@ class NavigationService {
     }
   }
 
-  /// Navigate to the published posts screen
+  /// Navigate to the published posts screen (tab 1)
   void navigateToPublishedPosts(BuildContext context) {
-    _navigate(context, const PublishedPostsScreen());
+    navigateToMainTab(context, 1); // Switch to posts tab
   }
 
-  /// Navigate to the upcoming posts screen
+  /// Navigate to the upcoming posts screen (tab 2)
   void navigateToUpcomingPosts(BuildContext context) {
-    _navigate(context, const UpcomingPostsScreen());
+    navigateToMainTab(context, 2); // Switch to upcoming tab
   }
 
-  /// Navigate to the profile screen
+  /// Navigate to the profile screen (tab 3)
   void navigateToProfile(BuildContext context) {
-    _navigate(context, const ProfileScreen());
+    navigateToMainTab(context, 3); // Switch to profile tab
   }
 
   /// Navigate to the edit profile screen
-  void navigateToEditProfile(BuildContext context,
-      {bool isEditProfile = false, required bool clearStack}) {
-    _navigate(context, EditProfileScreen(isEditProfile: isEditProfile),
-        clearStack: clearStack);
+  void navigateToEditProfile(BuildContext context, {bool isEditProfile = false, required bool clearStack}) {
+    _navigate(context, EditProfileScreen(isEditProfile: isEditProfile), clearStack: clearStack);
   }
 
   /// Navigate to location selection screen
@@ -101,33 +125,72 @@ class NavigationService {
     });
   }
 
+  /// Navigate to AppNavigator and select the home tab (0)
+  void navigateToHome(BuildContext context) {
+    navigateToMainTab(context, 0);
+  }
+
+  /// Helper method to show confirmation dialog
+  /// Returns true if confirmed, false otherwise
+  Future<bool> showConfirmationDialog(
+      BuildContext context,
+      String title,
+      String message, {
+        String cancelText = 'Cancel',
+        String confirmText = 'Confirm',
+      }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(cancelText),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmText),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   /// Helper method to navigate to a screen
-  void _navigate(BuildContext context, Widget screen,
-      {bool clearStack = false}) {
+  void _navigate(BuildContext context, Widget screen, {bool clearStack = false, String? routeName}) {
     if (clearStack) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => screen),
-        (route) => false,
+        MaterialPageRoute(
+            settings: routeName != null ? RouteSettings(name: routeName) : null,
+            builder: (_) => screen
+        ),
+            (route) => false,
       );
     } else {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => screen),
+        MaterialPageRoute(
+            settings: routeName != null ? RouteSettings(name: routeName) : null,
+            builder: (_) => screen
+        ),
       );
     }
   }
 
   /// Helper method to animate to a screen with custom transition
-  void _animateToScreen(BuildContext context, Widget screen) {
+  void _animateToScreen(BuildContext context, Widget screen, {String? routeName}) {
     Navigator.of(context).push(
       PageRouteBuilder(
+        settings: routeName != null ? RouteSettings(name: routeName) : null,
         pageBuilder: (context, animation, secondaryAnimation) => screen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;
           const curve = Curves.easeInOutCubic;
 
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
           return SlideTransition(
             position: animation.drive(tween),
@@ -140,19 +203,18 @@ class NavigationService {
   }
 
   /// Helper method for sliding screens up from bottom
-  void _slideUpScreen(BuildContext context, Widget screen) {
+  void _slideUpScreen(BuildContext context, Widget screen, {String? routeName}) {
     Navigator.of(context).push(
       PageRouteBuilder(
+        settings: routeName != null ? RouteSettings(name: routeName) : null,
         pageBuilder: (context, animation, secondaryAnimation) => screen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
           const curve = Curves.easeOutCubic;
 
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
-          // Fade effect combined with slide
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
@@ -177,7 +239,7 @@ class NavigationService {
   }
 }
 
-/// Provider for the navigation service
+/// Provider for the navigation service that includes Ref
 final navigationServiceProvider = Provider<NavigationService>((ref) {
-  return NavigationService();
+  return NavigationService(ref);
 });

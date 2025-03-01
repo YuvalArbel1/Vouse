@@ -13,8 +13,9 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import '../../core/util/ui_settings.dart';
 import '../screens/post_history/published_posts_screen.dart';
 import '../screens/post_history/upcoming_posts.dart';
+import '../widgets/navigation/navigation_service.dart';
 
-/// State provider for the main navigation screens
+// State provider for the main navigation screens
 final currentScreenProvider = StateProvider<int>((ref) => 0);
 
 /// An app-wide navigator that handles main navigation with bottom nav bar
@@ -43,9 +44,7 @@ class _AppNavigatorState extends ConsumerState<AppNavigator> {
 
   /// Navigate to create post screen
   void _navigateToCreatePost(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToCreatePost(context);
   }
 
   @override
@@ -90,7 +89,7 @@ class _AppNavigatorState extends ConsumerState<AppNavigator> {
           padding: EdgeInsets.only(bottom: bottomPadding),
           child: CustomBottomNavBar(
             onTabSelected: (index) =>
-                ref.read(currentScreenProvider.notifier).state = index,
+            ref.read(currentScreenProvider.notifier).state = index,
             onCreatePostPressed: () => _navigateToCreatePost(context),
             currentIndex: currentIndex,
           ),

@@ -184,8 +184,11 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   void _navigateToMainApp() {
     FlutterNativeSplash.remove();
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AppNavigator()),
-      (route) => false,
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'app_navigator'),
+        builder: (_) => const AppNavigator(),
+      ),
+          (route) => false,
     );
   }
 

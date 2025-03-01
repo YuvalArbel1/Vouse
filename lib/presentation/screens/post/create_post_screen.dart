@@ -26,7 +26,7 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 /// A screen where the user can create a new post:
 /// - Enter text in [PostText]
 /// - View and manage selected images via [SelectedImagesPreview]
-/// - Pick images, location, AI text, or hashtags from [PostOptions]
+/// - Pick images, location, AI text from [PostOptions]
 ///
 /// The user can also save a draft or share the post.
 ///
@@ -206,7 +206,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
       _completionPercentage = 0;
     });
 
-    toast('Post content cleared');
+    if (mounted) {
+      toast('Post content cleared');
+    }
   }
 
   /// Prompts the user to enter a draft title using a dialog. Returns the provided title, or null if canceled.
@@ -354,12 +356,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
   }
 
   /// Opens the bottom sheet to share or schedule the post, if there's text.
-  void _openShareBottomSheet(BuildContext context) {
+  void _openShareBottomSheet() {
     final currentText = ref.read(postTextProvider).trim();
     if (currentText.isEmpty) {
       toast('Please enter some text first!');
       return;
     }
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -421,8 +425,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+
+        final shouldPop = await _onWillPop();
+        if (shouldPop && mounted) {
+          ref.read(navigationServiceProvider).navigateBack(context);
+        }
+      },
       child: Scaffold(
         backgroundColor: context.cardColor,
         appBar: _buildAppBar(),
@@ -461,7 +473,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
           IconButton(
             icon: Icon(Icons.arrow_back, color: context.iconColor),
             onPressed: () async {
-              if (await _onWillPop()) {
+              final shouldPop = await _onWillPop();
+              if (shouldPop && mounted) {
                 ref.read(navigationServiceProvider).navigateBack(context);
               }
             },
@@ -531,7 +544,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
           shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
           text: 'Post',
           textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-          onTap: () => _openShareBottomSheet(context),
+          onTap: _openShareBottomSheet,
           elevation: 0,
           color: vPrimaryColor.withAlpha(220),
           width: 50,
@@ -555,28 +568,32 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
 
   /// Builds the main content of the screen
   Widget _buildContent() {
-    return SizedBox(
-      height: context.height(),
-      child: Stack(
-        children: [
-          // Scrollable main content
-          SingleChildScrollView(
-            child: Column(
-              children: const [
-                PostText(),
-                SelectedImagesPreview(),
-                SizedBox(height: 100), // Space above the pinned bottom bar
-              ],
+    return SafeArea(
+      child: SizedBox(
+        height: context.height(),
+        child: Stack(
+          children: [
+            // Scrollable main content with extra padding at the bottom
+            SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  const PostText(),
+                  const SelectedImagesPreview(),
+                  // Additional space to avoid nav bar overlap
+                  SizedBox(height: context.height() * 0.15),
+                ],
+              ),
             ),
-          ),
-          // Pinned bottom bar
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: PostOptions(),
-          ),
-        ],
+            // Pinned bottom bar
+            const Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: PostOptions(),
+            ),
+          ],
+        ),
       ),
     );
   }

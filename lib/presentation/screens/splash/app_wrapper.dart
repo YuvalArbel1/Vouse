@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 // Import the auth state provider
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
@@ -12,13 +13,6 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 import '../../widgets/navigation/navigation_service.dart';
 
 /// A wrapper that directs the user flow based on authentication and local DB status.
-///
-/// The flow is:
-/// 1. If no user is signed in, navigate to [SignInScreen].
-/// 2. If the user is not verified, navigate to [VerificationPendingScreen].
-/// 3. If the user is verified, check the local DB:
-///    - If no profile exists, navigate to [EditProfileScreen].
-///    - Otherwise, navigate to [AppNavigator] which handles the main app navigation.
 class AppWrapper extends ConsumerStatefulWidget {
   const AppWrapper({super.key});
 
@@ -28,67 +22,98 @@ class AppWrapper extends ConsumerStatefulWidget {
 
 class _AppWrapperState extends ConsumerState<AppWrapper> {
   bool _didInitFlow = false;
+  bool _isInitializing = true;
 
   // Constants for delay durations to avoid magic numbers.
   static const Duration _shortDelay = Duration(milliseconds: 1000);
   static const Duration _homeDelay = Duration(seconds: 2);
 
   @override
+  void initState() {
+    super.initState();
+    // DO NOT remove splash screen yet - wait for DB to initialize
+
+    // Start the DB initialization process
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startDatabaseInit();
+    });
+  }
+
+  // First, ensure the database is initialized
+  Future<void> _startDatabaseInit() async {
+    try {
+      // This will trigger the database initialization
+      await ref.read(localDatabaseProvider.future);
+
+      // Once DB is ready, remove splash screen and continue flow
+      FlutterNativeSplash.remove();
+
+      // Now proceed with the rest of initialization
+      _safeInitFlow();
+    } catch (e) {
+      // If DB initialization fails, still remove splash but show error
+      FlutterNativeSplash.remove();
+      print("Database initialization error: $e");
+      setState(() => _isInitializing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Watch the auth state provider
+    // Database state should already be initiated from _startDatabaseInit
+    final dbState = ref.watch(localDatabaseProvider);
+
+    // If database is in error state, show error
+    if (dbState is AsyncError) {
+      return Scaffold(
+        body: Center(child: Text('Database initialization error: ${dbState.error}')),
+      );
+    }
+
+    // If still initializing overall flow, show loading
+    if (_isInitializing) {
+      return const Scaffold(
+        body: FullScreenLoading(message: "Preparing your experience..."),
+      );
+    }
+
+    // Check auth state only when database is ready
     final authStateAsync = ref.watch(authStateProvider);
 
-    // Watch database initialization state (from the original provider)
-    final dbAsyncValue = ref.watch(localDatabaseProvider);
-
-    // Render different UI based on the DB and auth state
-    return dbAsyncValue.when(
-      data: (db) {
-        // Run the initialization flow only once when DB is ready
-        if (!_didInitFlow) {
-          _didInitFlow = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) => _initFlow());
-        }
-
-        // Handle auth state changes
-        return authStateAsync.when(
-          data: (authState) {
-            // Show a loading indicator while determining the right screen
-            if (!_didInitFlow) {
-              return const Scaffold(
-                body: FullScreenLoading(message: "Preparing your experience..."),
-              );
-            }
-
-            // Render an empty scaffold during routing (handled in _initFlow)
-            return const Scaffold(body: SizedBox.shrink());
-          },
-          loading: () => const Scaffold(
-            body: FullScreenLoading(message: "Checking login status..."),
-          ),
-          error: (err, stack) => Scaffold(
-            body: Center(child: Text('Authentication error: $err')),
-          ),
-        );
+    return authStateAsync.when(
+      data: (authState) {
+        // Render an empty scaffold during routing
+        return const Scaffold(body: SizedBox.shrink());
       },
       loading: () => const Scaffold(
-        body: FullScreenLoading(message: "Initializing..."),
+        body: FullScreenLoading(message: "Checking login status..."),
       ),
-      error: (err, stack) {
-        // Display an error message if the DB fails to load
-        return Scaffold(
-          body: Center(child: Text('Database error: $err')),
-        );
-      },
+      error: (err, stack) => Scaffold(
+        body: Center(child: Text('Authentication error: $err')),
+      ),
     );
   }
 
+  /// Safely initializes flow with proper error handling
+  Future<void> _safeInitFlow() async {
+    setState(() => _isInitializing = true);
+
+    try {
+      await _initFlow();
+    } catch (e) {
+      print("Error during initialization: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
+    }
+  }
+
   /// Initializes the user flow based on authentication and local user profile.
-  ///
-  /// This method dispatches to the appropriate screen based on auth state and user profile
   Future<void> _initFlow() async {
     if (!mounted) return;
 
+    _didInitFlow = true;
     final navigationService = ref.read(navigationServiceProvider);
 
     // Get current auth state
@@ -114,8 +139,12 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         break;
 
       case AuthState.authenticated:
-      // Load user profile
-        await ref.read(userProfileProvider.notifier).loadUserProfile();
+      // Now safely load user profile
+        try {
+          await ref.read(userProfileProvider.notifier).loadUserProfile();
+        } catch (e) {
+          print("Error loading user profile: $e");
+        }
 
         // Check if profile exists
         final userProfile = ref.read(userProfileProvider).user;
@@ -124,7 +153,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
         if (userProfile == null) {
           // No profile - go to profile creation
-          navigationService.navigateToEditProfile(context, clearStack: true);
+          navigationService.navigateToEditProfile(context, isEditProfile: false, clearStack: true);
         } else {
           // Has profile - go to main app
           navigationService.navigateToAppNavigator(context, clearStack: true);

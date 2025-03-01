@@ -1,17 +1,16 @@
-// lib/presentation/screens/post_history/upcoming_posts_screen.dart
+// lib/presentation/screens/post_history/upcoming_posts.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:vouse_flutter/core/util/colors.dart';
-import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 
 import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_user_providers.dart';
-import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
+import '../../widgets/navigation/navigation_service.dart';
 import 'package:vouse_flutter/presentation/widgets/common/empty_state.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading_states.dart';
 import 'package:vouse_flutter/presentation/widgets/post/post_preview/draft_card.dart';
@@ -54,9 +53,6 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
 
   /// Tracks refresh state
   bool _isRefreshing = false;
-
-  /// Total number of scheduled posts
-  int _scheduledPostCount = 0;
 
   @override
   void initState() {
@@ -137,14 +133,17 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
 
   /// Navigate to create post screen
   void _navigateToCreatePost() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToCreatePost(context, animate: true);
+    // Add post-frame callback to refresh data after navigation completes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshPosts();
+    });
   }
 
-  /// Calculate total number of scheduled posts
+  /// Calculate the current number of scheduled posts
+  /// This method now relies directly on the provider data each time it's called
   int _calculateScheduledPosts() {
-    final scheduledPostsAsync = ref.read(scheduledPostsProvider);
+    final scheduledPostsAsync = ref.watch(scheduledPostsProvider);
     return scheduledPostsAsync.when(
       data: (posts) => posts.length,
       loading: () => 0,
@@ -154,23 +153,18 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Update scheduled post count
-    final currentScheduledPosts = _calculateScheduledPosts();
-    if (currentScheduledPosts != _scheduledPostCount) {
-      setState(() {
-        _scheduledPostCount = currentScheduledPosts;
-      });
-    }
+    // Get the latest count directly from the provider each time build is called
+    final currentScheduledCount = _calculateScheduledPosts();
 
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // Personalized Upcoming Posts Header
+          // Personalized Upcoming Posts Header - Now updated with each build
           SliverToBoxAdapter(
             child: UpcomingPostsHeader(
-              scheduledPostCount: _scheduledPostCount,
+              scheduledPostCount: currentScheduledCount,
             ),
           ),
 
@@ -202,10 +196,6 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                   ),
 
                   // Tab Content
-                  // Optimized TabBarView in UpcomingPostsScreen
-// Replace the current implementation with this version that properly
-// uses your existing filter providers
-
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
@@ -217,7 +207,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                             builder: (context, ref, child) {
                               // Use your existing filter provider instead of direct watching and sorting
                               final scheduledPostsAsync =
-                                  ref.watch(scheduledPostsProvider);
+                              ref.watch(scheduledPostsProvider);
 
                               return scheduledPostsAsync.when(
                                 data: (posts) {
@@ -226,7 +216,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                       icon: Icons.schedule,
                                       title: 'No scheduled posts',
                                       message:
-                                          'Start scheduling posts to see them here',
+                                      'Start scheduling posts to see them here',
                                       buttonText: 'Create Post',
                                     );
                                   }
@@ -234,7 +224,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                   // No need to sort here since your filter provider already handles it
                                   return ListView.builder(
                                     physics:
-                                        const AlwaysScrollableScrollPhysics(),
+                                    const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.only(
                                         top: 16, bottom: 100),
                                     itemCount: posts.length,
@@ -265,7 +255,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                             builder: (context, ref, child) {
                               // Use your existing filter provider
                               final draftPostsAsync =
-                                  ref.watch(draftPostsProvider);
+                              ref.watch(draftPostsProvider);
 
                               return draftPostsAsync.when(
                                 data: (posts) {
@@ -274,7 +264,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                       icon: Icons.edit_note,
                                       title: 'No drafts yet',
                                       message:
-                                          'Save drafts to continue editing later',
+                                      'Save drafts to continue editing later',
                                       buttonText: 'Create Draft',
                                     );
                                   }
@@ -282,7 +272,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                   // No need to sort here
                                   return ListView.builder(
                                     physics:
-                                        const AlwaysScrollableScrollPhysics(),
+                                    const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.only(
                                         top: 16, bottom: 100),
                                     itemCount: posts.length,

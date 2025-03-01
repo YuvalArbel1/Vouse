@@ -1,4 +1,4 @@
-// lib/presentation/widgets/post_history/upcoming_posts_header.dart
+// lib/presentation/widgets/post/post_preview/upcoming_posts_header.dart
 
 import 'package:flutter/material.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
@@ -38,7 +38,8 @@ class UpcomingPostsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 10), // Slight edge adjustment
+      // Remove the top margin to make it edge-to-edge
+      // margin: const EdgeInsets.only(top: 10), // REMOVED
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(

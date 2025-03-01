@@ -9,7 +9,7 @@ class UiSettings {
   static void hideSystemNavBar() {
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
-      overlays: [SystemUiOverlay.top], // Only show status bar
+      overlays: [], // Only show status bar
     );
 
     SystemChrome.setSystemUIOverlayStyle(

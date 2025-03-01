@@ -13,6 +13,7 @@ import '../../../../core/util/common.dart';
 import '../../../../core/util/image_utils.dart';
 import '../../../../domain/entities/local_db/post_entity.dart';
 import '../../../../domain/usecases/post/save_post_with_upload_usecase.dart';
+import '../../../providers/post/post_refresh_provider.dart';
 import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
@@ -200,6 +201,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       if (!mounted) return;
 
       if (result is DataSuccess) {
+        ref.read(postRefreshProvider.notifier).refreshScheduled();
         toast('Post scheduled successfully!');
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();

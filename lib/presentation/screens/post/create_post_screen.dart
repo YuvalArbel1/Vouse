@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -72,8 +73,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
     _animationController.forward();
 
-    // Start monitoring changes for unsaved content
-    _setupChangeListeners();
+    // Add a focus listener for navigation returns
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Using Flutter's focus system to detect when screen gets focus
+      SystemChannels.lifecycle.setMessageHandler((msg) {
+        if (msg == AppLifecycleState.resumed.toString()) {
+          _setupChangeListeners(); // Your existing refresh method
+        }
+        return Future.value(msg);
+      });
+    });
   }
 
   void _initializeScreen() {

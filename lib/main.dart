@@ -1,5 +1,6 @@
 // lib/main.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -12,29 +13,40 @@ import 'firebase_options.dart';
 ///
 /// This function performs the following steps:
 /// 1. Ensures that the widget binding is initialized.
-/// 2. Preserves the native splash screen to be removed manually later.
+/// 2. Configures native splash screen to persist during initialization.
 /// 3. Initializes Firebase with platform-specific options.
 /// 4. Runs the app wrapped in a [ProviderScope] to enable Riverpod state management.
 void main() async {
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  // Ensure Flutter binding is initialized
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
-  // Preserve the native splash screen so that it can be manually removed later.
+  // Preserve the native splash screen so it remains visible during initialization
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  // Initialize Firebase with the current platform's configuration.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Initialize Firebase with the current platform's configuration
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Run the app inside a ProviderScope for Riverpod support.
-  runApp(const ProviderScope(child: App()));
+    // Run the app inside a ProviderScope for Riverpod support
+    runApp(const ProviderScope(child: App()));
+  } catch (e) {
+    // If Firebase initialization fails, log the error and remove splash
+    if (kDebugMode) {
+      print('Firebase Initialization Error: $e');
+    }
+    FlutterNativeSplash.remove();
+
+    // Optionally, run with error handling
+    runApp(ErrorApp());
+  }
 }
 
 /// The root widget of the Vouse app.
 ///
 /// This widget sets up the [MaterialApp] and defines [AppWrapper] as the home screen.
 class App extends ConsumerWidget {
-  /// Creates an [App] widget.
   const App({super.key});
 
   @override
@@ -52,6 +64,25 @@ class App extends ConsumerWidget {
       theme: themeData,
       debugShowCheckedModeBanner: false,
       home: const AppWrapper(),
+    );
+  }
+}
+
+/// An error app to display when initialization fails
+class ErrorApp extends StatelessWidget {
+  const ErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text(
+            'App Initialization Failed. Please restart the app.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 }

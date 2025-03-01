@@ -1,7 +1,7 @@
 // lib/presentation/providers/user/user_profile_provider.dart
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
@@ -66,6 +66,9 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
 
   /// Loads the user profile for the current user
   Future<void> loadUserProfile() async {
+    // Prevent multiple simultaneous loading attempts
+    if (state.loadingState == UserProfileLoadingState.loading) return;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       state = state.copyWith(
@@ -75,19 +78,27 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
       return;
     }
 
+    // Move state update to an async operation to avoid build-time modification
     state = state.copyWith(loadingState: UserProfileLoadingState.loading);
 
-    final result = await _getUserUseCase.call(params: GetUserParams(user.uid));
+    try {
+      final result = await _getUserUseCase.call(params: GetUserParams(user.uid));
 
-    if (result is DataSuccess<UserEntity?>) {
-      state = state.copyWith(
-        user: result.data,
-        loadingState: UserProfileLoadingState.loaded,
-      );
-    } else if (result is DataFailed<UserEntity?>) {
+      if (result is DataSuccess<UserEntity?>) {
+        state = state.copyWith(
+          user: result.data,
+          loadingState: UserProfileLoadingState.loaded,
+        );
+      } else if (result is DataFailed<UserEntity?>) {
+        state = state.copyWith(
+          loadingState: UserProfileLoadingState.error,
+          errorMessage: result.error?.error.toString() ?? 'Unknown error',
+        );
+      }
+    } catch (e) {
       state = state.copyWith(
         loadingState: UserProfileLoadingState.error,
-        errorMessage: result.error?.error.toString() ?? 'Unknown error',
+        errorMessage: e.toString(),
       );
     }
   }
@@ -142,8 +153,13 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
 
 /// Provider for the user profile state
 final userProfileProvider =
-    StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
+StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
   final getUserUseCase = ref.watch(getUserUseCaseProvider);
   final saveUserUseCase = ref.watch(saveUserUseCaseProvider);
   return UserProfileNotifier(getUserUseCase, saveUserUseCase);
+});
+
+/// Provider for triggering user profile loading
+final loadUserProfileProvider = FutureProvider<void>((ref) async {
+  await ref.read(userProfileProvider.notifier).loadUserProfile();
 });

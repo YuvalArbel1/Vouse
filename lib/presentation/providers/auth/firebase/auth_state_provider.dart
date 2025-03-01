@@ -1,4 +1,4 @@
-// lib/presentation/providers/auth/auth_state_provider.dart
+// lib/presentation/providers/auth/firebase/auth_state_provider.dart
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -4,15 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-// Import the auth state provider
-import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
+// Essential imports
+import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
+import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
+import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
+import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 
+// Providers
 import '../../providers/auth/firebase/auth_state_provider.dart';
 import '../../providers/local_db/database_provider.dart';
-import '../../widgets/common/loading/full_screen_loading.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/user/user_profile_provider.dart';
 
-/// A wrapper that directs the user flow based on authentication and local DB status.
+// Widgets
+import '../../widgets/common/loading/full_screen_loading.dart';
+
+/// A sophisticated wrapper that manages the entire app's navigation flow
+/// based on authentication, database initialization, and user profile status.
 class AppWrapper extends ConsumerStatefulWidget {
   const AppWrapper({super.key});
 
@@ -21,148 +28,144 @@ class AppWrapper extends ConsumerStatefulWidget {
 }
 
 class _AppWrapperState extends ConsumerState<AppWrapper> {
-  bool _didInitFlow = false;
-  bool _isInitializing = true;
-
-  // Constants for delay durations to avoid magic numbers.
-  static const Duration _shortDelay = Duration(milliseconds: 1000);
-  static const Duration _homeDelay = Duration(seconds: 2);
+  bool _isInitializingDatabase = true;
+  bool _isAuthenticating = true;
 
   @override
   void initState() {
     super.initState();
-    // DO NOT remove splash screen yet - wait for DB to initialize
 
-    // Start the DB initialization process
+    // Ensure splash screen is preserved during critical initializations
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startDatabaseInit();
+      _initializeAppFlow();
     });
   }
 
-  // First, ensure the database is initialized
-  Future<void> _startDatabaseInit() async {
+  /// Comprehensive initialization of app flow
+  Future<void> _initializeAppFlow() async {
     try {
-      // This will trigger the database initialization
+      // First, ensure database is initialized
       await ref.read(localDatabaseProvider.future);
 
-      // Once DB is ready, remove splash screen and continue flow
-      FlutterNativeSplash.remove();
-
-      // Now proceed with the rest of initialization
-      _safeInitFlow();
-    } catch (e) {
-      // If DB initialization fails, still remove splash but show error
-      FlutterNativeSplash.remove();
-      print("Database initialization error: $e");
-      setState(() => _isInitializing = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Database state should already be initiated from _startDatabaseInit
-    final dbState = ref.watch(localDatabaseProvider);
-
-    // If database is in error state, show error
-    if (dbState is AsyncError) {
-      return Scaffold(
-        body: Center(child: Text('Database initialization error: ${dbState.error}')),
-      );
-    }
-
-    // If still initializing overall flow, show loading
-    if (_isInitializing) {
-      return const Scaffold(
-        body: FullScreenLoading(message: "Preparing your experience..."),
-      );
-    }
-
-    // Check auth state only when database is ready
-    final authStateAsync = ref.watch(authStateProvider);
-
-    return authStateAsync.when(
-      data: (authState) {
-        // Render an empty scaffold during routing
-        return const Scaffold(body: SizedBox.shrink());
-      },
-      loading: () => const Scaffold(
-        body: FullScreenLoading(message: "Checking login status..."),
-      ),
-      error: (err, stack) => Scaffold(
-        body: Center(child: Text('Authentication error: $err')),
-      ),
-    );
-  }
-
-  /// Safely initializes flow with proper error handling
-  Future<void> _safeInitFlow() async {
-    setState(() => _isInitializing = true);
-
-    try {
-      await _initFlow();
-    } catch (e) {
-      print("Error during initialization: $e");
-    } finally {
+      // Set initial states
       if (mounted) {
-        setState(() => _isInitializing = false);
+        setState(() {
+          _isInitializingDatabase = false;
+        });
+      }
+
+      // Wait for auth state to stabilize
+      await _waitForAuthState();
+    } catch (e) {
+      print('Initialization Error: $e');
+
+      // In case of critical error, remove splash and show error
+      if (mounted) {
+        FlutterNativeSplash.remove();
+        setState(() {
+          _isInitializingDatabase = false;
+          _isAuthenticating = false;
+        });
       }
     }
   }
 
-  /// Initializes the user flow based on authentication and local user profile.
-  Future<void> _initFlow() async {
-    if (!mounted) return;
+  /// Wait for and handle authentication state
+  Future<void> _waitForAuthState() async {
+    // Use the stream provider to listen to auth changes
+    final authState = await ref.read(authStateProvider.future);
 
-    _didInitFlow = true;
-    final navigationService = ref.read(navigationServiceProvider);
+    if (mounted) {
+      setState(() {
+        _isAuthenticating = false;
+      });
 
-    // Get current auth state
-    final authStateValue = ref.read(authStateProvider).value;
+      // Determine navigation based on auth state
+      switch (authState) {
+        case AuthState.unauthenticated:
+          _navigateToSignIn();
+          break;
+        case AuthState.unverified:
+          _navigateToVerificationPending();
+          break;
+        case AuthState.authenticated:
+          await _handleAuthenticatedUser();
+          break;
+        case AuthState.initial:
+        // Unexpected state, default to sign-in
+          _navigateToSignIn();
+          break;
+      }
+    }
+  }
 
-    // If state isn't determined yet, wait
-    if (authStateValue == null) {
-      return;
+  /// Handle authenticated user navigation
+  Future<void> _handleAuthenticatedUser() async {
+    try {
+      // Load user profile
+      await ref.read(userProfileProvider.notifier).loadUserProfile();
+
+      // Check user profile status
+      final userProfile = ref.read(userProfileProvider).user;
+
+      if (userProfile == null) {
+        // No profile exists, go to profile creation
+        _navigateToEditProfile();
+      } else {
+        // Profile exists, go to main app
+        _navigateToMainApp();
+      }
+    } catch (e) {
+      print('User Profile Load Error: $e');
+      _navigateToSignIn();
+    }
+  }
+
+  /// Navigation methods with proper context and stack clearing
+  void _navigateToSignIn() {
+    FlutterNativeSplash.remove();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SignInScreen()),
+          (route) => false,
+    );
+  }
+
+  void _navigateToVerificationPending() {
+    FlutterNativeSplash.remove();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const VerificationPendingScreen()),
+          (route) => false,
+    );
+  }
+
+  void _navigateToEditProfile() {
+    FlutterNativeSplash.remove();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const EditProfileScreen(isEditProfile: false)),
+          (route) => false,
+    );
+  }
+
+  void _navigateToMainApp() {
+    FlutterNativeSplash.remove();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AppNavigator()),
+          (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show loading during critical initialization stages
+    if (_isInitializingDatabase || _isAuthenticating) {
+      return const Scaffold(
+        body: FullScreenLoading(
+          message: "Preparing your Vouse experience...",
+        ),
+      );
     }
 
-    // Handle different auth states
-    switch (authStateValue) {
-      case AuthState.unauthenticated:
-        await Future.delayed(_shortDelay);
-        if (!mounted) return;
-        navigationService.navigateToSignIn(context, clearStack: true);
-        break;
-
-      case AuthState.unverified:
-        await Future.delayed(_shortDelay);
-        if (!mounted) return;
-        navigationService.navigateToVerificationPending(context, clearStack: true);
-        break;
-
-      case AuthState.authenticated:
-      // Now safely load user profile
-        try {
-          await ref.read(userProfileProvider.notifier).loadUserProfile();
-        } catch (e) {
-          print("Error loading user profile: $e");
-        }
-
-        // Check if profile exists
-        final userProfile = ref.read(userProfileProvider).user;
-        await Future.delayed(_homeDelay);
-        if (!mounted) return;
-
-        if (userProfile == null) {
-          // No profile - go to profile creation
-          navigationService.navigateToEditProfile(context, isEditProfile: false, clearStack: true);
-        } else {
-          // Has profile - go to main app
-          navigationService.navigateToAppNavigator(context, clearStack: true);
-        }
-        break;
-
-      case AuthState.initial:
-      // Still initializing, wait for a definitive state
-        break;
-    }
+    // If all checks pass, render an empty scaffold (transient state)
+    return const Scaffold(body: SizedBox.shrink());
   }
 }

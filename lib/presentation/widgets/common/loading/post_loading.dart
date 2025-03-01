@@ -204,13 +204,9 @@ class HorizontalPostListLoading extends StatelessWidget {
 /// )
 /// ```
 class PostTimelineLoading extends StatelessWidget {
-  /// Number of loading timeline items to display
   final int itemCount;
-
-  /// Height of each card
   final double cardHeight;
 
-  /// Creates a [PostTimelineLoading] widget.
   const PostTimelineLoading({
     super.key,
     this.itemCount = 3,
@@ -219,11 +215,16 @@ class PostTimelineLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Fix: Replace Column with ListView to prevent overflow
+    return ListView.builder(
+      shrinkWrap: true, // Important: Ensures the ListView takes only needed space
+      physics: const NeverScrollableScrollPhysics(), // Prevents scrolling within this component
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: List.generate(itemCount, (index) {
-          return Row(
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Timeline visualization
@@ -236,7 +237,7 @@ class PostTimelineLoading extends StatelessWidget {
                   if (index < itemCount - 1)
                     Container(
                       width: 2,
-                      height: cardHeight + 20,
+                      height: cardHeight,
                       color: Colors.grey.withAlpha(100),
                     ),
                 ],
@@ -266,16 +267,13 @@ class PostTimelineLoading extends StatelessWidget {
                         height: cardHeight,
                       ),
                     ),
-
-                    if (index < itemCount - 1)
-                      const SizedBox(height: 20),
                   ],
                 ),
               ),
             ],
-          );
-        }),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -285,72 +283,88 @@ class PostTimelineLoading extends StatelessWidget {
 /// Features:
 /// - Simulates the appearance of the home screen while loading
 /// - Includes header, action buttons, and content sections
+// lib/presentation/widgets/common/loading/post_loading.dart
+
 class HomeScreenLoading extends StatelessWidget {
-  /// Creates a [HomeScreenLoading] widget
   const HomeScreenLoading({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: vAppLayoutBackground,
-      child: Column(
-        children: [
-          // Shimmer for header
-          Container(
-            height: 140,
-            width: double.infinity,
-            color: Colors.white,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ShimmerLoading.circle(size: 60),
-                const SizedBox(height: 12),
-                ShimmerLoading.roundedRectangle(
-                  width: 150,
-                  height: 20,
-                ),
-              ],
+      // Fix: Make it scrollable to prevent overflow
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Shimmer for header
+            Container(
+              height: 140,
+              width: double.infinity,
+              color: Colors.white,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ShimmerLoading.circle(size: 60),
+                  const SizedBox(height: 12),
+                  ShimmerLoading.roundedRectangle(
+                    width: 150,
+                    height: 20,
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Shimmer for action buttons
-          ShimmerLoading.roundedRectangle(
-            width: double.infinity,
-            height: 120,
-            borderRadius: 20,
-          ),
-
-          const SizedBox(height: 20),
-
-          // Shimmer for content sections
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShimmerLoading.roundedRectangle(
-                  width: 200,
-                  height: 24,
-                  borderRadius: 4,
-                ),
-                const SizedBox(height: 16),
-                const HorizontalPostListLoading(),
-
-                const SizedBox(height: 24),
-
-                ShimmerLoading.roundedRectangle(
-                  width: 200,
-                  height: 24,
-                  borderRadius: 4,
-                ),
-                const SizedBox(height: 16),
-                const HorizontalPostListLoading(),
-              ],
+            // Shimmer for action buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ShimmerLoading.roundedRectangle(
+                width: double.infinity,
+                height: 120,
+                borderRadius: 20,
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 20),
+
+            // Shimmer for content sections
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerLoading.roundedRectangle(
+                    width: 200,
+                    height: 24,
+                    borderRadius: 4,
+                  ),
+                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height: 350,
+                    child: HorizontalPostListLoading(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  ShimmerLoading.roundedRectangle(
+                    width: 200,
+                    height: 24,
+                    borderRadius: 4,
+                  ),
+                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height: 350,
+                    child: HorizontalPostListLoading(),
+                  ),
+
+                  // Extra padding at the bottom to prevent overflow
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

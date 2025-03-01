@@ -8,8 +8,6 @@ import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
 import 'package:vouse_flutter/presentation/widgets/navigation/navigation_service.dart';
 
-import '../../../core/util/common.dart';
-import '../../widgets/common/common_ui_components.dart';
 import '../../widgets/common/loading/full_screen_loading.dart';
 
 /// Profile screen shows user information and account settings

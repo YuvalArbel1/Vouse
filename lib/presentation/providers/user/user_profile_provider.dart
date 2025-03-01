@@ -1,5 +1,6 @@
 // lib/presentation/providers/user/user_profile_provider.dart
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
@@ -60,14 +61,21 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
   final GetUserUseCase _getUserUseCase;
   final SaveUserUseCase _saveUserUseCase;
 
+  // Track if we've attempted to load the profile
+  bool _hasAttemptedInitialLoad = false;
+
   /// Creates a user profile notifier
   UserProfileNotifier(this._getUserUseCase, this._saveUserUseCase)
       : super(const UserProfileState());
 
   /// Loads the user profile for the current user
-  Future<void> loadUserProfile() async {
+  Future<DataState<UserEntity?>> loadUserProfile() async {
     // Prevent multiple simultaneous loading attempts
-    if (state.loadingState == UserProfileLoadingState.loading) return;
+    if (state.loadingState == UserProfileLoadingState.loading) {
+      return const DataSuccess(null);
+    }
+
+    _hasAttemptedInitialLoad = true;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -75,30 +83,38 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
         loadingState: UserProfileLoadingState.error,
         errorMessage: 'No user logged in',
       );
-      return;
+      return const DataSuccess(null);
     }
 
-    // Move state update to an async operation to avoid build-time modification
+    // Set loading state
     state = state.copyWith(loadingState: UserProfileLoadingState.loading);
 
     try {
-      final result = await _getUserUseCase.call(params: GetUserParams(user.uid));
+      final result =
+          await _getUserUseCase.call(params: GetUserParams(user.uid));
 
       if (result is DataSuccess<UserEntity?>) {
         state = state.copyWith(
           user: result.data,
           loadingState: UserProfileLoadingState.loaded,
         );
+        return result;
       } else if (result is DataFailed<UserEntity?>) {
         state = state.copyWith(
           loadingState: UserProfileLoadingState.error,
           errorMessage: result.error?.error.toString() ?? 'Unknown error',
         );
+        return result;
       }
+
+      return const DataSuccess(null);
     } catch (e) {
       state = state.copyWith(
         loadingState: UserProfileLoadingState.error,
         errorMessage: e.toString(),
+      );
+      return DataFailed(
+        DioException(error: e, requestOptions: RequestOptions(path: '')),
       );
     }
   }
@@ -128,7 +144,9 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
   Future<DataState<void>> updateUserAvatar(String? newAvatarPath) async {
     if (state.user == null) {
       return DataFailed(
-        Exception('No user profile loaded') as dynamic,
+        DioException(
+            error: 'No user profile loaded',
+            requestOptions: RequestOptions(path: '')),
       );
     }
 
@@ -145,21 +163,32 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
 
   /// Clears the user profile state (e.g., on logout)
   void clearUserProfile() {
+    _hasAttemptedInitialLoad = false;
     state = const UserProfileState(
       loadingState: UserProfileLoadingState.initial,
     );
   }
+
+  /// Check if we have attempted to load the profile
+  bool get hasAttemptedInitialLoad => _hasAttemptedInitialLoad;
 }
 
 /// Provider for the user profile state
 final userProfileProvider =
-StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
+    StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
   final getUserUseCase = ref.watch(getUserUseCaseProvider);
   final saveUserUseCase = ref.watch(saveUserUseCaseProvider);
   return UserProfileNotifier(getUserUseCase, saveUserUseCase);
 });
 
 /// Provider for triggering user profile loading
-final loadUserProfileProvider = FutureProvider<void>((ref) async {
-  await ref.read(userProfileProvider.notifier).loadUserProfile();
+final loadUserProfileProvider =
+    FutureProvider<DataState<UserEntity?>>((ref) async {
+  return await ref.read(userProfileProvider.notifier).loadUserProfile();
+});
+
+/// Provider to check if a user has a profile
+final hasProfileProvider = Provider<bool>((ref) {
+  final profileState = ref.watch(userProfileProvider);
+  return profileState.user != null;
 });

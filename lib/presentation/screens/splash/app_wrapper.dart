@@ -1,5 +1,6 @@
 // lib/presentation/screens/splash/app_wrapper.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -14,6 +15,11 @@ import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart
 import '../../providers/auth/firebase/auth_state_provider.dart';
 import '../../providers/local_db/database_provider.dart';
 import '../../providers/user/user_profile_provider.dart';
+import '../../providers/local_db/local_user_providers.dart';
+
+// Domain entities and use cases
+import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
+import 'package:vouse_flutter/core/resources/data_state.dart';
 
 // Widgets
 import '../../widgets/common/loading/full_screen_loading.dart';
@@ -30,6 +36,7 @@ class AppWrapper extends ConsumerStatefulWidget {
 class _AppWrapperState extends ConsumerState<AppWrapper> {
   bool _isInitializingDatabase = true;
   bool _isAuthenticating = true;
+  bool _isCheckingProfile = true;
 
   @override
   void initState() {
@@ -57,7 +64,9 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
       // Wait for auth state to stabilize
       await _waitForAuthState();
     } catch (e) {
-      print('Initialization Error: $e');
+      if (kDebugMode) {
+        print('Initialization Error: $e');
+      }
 
       // In case of critical error, remove splash and show error
       if (mounted) {
@@ -65,6 +74,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         setState(() {
           _isInitializingDatabase = false;
           _isAuthenticating = false;
+          _isCheckingProfile = false;
         });
       }
     }
@@ -92,32 +102,53 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           await _handleAuthenticatedUser();
           break;
         case AuthState.initial:
-        // Unexpected state, default to sign-in
+          // Unexpected state, default to sign-in
           _navigateToSignIn();
           break;
       }
     }
   }
 
-  /// Handle authenticated user navigation
+  /// Handle authenticated user navigation with robust profile checking
   Future<void> _handleAuthenticatedUser() async {
+    setState(() {
+      _isCheckingProfile = true;
+    });
+
     try {
-      // Load user profile
-      await ref.read(userProfileProvider.notifier).loadUserProfile();
+      final userId = ref.read(currentUserIdProvider);
 
-      // Check user profile status
-      final userProfile = ref.read(userProfileProvider).user;
+      if (userId == null) {
+        _navigateToSignIn();
+        return;
+      }
 
-      if (userProfile == null) {
+      // Directly use getUserUseCase for more reliable profile checking
+      final getUserUseCase = ref.read(getUserUseCaseProvider);
+      final result = await getUserUseCase.call(params: GetUserParams(userId));
+
+      // Based on the result, determine if we need profile creation
+      if (result is DataSuccess && result.data != null) {
+        // Profile exists, update the provider and go to main app
+        ref.read(userProfileProvider.notifier).loadUserProfile();
+        _navigateToMainApp();
+      } else {
         // No profile exists, go to profile creation
         _navigateToEditProfile();
-      } else {
-        // Profile exists, go to main app
-        _navigateToMainApp();
       }
     } catch (e) {
-      print('User Profile Load Error: $e');
+      if (kDebugMode) {
+        print('User Profile Check Error: $e');
+      }
+
+      // On error, default to sign-in
       _navigateToSignIn();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingProfile = false;
+        });
+      }
     }
   }
 
@@ -126,7 +157,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
     FlutterNativeSplash.remove();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SignInScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -134,15 +165,16 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
     FlutterNativeSplash.remove();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const VerificationPendingScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 
   void _navigateToEditProfile() {
     FlutterNativeSplash.remove();
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const EditProfileScreen(isEditProfile: false)),
-          (route) => false,
+      MaterialPageRoute(
+          builder: (_) => const EditProfileScreen(isEditProfile: false)),
+      (route) => false,
     );
   }
 
@@ -150,14 +182,14 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
     FlutterNativeSplash.remove();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AppNavigator()),
-          (route) => false,
+      (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     // Show loading during critical initialization stages
-    if (_isInitializingDatabase || _isAuthenticating) {
+    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile) {
       return const Scaffold(
         body: FullScreenLoading(
           message: "Preparing your Vouse experience...",

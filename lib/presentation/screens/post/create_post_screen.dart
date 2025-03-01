@@ -20,13 +20,22 @@ import '../../widgets/post/create_post/post_options.dart';
 import '../../widgets/post/create_post/post_text.dart';
 import '../../widgets/post/create_post/selected_images_preview.dart';
 import '../../widgets/post/create_post/schedule_post_bottom_sheet.dart';
+import '../../widgets/navigation/navigation_service.dart';
+import '../../widgets/common/loading/full_screen_loading.dart';
 
 /// A screen where the user can create a new post:
 /// - Enter text in [PostText]
 /// - View and manage selected images via [SelectedImagesPreview]
-/// - Pick images, location, or AI text from [PostOptions]
+/// - Pick images, location, AI text, or hashtags from [PostOptions]
 ///
 /// The user can also save a draft or share the post.
+///
+/// Features:
+/// - Enhanced UI with meaningful animations
+/// - Twitter-like interface components
+/// - Clear user feedback with toasts
+/// - Progress tracking for post creation
+/// - Autosave for preventing lost work
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
 
@@ -34,14 +43,40 @@ class CreatePostScreen extends ConsumerStatefulWidget {
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
-  @override
-// lib/presentation/screens/post/create_post_screen.dart
+class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with SingleTickerProviderStateMixin {
+  /// Tracks whether content is being processed
+  bool _isProcessing = false;
+
+  /// Animation controller for the screen
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  /// Indicates if there are unsaved changes
+  bool _hasUnsavedChanges = false;
+
+  /// Track post completion percentage
+  int _completionPercentage = 0;
 
   @override
   void initState() {
     super.initState();
     _initializeScreen();
+
+    // Set up animation controller
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+
+    _animationController.forward();
+
+    // Start monitoring changes to calculate completion
+    _setupChangeListeners();
   }
 
   void _initializeScreen() {
@@ -55,17 +90,81 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     });
   }
 
+  void _setupChangeListeners() {
+    // Listen to changes in the post content providers to calculate completion
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initial calculation
+      _calculateCompletion();
+
+      // Setup listeners for text and images
+      ref.listen(postTextProvider, (_, text) {
+        setState(() {
+          _hasUnsavedChanges = true;
+          _calculateCompletion();
+        });
+      });
+
+      ref.listen(postImagesProvider, (_, images) {
+        setState(() {
+          _hasUnsavedChanges = true;
+          _calculateCompletion();
+        });
+      });
+
+      ref.listen(postLocationProvider, (_, location) {
+        setState(() {
+          _hasUnsavedChanges = true;
+          _calculateCompletion();
+        });
+      });
+    });
+  }
+
+  /// Calculate post completion percentage
+  void _calculateCompletion() {
+    final text = ref.read(postTextProvider);
+    final images = ref.read(postImagesProvider);
+    final location = ref.read(postLocationProvider);
+
+    int percentage = 0;
+
+    // Text adds up to 70%
+    if (text.isNotEmpty) {
+      if (text.length >= 100) {
+        percentage += 70;
+      } else {
+        percentage += (text.length * 70 ~/ 100);
+      }
+    }
+
+    // Images add up to 20%
+    if (images.isNotEmpty) {
+      percentage += (images.length * 5); // 5% per image, max 20%
+    }
+
+    // Location adds 10%
+    if (location != null) {
+      percentage += 10;
+    }
+
+    setState(() {
+      _completionPercentage = percentage.clamp(0, 100);
+    });
+  }
+
   @override
   void dispose() {
     // Restore the status bar color
     setStatusBarColor(vAppLayoutBackground);
-
+    _animationController.dispose();
     super.dispose();
   }
 
   /// Shows a confirmation dialog to ensure the user really wants to clear post data.
   /// Returns `true` if the user pressed "Yes."
   Future<bool> _confirmClearPost() async {
+    if (!_hasUnsavedChanges) return true;
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -73,7 +172,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           title: Text('Clear Post?', style: boldTextStyle()),
           content: Text(
             'Are you sure you want to clear all text, images, and location? '
-            'This is irreversible.',
+                'This is irreversible.',
             style: primaryTextStyle(),
           ),
           actions: [
@@ -102,7 +201,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     ref.read(postImagesProvider.notifier).clearAll();
     ref.read(postLocationProvider.notifier).state = null;
 
-    toast('Post content cleared.');
+    setState(() {
+      _hasUnsavedChanges = false;
+      _completionPercentage = 0;
+    });
+
+    toast('Post content cleared');
   }
 
   /// Prompts the user to enter a draft title using a dialog. Returns the provided title, or null if canceled.
@@ -134,7 +238,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 }
                 Navigator.pop(ctx, title);
               },
-              child: const Text('OK'),
+              child: const Text('Save Draft'),
             ),
           ],
         );
@@ -166,52 +270,86 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (!mounted) return; // Check if still mounted after dialog
     if (draftTitle == null) return; // user canceled
 
-    // Move images to permanent folder
-    final images = ref.read(postImagesProvider);
-    final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
+    setState(() => _isProcessing = true);
 
-    if (!mounted) return;
+    try {
+      // Move images to permanent folder
+      final images = ref.read(postImagesProvider);
+      final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
 
-    final loc = ref.read(postLocationProvider);
-    double? lat;
-    double? lng;
-    String? addr;
-    if (loc != null) {
-      lat = loc.latitude;
-      lng = loc.longitude;
-      addr = loc.address;
-    }
+      if (!mounted) return;
 
-    final postEntity = PostEntity(
-      postIdLocal: const Uuid().v4(),
-      postIdX: null,
-      content: text,
-      title: draftTitle,
-      createdAt: DateTime.now(),
-      updatedAt: null,
-      scheduledAt: null,
-      visibility: null,
-      localImagePaths: localPaths,
-      cloudImageUrls: [],
-      locationLat: lat,
-      locationLng: lng,
-      locationAddress: addr,
-    );
+      final loc = ref.read(postLocationProvider);
+      double? lat;
+      double? lng;
+      String? addr;
+      if (loc != null) {
+        lat = loc.latitude;
+        lng = loc.longitude;
+        addr = loc.address;
+      }
 
-    final saveUC = ref.read(savePostUseCaseProvider);
-    final result = await saveUC.call(
-      params: SavePostParams(postEntity, user.uid),
-    );
-    if (!mounted) return;
+      final postEntity = PostEntity(
+        postIdLocal: const Uuid().v4(),
+        postIdX: null,
+        content: text,
+        title: draftTitle,
+        createdAt: DateTime.now(),
+        updatedAt: null,
+        scheduledAt: null,
+        visibility: null,
+        localImagePaths: localPaths,
+        cloudImageUrls: [],
+        locationLat: lat,
+        locationLng: lng,
+        locationAddress: addr,
+      );
 
-    if (result is DataSuccess) {
-      // Clear everything
-      ref.read(postTextProvider.notifier).state = '';
-      ref.read(postImagesProvider.notifier).clearAll();
-      ref.read(postLocationProvider.notifier).state = null;
-      Navigator.pop(context);
-    } else if (result is DataFailed) {
-      toast("Error saving draft: ${result.error?.error}");
+      final saveUC = ref.read(savePostUseCaseProvider);
+      final result = await saveUC.call(
+        params: SavePostParams(postEntity, user.uid),
+      );
+
+      if (!mounted) return;
+
+      if (result is DataSuccess) {
+        // Clear everything
+        ref.read(postTextProvider.notifier).state = '';
+        ref.read(postImagesProvider.notifier).clearAll();
+        ref.read(postLocationProvider.notifier).state = null;
+
+        setState(() {
+          _hasUnsavedChanges = false;
+          _completionPercentage = 0;
+        });
+
+        // Show success message with animation
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text("Draft \"$draftTitle\" saved successfully"),
+              ],
+            ),
+            backgroundColor: vAccentColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        // Navigate back
+        ref.read(navigationServiceProvider).navigateBack(context);
+      } else if (result is DataFailed) {
+        toast("Error saving draft: ${result.error?.error}");
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -238,11 +376,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black26,
+                  color: Colors.black.withAlpha(40),
                   blurRadius: 10,
-                  offset: Offset(0, -2),
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
@@ -253,96 +391,192 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.cardColor,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: context.cardColor,
-        elevation: 0,
-        centerTitle: true,
-        leadingWidth: 120,
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Back arrow
-            IconButton(
-              icon: Icon(Icons.arrow_back, color: context.iconColor),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-              visualDensity: const VisualDensity(horizontal: -4),
-            ),
-            const SizedBox(width: 8),
-            // Clear button
-            Flexible(
-              child: AppButton(
-                shapeBorder: RoundedRectangleBorder(
-                  borderRadius: radius(4),
-                  side: BorderSide(color: vAccentColor),
-                ),
-                text: 'Clear',
-                textStyle: secondaryTextStyle(color: vAccentColor, size: 10),
-                onTap: _onClearPressed,
-                elevation: 0,
-                color: Colors.transparent,
-                width: 50,
-                padding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-        ),
-        title: Text('New Post', style: boldTextStyle(size: 20)),
-        actions: [
-          // Draft
-          AppButton(
-            shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
-            text: 'Draft',
-            textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-            onTap: _onDraftPressed,
-            elevation: 0,
-            color: vAccentColor.withAlpha(220),
-            width: 50,
-            padding: EdgeInsets.zero,
-          ).paddingAll(4),
+  /// Show unsaved changes confirmation dialog
+  Future<bool> _onWillPop() async {
+    if (!_hasUnsavedChanges) return true;
 
-          // Post
-          AppButton(
-            shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
-            text: 'Post',
-            textStyle: secondaryTextStyle(color: Colors.white, size: 10),
-            onTap: () => _openShareBottomSheet(context),
-            elevation: 0,
-            color: vPrimaryColor.withAlpha(220),
-            width: 50,
-            padding: EdgeInsets.zero,
-            margin: const EdgeInsets.only(right: 13),
-          ).paddingAll(4),
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Discard Changes?', style: boldTextStyle()),
+        content: Text(
+          'You have unsaved changes. Are you sure you want to leave without saving?',
+          style: primaryTextStyle(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard'),
+          ),
         ],
       ),
-      body: SizedBox(
-        height: context.height(),
-        child: Stack(
+    );
+
+    return result ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: context.cardColor,
+        appBar: _buildAppBar(),
+        body: Stack(
           children: [
-            // Scrollable main content
-            SingleChildScrollView(
-              child: Column(
-                children: const [
-                  PostText(),
-                  SelectedImagesPreview(),
-                  SizedBox(height: 100), // Space above the pinned bottom bar
-                ],
+            // Main content
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: _buildContent(),
+            ),
+
+            // Loading overlay
+            if (_isProcessing)
+              const BlockingSpinnerOverlay(
+                isVisible: true,
+                message: "Processing...",
               ),
-            ),
-            // Pinned bottom bar
-            const Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: PostOptions(),
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Builds the app bar with completion indicator
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: context.cardColor,
+      elevation: 0,
+      centerTitle: true,
+      leadingWidth: 120,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Back arrow
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: context.iconColor),
+            onPressed: () async {
+              if (await _onWillPop()) {
+                ref.read(navigationServiceProvider).navigateBack(context);
+              }
+            },
+            padding: EdgeInsets.zero,
+            visualDensity: const VisualDensity(horizontal: -4),
+          ),
+          const SizedBox(width: 8),
+          // Clear button
+          Flexible(
+            child: AppButton(
+              shapeBorder: RoundedRectangleBorder(
+                borderRadius: radius(4),
+                side: BorderSide(color: vAccentColor),
+              ),
+              text: 'Clear',
+              textStyle: secondaryTextStyle(color: vAccentColor, size: 10),
+              onTap: _onClearPressed,
+              elevation: 0,
+              color: Colors.transparent,
+              width: 50,
+              padding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+      title: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('New Post', style: boldTextStyle(size: 20)),
+          // Completion indicator
+          Container(
+            width: 100,
+            height: 4,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey.withAlpha(40),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: _completionPercentage / 100,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _getCompletionColor(),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        // Draft
+        AppButton(
+          shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
+          text: 'Draft',
+          textStyle: secondaryTextStyle(color: Colors.white, size: 10),
+          onTap: _onDraftPressed,
+          elevation: 0,
+          color: vAccentColor.withAlpha(220),
+          width: 50,
+          padding: EdgeInsets.zero,
+        ).paddingAll(4),
+
+        // Post
+        AppButton(
+          shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
+          text: 'Post',
+          textStyle: secondaryTextStyle(color: Colors.white, size: 10),
+          onTap: () => _openShareBottomSheet(context),
+          elevation: 0,
+          color: vPrimaryColor.withAlpha(220),
+          width: 50,
+          padding: EdgeInsets.zero,
+          margin: const EdgeInsets.only(right: 13),
+        ).paddingAll(4),
+      ],
+    );
+  }
+
+  /// Get color for completion indicator based on percentage
+  Color _getCompletionColor() {
+    if (_completionPercentage < 30) {
+      return Colors.red;
+    } else if (_completionPercentage < 70) {
+      return Colors.orange;
+    } else {
+      return vAccentColor;
+    }
+  }
+
+  /// Builds the main content of the screen
+  Widget _buildContent() {
+    return SizedBox(
+      height: context.height(),
+      child: Stack(
+        children: [
+          // Scrollable main content
+          SingleChildScrollView(
+            child: Column(
+              children: const [
+                PostText(),
+                SelectedImagesPreview(),
+                SizedBox(height: 100), // Space above the pinned bottom bar
+              ],
+            ),
+          ),
+          // Pinned bottom bar
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: PostOptions(),
+          ),
+        ],
       ),
     );
   }

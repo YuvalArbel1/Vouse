@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/ui_settings.dart';
 import '../../providers/post/post_images_provider.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A full-screen viewer for images, which can operate in two modes:
 ///
@@ -96,7 +97,7 @@ class _FullScreenImagePreviewState
         _localImages.removeAt(_currentIndex);
       });
       if (_localImages.isEmpty) {
-        Navigator.pop(context);
+        ref.read(navigationServiceProvider).navigateBack(context);
       } else {
         if (_currentIndex >= _localImages.length) {
           _currentIndex = _localImages.length - 1;
@@ -109,7 +110,7 @@ class _FullScreenImagePreviewState
 
       final updated = ref.read(postImagesProvider);
       if (updated.isEmpty) {
-        Navigator.pop(context);
+        ref.read(navigationServiceProvider).navigateBack(context);
       } else {
         if (_currentIndex >= updated.length) {
           _currentIndex = updated.length - 1;
@@ -142,7 +143,8 @@ class _FullScreenImagePreviewState
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () =>
+              ref.read(navigationServiceProvider).navigateBack(context),
         ),
         actions: [
           if (widget.allowDeletion)

@@ -138,11 +138,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             content: const Text('Are you sure you want to log out?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => ref
+                    .read(navigationServiceProvider)
+                    .navigateToCreatePost(context),
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => ref
+                    .read(navigationServiceProvider)
+                    .navigateToCreatePost(context),
                 child:
                     const Text('Log Out', style: TextStyle(color: Colors.red)),
               ),

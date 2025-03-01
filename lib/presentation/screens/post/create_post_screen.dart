@@ -16,6 +16,7 @@ import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
+import '../../providers/post/post_refresh_provider.dart';
 import '../../providers/post/post_text_provider.dart';
 import '../../widgets/post/create_post/post_options.dart';
 import '../../widgets/post/create_post/post_text.dart';
@@ -281,6 +282,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       if (!mounted) return;
 
       if (result is DataSuccess) {
+        ref.read(postRefreshProvider.notifier).refreshDrafts();
+
         // Clear everything
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();

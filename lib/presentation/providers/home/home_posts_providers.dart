@@ -15,7 +15,6 @@ final draftPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) as
   // Watch the refresh trigger so this provider refreshes when triggered
   ref.watch(draftRefreshProvider);
 
-  // Rest of your existing implementation
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return [];
 
@@ -34,6 +33,9 @@ final draftPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) as
 /// Returns all "scheduled" posts for the current user.
 /// A "scheduled" post is one with [scheduledAt] != null.
 final scheduledPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) async {
+  // Watch the refresh trigger so this provider refreshes when triggered
+  ref.watch(scheduledRefreshProvider);
+
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return [];
 
@@ -51,6 +53,9 @@ final scheduledPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref
 /// Returns all "posted" posts for the current user.
 /// A "posted" post is one with [updatedAt] != null.
 final postedPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) async {
+  // Watch the refresh trigger so this provider refreshes when triggered
+  ref.watch(postedRefreshProvider);
+
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return [];
 

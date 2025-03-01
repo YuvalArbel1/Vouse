@@ -1,4 +1,5 @@
 // lib/presentation/widgets/post/create_post/post_options.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,12 @@ import 'recent_images_row.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../widgets/navigation/navigation_service.dart';
 
+/// A widget that provides post options for creating a new post.
+///
+/// This widget shows:
+/// - A row of recent images (via [RecentImagesRow]).
+/// - A row of option icons (Gallery, Location, AI) that are evenly spaced
+///   across the full width of the screen.
 class PostOptions extends ConsumerStatefulWidget {
   const PostOptions({super.key});
 
@@ -20,7 +27,7 @@ class PostOptions extends ConsumerStatefulWidget {
 class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProviderStateMixin {
   final ImagePicker _picker = ImagePicker();
 
-  // Animation controller for the options panel
+  /// Animation controller for the options panel.
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -29,7 +36,7 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
   void initState() {
     super.initState();
 
-    // Initialize animation controller
+    // Initialize animation controller for fade and slide effects.
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -48,7 +55,7 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
       curve: Curves.easeOutCubic,
     ));
 
-    // Start panel animation when widget is first built
+    // Start the panel animation when the widget is built.
     _animationController.forward();
   }
 
@@ -58,26 +65,25 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
     super.dispose();
   }
 
-  /// Picks an image from the system gallery and calls [addImageFromGallery]
-  /// to store ephemeral path + MD5 deduping.
+  /// Picks an image from the system gallery.
+  ///
+  /// If the image is already selected, it will be removed; otherwise,
+  /// it adds the image to the post.
   Future<void> _pickFromGallery() async {
-    final XFile? pickedFile =
-    await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
     final path = pickedFile.path;
     final images = ref.read(postImagesProvider);
 
-    // If user picks an already selected ephemeral path, we remove it.
+    // Remove the image if it is already selected.
     if (images.contains(path)) {
-      // remove
       ref.read(postImagesProvider.notifier).removeImage(path);
       return;
     }
 
-    // else attempt to add
-    final result =
-    await ref.read(postImagesProvider.notifier).addImageFromGallery(path);
+    // Attempt to add the image.
+    final result = await ref.read(postImagesProvider.notifier).addImageFromGallery(path);
 
     switch (result) {
       case AddImageResult.duplicate:
@@ -87,12 +93,12 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
         toast("You can't add more than 4 images");
         break;
       case AddImageResult.success:
-      // no toast needed
+      // Image added successfully, no toast needed.
         break;
     }
   }
 
-  /// Opens an [AiTextGenerationDialog] for generating post text via AI.
+  /// Opens an AI text generation dialog for generating post text.
   Future<void> _onAIPressed() async {
     showDialog(
       context: context,
@@ -100,7 +106,7 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
     );
   }
 
-  /// Opens the location selection screen using NavigationService
+  /// Opens the location selection screen via the navigation service.
   void _openLocationPicker() {
     ref.read(navigationServiceProvider).navigateToLocationSelection(context);
   }
@@ -138,38 +144,39 @@ class _PostOptionsState extends ConsumerState<PostOptions> with SingleTickerProv
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The row with camera + recent images
+                // Row with recent images.
                 const RecentImagesRow(),
                 const SizedBox(height: 16),
 
-                // Additional icons: Gallery, Location, AI
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      buildOptionIcon(
+                // Additional icons row:
+                // Gallery, Location, AI icons evenly spaced across the full width.
+                Row(
+                  children: [
+                    Expanded(
+                      child: buildOptionIcon(
                         icon: Icons.photo_library,
                         label: "Gallery",
                         onTap: _pickFromGallery,
                         tooltipText: "Add from gallery",
                       ),
-                      const SizedBox(width: 24),
-                      buildOptionIcon(
+                    ),
+                    Expanded(
+                      child: buildOptionIcon(
                         icon: Icons.location_on,
                         label: "Location",
                         onTap: _openLocationPicker,
                         tooltipText: "Add your location",
                       ),
-                      const SizedBox(width: 24),
-                      buildOptionIcon(
+                    ),
+                    Expanded(
+                      child: buildOptionIcon(
                         icon: Icons.auto_awesome,
                         label: "AI",
                         onTap: _onAIPressed,
                         tooltipText: "Generate text with AI",
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),

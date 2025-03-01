@@ -26,7 +26,7 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 /// A screen where the user can create a new post:
 /// - Enter text in [PostText]
 /// - View and manage selected images via [SelectedImagesPreview]
-/// - Pick images, location, AI text from [PostOptions]
+/// - Pick images, location, or AI text from [PostOptions]
 ///
 /// The user can also save a draft or share the post.
 ///
@@ -34,7 +34,6 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 /// - Enhanced UI with meaningful animations
 /// - Twitter-like interface components
 /// - Clear user feedback with toasts
-/// - Progress tracking for post creation
 /// - Autosave for preventing lost work
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
@@ -54,9 +53,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
   /// Indicates if there are unsaved changes
   bool _hasUnsavedChanges = false;
 
-  /// Track post completion percentage
-  int _completionPercentage = 0;
-
   @override
   void initState() {
     super.initState();
@@ -75,7 +71,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
 
     _animationController.forward();
 
-    // Start monitoring changes to calculate completion
+    // Start monitoring changes for unsaved content
     _setupChangeListeners();
   }
 
@@ -91,64 +87,25 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
   }
 
   void _setupChangeListeners() {
-    // Listen to changes in the post content providers to calculate completion
+    // Listen to changes in the post content providers to track unsaved changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Initial calculation
-      _calculateCompletion();
-
-      // Setup listeners for text and images
-      ref.listen(postTextProvider, (_, text) {
+      ref.listen(postTextProvider, (_, __) {
         setState(() {
           _hasUnsavedChanges = true;
-          _calculateCompletion();
         });
       });
 
-      ref.listen(postImagesProvider, (_, images) {
+      ref.listen(postImagesProvider, (_, __) {
         setState(() {
           _hasUnsavedChanges = true;
-          _calculateCompletion();
         });
       });
 
-      ref.listen(postLocationProvider, (_, location) {
+      ref.listen(postLocationProvider, (_, __) {
         setState(() {
           _hasUnsavedChanges = true;
-          _calculateCompletion();
         });
       });
-    });
-  }
-
-  /// Calculate post completion percentage
-  void _calculateCompletion() {
-    final text = ref.read(postTextProvider);
-    final images = ref.read(postImagesProvider);
-    final location = ref.read(postLocationProvider);
-
-    int percentage = 0;
-
-    // Text adds up to 70%
-    if (text.isNotEmpty) {
-      if (text.length >= 100) {
-        percentage += 70;
-      } else {
-        percentage += (text.length * 70 ~/ 100);
-      }
-    }
-
-    // Images add up to 20%
-    if (images.isNotEmpty) {
-      percentage += (images.length * 5); // 5% per image, max 20%
-    }
-
-    // Location adds 10%
-    if (location != null) {
-      percentage += 10;
-    }
-
-    setState(() {
-      _completionPercentage = percentage.clamp(0, 100);
     });
   }
 
@@ -171,8 +128,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
         return AlertDialog(
           title: Text('Clear Post?', style: boldTextStyle()),
           content: Text(
-            'Are you sure you want to clear all text, images, and location? '
-                'This is irreversible.',
+            'Are you sure you want to clear all text, images, and location? This is irreversible.',
             style: primaryTextStyle(),
           ),
           actions: [
@@ -203,7 +159,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
 
     setState(() {
       _hasUnsavedChanges = false;
-      _completionPercentage = 0;
     });
 
     if (mounted) {
@@ -211,7 +166,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
     }
   }
 
-  /// Prompts the user to enter a draft title using a dialog. Returns the provided title, or null if canceled.
+  /// Prompts the user to enter a draft title using a dialog.
+  /// Returns the provided title, or null if canceled.
   Future<String?> _showDraftTitleDialog() async {
     final titleController = TextEditingController();
     return showDialog<String>(
@@ -322,10 +278,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
 
         setState(() {
           _hasUnsavedChanges = false;
-          _completionPercentage = 0;
         });
 
-        // Show success message with animation
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -343,7 +297,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
           ),
         );
 
-        // Navigate back
         ref.read(navigationServiceProvider).navigateBack(context);
       } else if (result is DataFailed) {
         toast("Error saving draft: ${result.error?.error}");
@@ -458,7 +411,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
     );
   }
 
-  /// Builds the app bar with completion indicator
+  /// Builds the app bar without a progress indicator.
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
@@ -469,7 +422,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Back arrow
           IconButton(
             icon: Icon(Icons.arrow_back, color: context.iconColor),
             onPressed: () async {
@@ -482,7 +434,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
             visualDensity: const VisualDensity(horizontal: -4),
           ),
           const SizedBox(width: 8),
-          // Clear button
           Flexible(
             child: AppButton(
               shapeBorder: RoundedRectangleBorder(
@@ -500,34 +451,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
           ),
         ],
       ),
-      title: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('New Post', style: boldTextStyle(size: 20)),
-          // Completion indicator
-          Container(
-            width: 100,
-            height: 4,
-            margin: const EdgeInsets.only(top: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey.withAlpha(40),
-              borderRadius: BorderRadius.circular(2),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: _completionPercentage / 100,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _getCompletionColor(),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: Text('New Post', style: boldTextStyle(size: 20)),
       actions: [
-        // Draft
         AppButton(
           shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
           text: 'Draft',
@@ -538,8 +463,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
           width: 50,
           padding: EdgeInsets.zero,
         ).paddingAll(4),
-
-        // Post
         AppButton(
           shapeBorder: RoundedRectangleBorder(borderRadius: radius(4)),
           text: 'Post',
@@ -555,18 +478,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
     );
   }
 
-  /// Get color for completion indicator based on percentage
-  Color _getCompletionColor() {
-    if (_completionPercentage < 30) {
-      return Colors.red;
-    } else if (_completionPercentage < 70) {
-      return Colors.orange;
-    } else {
-      return vAccentColor;
-    }
-  }
-
-  /// Builds the main content of the screen
+  /// Builds the main content of the screen.
   Widget _buildContent() {
     return SafeArea(
       child: SizedBox(
@@ -580,7 +492,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with Single
                 children: [
                   const PostText(),
                   const SelectedImagesPreview(),
-                  // Additional space to avoid nav bar overlap
                   SizedBox(height: context.height() * 0.15),
                 ],
               ),

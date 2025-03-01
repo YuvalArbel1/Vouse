@@ -180,10 +180,10 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
 
   /// Build main posts content with metrics and grid/list
   Widget _buildPostsContent() {
+    // In _buildPostsContent()
     return Consumer(
       builder: (context, ref, _) {
         final filteredPostsAsync = ref.watch(filteredPostsProvider);
-        final metrics = ref.watch(engagementMetricsProvider);
         final activeFilter = ref.watch(activeTimeFilterProvider);
 
         return FadeTransition(
@@ -193,14 +193,9 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
               child: filteredPostsAsync.when(
-                data: (posts) =>
-                    _buildPostsSection(posts, metrics, activeFilter),
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 100),
-                    child: FullScreenLoading(message: 'Loading your posts...'),
-                  ),
-                ),
+                data: (posts) => _buildPostsSection(
+                    posts, ref.watch(engagementMetricsProvider), activeFilter),
+                loading: () => const Center(/* ... */),
                 error: (error, _) => Center(child: Text('Error: $error')),
               ),
             ),

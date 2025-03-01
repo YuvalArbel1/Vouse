@@ -209,16 +209,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Read from the user profile provider and home content provider
-    final userProfileState = ref.watch(userProfileProvider);
-    final homeContentState = ref.watch(homeContentProvider);
+    // Replace in build() method
+    final userProfile =
+        ref.watch(userProfileProvider.select((state) => state.user));
+    final isUserLoading = ref.watch(userProfileProvider.select((state) =>
+        state.loadingState == UserProfileLoadingState.loading ||
+        state.loadingState == UserProfileLoadingState.initial));
+    final homeContentLoading =
+        ref.watch(homeContentProvider.select((state) => state.isLoading));
+    final postCounts =
+        ref.watch(homeContentProvider.select((state) => state.postCounts));
 
-    final isLoading = homeContentState.isLoading ||
-        userProfileState.loadingState == UserProfileLoadingState.loading ||
-        userProfileState.loadingState == UserProfileLoadingState.initial;
-
-    final userProfile = userProfileState.user;
-    final postCounts = homeContentState.postCounts;
+    final isLoading = isUserLoading || homeContentLoading;
 
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
@@ -443,7 +445,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 350,
       child: Consumer(
         builder: (context, ref, child) {
-          final recentPosts = ref.watch(recentPostsProvider);
+          final recentPosts = ref
+              .watch(homeContentProvider.select((state) => state.recentPosts));
 
           if (recentPosts.isEmpty) {
             return _buildEmptyPostsCard(
@@ -478,7 +481,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 350,
       child: Consumer(
         builder: (context, ref, child) {
-          final upcomingPosts = ref.watch(upcomingPostsProvider);
+          final upcomingPosts = ref.watch(
+              homeContentProvider.select((state) => state.upcomingPosts));
 
           if (upcomingPosts.isEmpty) {
             return _buildEmptyPostsCard(

@@ -12,6 +12,7 @@ import 'package:vouse_flutter/presentation/screens/auth/verification_pending_scr
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 
 // Providers
+import '../../../core/util/ui_settings.dart';
 import '../../providers/auth/firebase/auth_state_provider.dart';
 import '../../providers/local_db/database_provider.dart';
 import '../../providers/user/user_profile_provider.dart';
@@ -41,6 +42,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   @override
   void initState() {
     super.initState();
+
+    UiSettings.hideSystemNavBar();
 
     // Ensure splash screen is preserved during critical initializations
     WidgetsBinding.instance.addPostFrameCallback((_) {

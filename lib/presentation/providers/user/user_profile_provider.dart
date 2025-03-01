@@ -184,7 +184,12 @@ final userProfileProvider =
 /// Provider for triggering user profile loading
 final loadUserProfileProvider =
     FutureProvider<DataState<UserEntity?>>((ref) async {
-  return await ref.read(userProfileProvider.notifier).loadUserProfile();
+  final getUserUseCase = ref.watch(getUserUseCaseProvider);
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    return const DataSuccess(null);
+  }
+  return await getUserUseCase.call(params: GetUserParams(user.uid));
 });
 
 /// Provider to check if a user has a profile

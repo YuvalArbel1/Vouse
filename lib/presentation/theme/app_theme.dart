@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
 
+import '../../core/util/ui_settings.dart';
+
 /// A class that centralizes app theme configuration.
 class AppTheme {
   /// Returns the light theme for the app.
@@ -156,6 +158,7 @@ class AppTheme {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
@@ -163,10 +166,7 @@ class AppTheme {
 
   /// Configure for edge-to-edge display
   void configureEdgeToEdge() {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
+    UiSettings.hideSystemNavBar();
   }
 }
 

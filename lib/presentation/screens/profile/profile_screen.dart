@@ -25,7 +25,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void initState() {
     super.initState();
 
-    // Use Future.microtask to defer profile loading
+    // Use Future.microtask to defer profile loading until after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUserProfile();
     });
@@ -36,8 +36,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       setState(() => _isLoading = true);
 
-      // Use the loadUserProfileProvider to ensure safe loading
-      await ref.read(loadUserProfileProvider.future);
+      await ref.read(userProfileProvider.notifier).loadUserProfile();
     } catch (e) {
       // Use a more production-friendly logging approach
       debugPrint('Profile refresh error: $e');
@@ -51,25 +50,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// Handles user logout
   Future<void> _handleLogout() async {
     final NavigatorState navigator = Navigator.of(context);
-    final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
+    final ScaffoldMessengerState scaffoldMessenger =
+        ScaffoldMessenger.of(context);
 
     final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => navigator.pop(false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Log Out',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text('Are you sure you want to log out?'),
+            actions: [
+              TextButton(
+                onPressed: () => navigator.pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => navigator.pop(true),
+                child:
+                    const Text('Log Out', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => navigator.pop(true),
-            child: const Text('Log Out', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!shouldLogout) return;
 
@@ -81,7 +84,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final authState = ref.read(firebaseAuthNotifierProvider);
 
       if (authState is DataSuccess<void>) {
-        ref.read(navigationServiceProvider)
+        ref
+            .read(navigationServiceProvider)
             .navigateToSignIn(context, clearStack: true);
       } else if (authState is DataFailed<void>) {
         final errorMsg = authState.error?.error ?? 'Unknown error';
@@ -126,25 +130,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: isLoading
           ? const FullScreenLoading(message: 'Loading profile...')
           : SafeArea(
-        child: Container(
-          width: width,
-          height: height,
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/images/vouse_bg.jpg'),
-              fit: BoxFit.cover,
+              child: Container(
+                width: width,
+                height: height,
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/vouse_bg.jpg'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Rest of your existing profile screen content remains the same
+                      // ...
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Rest of your existing profile screen content remains the same
-                // ...
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

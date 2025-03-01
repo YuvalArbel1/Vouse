@@ -10,6 +10,7 @@ import 'package:vouse_flutter/presentation/widgets/navigation/custom_bottom_nav.
 import 'package:vouse_flutter/core/util/colors.dart';
 
 // Updated imports to use the renamed screens
+import '../../core/util/ui_settings.dart';
 import '../screens/post_history/published_posts_screen.dart';
 import '../screens/post_history/upcoming_posts.dart';
 
@@ -37,6 +38,7 @@ class _AppNavigatorState extends ConsumerState<AppNavigator> {
   @override
   void initState() {
     super.initState();
+    UiSettings.hideSystemNavBar();
   }
 
   /// Navigate to create post screen

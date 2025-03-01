@@ -17,6 +17,7 @@ import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../providers/post/save_post_with_upload_provider.dart';
+import '../../navigation/navigation_service.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
@@ -81,7 +82,8 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () =>
+                  ref.read(navigationServiceProvider).navigateBack(context),
               child: const Text('Close'),
             ),
           ],
@@ -202,7 +204,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
         ref.read(postLocationProvider.notifier).state = null;
-        Navigator.pop(context);
+        ref.read(navigationServiceProvider).navigateBack(context);
       } else if (result is DataFailed) {
         toast("Error saving scheduled post: ${result.error?.error}");
       }

@@ -22,7 +22,6 @@ import '../../widgets/common/loading/post_loading.dart';
 import '../../widgets/home/stat_item.dart';
 import '../../widgets/navigation/navigation_service.dart';
 import '../../widgets/post/post_preview/post_card.dart';
-import '../auth/signin.dart';
 
 /// A modern, visually engaging home screen with dynamic content sections
 /// and personalized user experience.
@@ -33,7 +32,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _headerAnimation;
   late Animation<double> _actionsAnimation;
@@ -90,7 +90,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   /// Loads all initial data required for the home screen
   Future<void> _loadInitialData() async {
     // Load user profile if not already loaded
-    if (ref.read(userProfileProvider).loadingState == UserProfileLoadingState.initial) {
+    if (ref.read(userProfileProvider).loadingState ==
+        UserProfileLoadingState.initial) {
       await ref.read(userProfileProvider.notifier).loadUserProfile();
     }
 
@@ -130,22 +131,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   /// Handles user logout
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Log Out',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text('Are you sure you want to log out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child:
+                    const Text('Log Out', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log Out', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!shouldLogout) return;
 
@@ -154,10 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
     final authState = ref.read(firebaseAuthNotifierProvider);
     if (authState is DataSuccess<void>) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const SignInScreen()),
-            (route) => false,
-      );
+      ref
+          .read(navigationServiceProvider)
+          .navigateToSignIn(context, clearStack: true);
     } else if (authState is DataFailed<void>) {
       final errorMsg = authState.error?.error ?? 'Unknown error';
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,7 +187,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   void _navigateToEditProfile() {
-    ref.read(navigationServiceProvider).navigateToEditProfile(context, isEditProfile: true, clearStack: false);
+    ref.read(navigationServiceProvider).navigateToEditProfile(
+          context,
+          isEditProfile: true,
+          clearStack: false,
+        );
   }
 
   void _showFeatureComingSoon(String feature) {
@@ -218,80 +225,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       body: isLoading
           ? const HomeScreenLoading()
           : RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SafeArea(
-          child: Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/vouse_bg.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.8,
+              onRefresh: _refreshData,
+              child: SafeArea(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/vouse_bg.jpg'),
+                      fit: BoxFit.cover,
+                      opacity: 0.8,
+                    ),
+                  ),
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: FadeTransition(
+                          opacity: _headerAnimation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, -0.2),
+                              end: Offset.zero,
+                            ).animate(_headerAnimation),
+                            child: _buildHeader(userProfile, postCounts),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: FadeTransition(
+                          opacity: _actionsAnimation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.2, 0),
+                              end: Offset.zero,
+                            ).animate(_actionsAnimation),
+                            child: QuickActionsPanel(
+                              onNewPost: _navigateToCreatePost,
+                              onSchedule: _navigateToScheduledPosts,
+                              onAnalytics: () =>
+                                  _showFeatureComingSoon('Analytics'),
+                              onSettings: _navigateToSettings,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: FadeTransition(
+                          opacity: _contentAnimation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.2),
+                              end: Offset.zero,
+                            ).animate(_contentAnimation),
+                            child: Column(
+                              children: [
+                                SectionHeader(
+                                  title: '📊 Recent Activity',
+                                  onActionTap: _navigateToPostHistory,
+                                ),
+                                _buildRecentPostsSection(),
+                                SectionHeader(
+                                  title: '🗓️ Upcoming Posts',
+                                  onActionTap: _navigateToScheduledPosts,
+                                ),
+                                _buildUpcomingPostsSection(),
+                                MotivationCard(tip: _getRandomTip()),
+                                const SizedBox(height: 100),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _headerAnimation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, -0.2),
-                        end: Offset.zero,
-                      ).animate(_headerAnimation),
-                      child: _buildHeader(userProfile, postCounts),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _actionsAnimation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.2, 0),
-                        end: Offset.zero,
-                      ).animate(_actionsAnimation),
-                      child: QuickActionsPanel(
-                        onNewPost: _navigateToCreatePost,
-                        onSchedule: _navigateToScheduledPosts,
-                        onAnalytics: () => _showFeatureComingSoon('Analytics'),
-                        onSettings: _navigateToSettings,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _contentAnimation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.2),
-                        end: Offset.zero,
-                      ).animate(_contentAnimation),
-                      child: Column(
-                        children: [
-                          SectionHeader(
-                            title: '📊 Recent Activity',
-                            onActionTap: _navigateToPostHistory,
-                          ),
-                          _buildRecentPostsSection(),
-                          SectionHeader(
-                            title: '🗓️ Upcoming Posts',
-                            onActionTap: _navigateToScheduledPosts,
-                          ),
-                          _buildUpcomingPostsSection(),
-                          MotivationCard(tip: _getRandomTip()),
-                          const SizedBox(height: 100),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

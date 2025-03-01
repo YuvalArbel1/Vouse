@@ -7,10 +7,10 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
-import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
-import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
 import 'package:vouse_flutter/presentation/widgets/common/common_ui_components.dart';
+
+import '../../widgets/navigation/navigation_service.dart';
 
 /// Profile screen shows user information and account settings
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -102,9 +102,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
 
       final authState = ref.read(firebaseAuthNotifierProvider);
       if (authState is DataSuccess<void>) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const SignInScreen()),
-              (route) => false,
+        ref.read(navigationServiceProvider).navigateToSignIn(
+            context,
+            clearStack: true
         );
       } else if (authState is DataFailed<void>) {
         final errorMsg = authState.error?.error ?? 'Unknown error';
@@ -120,10 +120,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   }
 
   void _navigateToEditProfile() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const EditProfileScreen(isEditProfile: true),
-      ),
+    ref.read(navigationServiceProvider).navigateToEditProfile(
+        context,
+        isEditProfile: true,
+        clearStack: false
     );
   }
 

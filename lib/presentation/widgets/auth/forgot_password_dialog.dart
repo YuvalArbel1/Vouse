@@ -7,6 +7,7 @@ import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../navigation/navigation_service.dart';
 
 /// A dialog widget that prompts the user for their email to reset the password.
 /// If successful, a toast is shown and the dialog is closed. If an error occurs,
@@ -64,7 +65,7 @@ class _ForgotPasswordDialogState extends ConsumerState<ForgotPasswordDialog> {
     final state = ref.read(firebaseAuthNotifierProvider);
     if (state is DataSuccess<void>) {
       toast("Reset email sent! Check your inbox.");
-      if (mounted) Navigator.pop(context);
+      if (mounted) ref.read(navigationServiceProvider).navigateBack(context);
     } else if (state is DataFailed<void>) {
       final errorMsg = state.error?.error ?? 'Unknown error';
       setState(() {
@@ -141,7 +142,9 @@ class _ForgotPasswordDialogState extends ConsumerState<ForgotPasswordDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => ref
+                          .read(navigationServiceProvider)
+                          .navigateBack(context),
                       child: Text(
                         'Cancel',
                         style: boldTextStyle(color: Colors.grey),

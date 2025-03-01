@@ -10,6 +10,7 @@ import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A screen prompting the user to verify their email.
 /// Provides options to check verification status or resend the verification email.
@@ -56,8 +57,10 @@ class _VerificationPendingScreenState
 
     if (isVerified) {
       toast("Email verified! Welcome to the app.");
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+      ref.read(navigationServiceProvider).navigateToEditProfile(
+          context,
+          isEditProfile: false,
+          clearStack: true
       );
     } else {
       toast("Still not verified. Try again soon or resend the email.");

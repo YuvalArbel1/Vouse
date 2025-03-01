@@ -16,10 +16,9 @@ import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
-import '../../navigation/app_navigator.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
-import 'signup.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A screen that handles Firebase sign-in with form validation,
 /// plus a "Sign in with Google" button.
@@ -93,19 +92,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       if (!mounted) return; // Avoid using context if widget is unmounted.
 
       if (authState is DataSuccess<void>) {
-        // FIXED: Navigate to AppNavigator instead of HomeScreen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppNavigator()),
-        );
+        ref.read(navigationServiceProvider).navigateToAppNavigator(
+              context,
+              clearStack: true,
+            );
       } else if (authState is DataFailed<void>) {
         final errorMsg = authState.error?.error ?? 'Unknown error';
 
         if (errorMsg == 'EMAIL_NOT_VERIFIED') {
           toast("Email is not verified. Please check your inbox.");
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-                builder: (_) => const VerificationPendingScreen()),
-          );
+          ref.read(navigationServiceProvider).navigateToVerificationPending(
+                context,
+                clearStack: true,
+              );
         } else {
           toast("Login failed: $errorMsg");
         }
@@ -148,14 +147,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         if (result is DataSuccess<UserEntity?>) {
           final localUser = result.data;
           if (localUser == null) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-            );
+            ref.read(navigationServiceProvider).navigateToEditProfile(context,
+                isEditProfile: false, clearStack: true);
           } else {
-            // FIXED: Navigate to AppNavigator instead of HomeScreen
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const AppNavigator()),
-            );
+            ref.read(navigationServiceProvider).navigateToAppNavigator(
+                  context,
+                  clearStack: true,
+                );
           }
         } else {
           final error = (result as DataFailed?)?.error?.error ?? 'DB error';
@@ -355,8 +353,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                         children: [
                                           GoogleLogoWidget(size: 40),
                                           const SizedBox(width: 8),
-                                          Text("Sign in with Google",
-                                              style: boldTextStyle()),
+                                          Text(
+                                            "Sign in with Google",
+                                            style: boldTextStyle(),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -369,12 +369,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 Center(
                                   child: InkWell(
                                     onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SignUpScreen(),
-                                        ),
-                                      );
+                                      ref
+                                          .read(navigationServiceProvider)
+                                          .navigateToSignUp(context);
                                     },
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,

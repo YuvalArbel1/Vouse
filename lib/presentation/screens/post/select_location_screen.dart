@@ -16,6 +16,7 @@ import '../../../domain/usecases/google_maps/reverse_geocode_usecase.dart';
 import '../../../domain/usecases/google_maps/search_places_usecase.dart';
 import '../../providers/google_maps/location_providers.dart';
 import '../../providers/post/post_location_provider.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A screen that allows the user to pick a location on a Google Map:
 /// - Requests location permission, placing a red marker at the user's current position (if granted).
@@ -168,8 +169,7 @@ class _SelectLocationScreenState extends ConsumerState<SelectLocationScreen> {
     ref.read(postLocationProvider.notifier).state = locationEntity;
 
     if (!mounted) return;
-    Navigator.pop(context);
-  }
+    ref.read(navigationServiceProvider).navigateBack(context);  }
 
   /// Triggered whenever the search input changes. Debounced by 500ms.
   void _onSearchChanged(String input) {

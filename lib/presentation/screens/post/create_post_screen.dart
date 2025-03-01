@@ -18,6 +18,8 @@ import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
 import '../../providers/post/post_refresh_provider.dart';
 import '../../providers/post/post_text_provider.dart';
+import '../../providers/home/home_content_provider.dart';
+import '../../providers/filter/post_filtered_provider.dart';
 import '../../widgets/post/create_post/post_options.dart';
 import '../../widgets/post/create_post/post_text.dart';
 import '../../widgets/post/create_post/selected_images_preview.dart';
@@ -282,7 +284,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       if (!mounted) return;
 
       if (result is DataSuccess) {
+        // Trigger refresh for all relevant providers
         ref.read(postRefreshProvider.notifier).refreshDrafts();
+        ref.read(postRefreshProvider.notifier).refreshAll();
+
+        // Explicitly refresh home content
+        await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
         // Clear everything
         ref.read(postTextProvider.notifier).state = '';

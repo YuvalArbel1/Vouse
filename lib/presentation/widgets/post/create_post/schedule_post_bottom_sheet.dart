@@ -1,4 +1,4 @@
-// lib/presentation/widgets/post/schedule_post_bottom_sheet.dart
+// lib/presentation/widgets/post/create_post/schedule_post_bottom_sheet.dart
 
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +18,7 @@ import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../providers/post/save_post_with_upload_provider.dart';
+import '../../../providers/home/home_content_provider.dart'; // Import the home content provider
 import '../../navigation/navigation_service.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
@@ -127,6 +128,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
   ///
   /// Validates the post title, text, and date/time, moves images to a permanent folder,
   /// creates the post entity, and calls the "save + upload" use case.
+  /// Handles scheduling the post.
   Future<void> _onSchedulePressed() async {
     if (_isScheduling) return;
 
@@ -201,7 +203,13 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       if (!mounted) return;
 
       if (result is DataSuccess) {
+        // Trigger refresh for all relevant providers
         ref.read(postRefreshProvider.notifier).refreshScheduled();
+        ref.read(postRefreshProvider.notifier).refreshAll();
+
+        // Explicitly refresh home content
+        await ref.read(homeContentProvider.notifier).refreshHomeContent();
+
         toast('Post scheduled successfully!');
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();

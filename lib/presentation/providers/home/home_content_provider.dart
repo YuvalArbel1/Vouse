@@ -67,47 +67,25 @@ class HomeContentState {
 class HomeContentNotifier extends StateNotifier<HomeContentState> {
   final Ref _ref;
 
-  /// Subscriptions to refresh events for each post type
-  ProviderSubscription<DateTime>? _scheduledRefreshSubscription;
-  ProviderSubscription<DateTime>? _draftRefreshSubscription;
-  ProviderSubscription<DateTime>? _postedRefreshSubscription;
+  /// Flag to prevent multiple simultaneous refreshes
+  bool _isRefreshing = false;
 
   /// Creates a home content notifier
   HomeContentNotifier(this._ref) : super(HomeContentState()) {
-    // Setup listeners for refresh events
-    _setupRefreshListeners();
-  }
-
-  /// Sets up listeners for refresh events from the refresh providers
-  ///
-  /// When a refresh event is detected, the corresponding post type is reloaded
-  /// without affecting the other post types, ensuring efficient updates.
-  void _setupRefreshListeners() {
-    // Listen for scheduled posts refresh events
-    _scheduledRefreshSubscription = _ref.listen(scheduledRefreshProvider, (previous, current) {
+    // Listen for refresh events
+    _ref.listen(postRefreshProvider, (previous, current) {
       if (previous != current) {
-        _loadScheduledPosts();
-      }
-    });
-
-    // Listen for draft posts refresh events
-    _draftRefreshSubscription = _ref.listen(draftRefreshProvider, (previous, current) {
-      if (previous != current) {
-        _loadDraftPosts();
-      }
-    });
-
-    // Listen for posted posts refresh events
-    _postedRefreshSubscription = _ref.listen(postedRefreshProvider, (previous, current) {
-      if (previous != current) {
-        _loadPostedPosts();
+        refreshHomeContent();
       }
     });
   }
 
   /// Loads all initial data required for the home screen
   Future<void> loadHomeContent() async {
+    if (_isRefreshing) return; // Prevent multiple simultaneous refreshes
+
     state = state.copyWith(isLoading: true, errorMessage: null);
+    _isRefreshing = true;
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -116,10 +94,11 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
           isLoading: false,
           errorMessage: 'User not logged in',
         );
+        _isRefreshing = false;
         return;
       }
 
-      // Load all post data
+      // Load all post data directly from providers
       await _loadAllPostData();
 
       // Update overall state
@@ -129,6 +108,8 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
         isLoading: false,
         errorMessage: e.toString(),
       );
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -137,8 +118,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
     try {
       // Get all post data from providers
       final postedPostsAsync = await _ref.read(postedPostsProvider.future);
-      final scheduledPostsAsync =
-      await _ref.read(scheduledPostsProvider.future);
+      final scheduledPostsAsync = await _ref.read(scheduledPostsProvider.future);
       final draftPostsAsync = await _ref.read(draftPostsProvider.future);
 
       // Update post counts
@@ -148,7 +128,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
         'drafts': draftPostsAsync.length,
       };
 
-      // Get recent posts (most recent 5)
+      // Get recent posts (most recent 5) - use the existing sorting
       final sortedPosted = List<PostEntity>.from(postedPostsAsync)
         ..sort((a, b) =>
             (b.updatedAt ?? b.createdAt).compareTo(a.updatedAt ?? a.createdAt));
@@ -174,111 +154,29 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
     }
   }
 
-  /// Loads only scheduled posts and updates the corresponding parts of the state
-  ///
-  /// This method is called when a scheduled refresh event is detected,
-  /// allowing for efficient partial updates of the home screen content.
-  Future<void> _loadScheduledPosts() async {
-    try {
-      final scheduledPostsAsync = await _ref.read(scheduledPostsProvider.future);
-
-      // Sort by schedule date
-      final sortedScheduled = List<PostEntity>.from(scheduledPostsAsync)
-        ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
-
-      // Update only the scheduled posts in state
-      state = state.copyWith(
-          upcomingPosts: sortedScheduled,
-          postCounts: {
-            ...state.postCounts,
-            'scheduled': scheduledPostsAsync.length,
-          }
-      );
-    } catch (e) {
-      // Handle error but don't update error state for partial updates
-      if (kDebugMode) {
-        print('Error loading scheduled posts: $e');
-      }
-    }
-  }
-
-  /// Loads only draft posts and updates the corresponding parts of the state
-  ///
-  /// This method is called when a draft refresh event is detected,
-  /// allowing for efficient partial updates of the home screen content.
-  Future<void> _loadDraftPosts() async {
-    try {
-      final draftPostsAsync = await _ref.read(draftPostsProvider.future);
-
-      // Update only the draft posts in state
-      state = state.copyWith(
-          draftPosts: draftPostsAsync,
-          postCounts: {
-            ...state.postCounts,
-            'drafts': draftPostsAsync.length,
-          }
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading draft posts: $e');
-      }
-    }
-  }
-
-  /// Loads only posted posts and updates the corresponding parts of the state
-  ///
-  /// This method is called when a posted refresh event is detected,
-  /// allowing for efficient partial updates of the home screen content.
-  Future<void> _loadPostedPosts() async {
-    try {
-      final postedPostsAsync = await _ref.read(postedPostsProvider.future);
-
-      // Sort by update date
-      final sortedPosted = List<PostEntity>.from(postedPostsAsync)
-        ..sort((a, b) =>
-            (b.updatedAt ?? b.createdAt).compareTo(a.updatedAt ?? a.createdAt));
-
-      // Get recent posts (most recent 5)
-      final recentPosts = sortedPosted.take(5).toList();
-
-      // Update only the posted posts in state
-      state = state.copyWith(
-          recentPosts: recentPosts,
-          postCounts: {
-            ...state.postCounts,
-            'posted': postedPostsAsync.length,
-          }
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading posted posts: $e');
-      }
-    }
-  }
-
   /// Refreshes home content by invalidating providers and reloading data
   ///
   /// This is a manual refresh method that can be triggered by the user
   /// to completely reload all post data.
   Future<void> refreshHomeContent() async {
-    // Invalidate post providers to force fresh data
-    _ref.invalidate(postedPostsProvider);
-    _ref.invalidate(scheduledPostsProvider);
-    _ref.invalidate(draftPostsProvider);
+    if (_isRefreshing) return; // Prevent multiple simultaneous refreshes
+    _isRefreshing = true;
 
-    // Load all content again
-    await loadHomeContent();
-  }
+    try {
+      // Invalidate all post providers to force refetching
+      _ref.invalidate(postedPostsProvider);
+      _ref.invalidate(scheduledPostsProvider);
+      _ref.invalidate(draftPostsProvider);
 
-  /// Cleans up any resources used by this notifier
-  ///
-  /// Cancels all refresh subscription listeners to prevent memory leaks.
-  @override
-  void dispose() {
-    _scheduledRefreshSubscription?.close();
-    _draftRefreshSubscription?.close();
-    _postedRefreshSubscription?.close();
-    super.dispose();
+      // Reload all post data
+      await _loadAllPostData();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error refreshing home content: $e');
+      }
+    } finally {
+      _isRefreshing = false;
+    }
   }
 }
 

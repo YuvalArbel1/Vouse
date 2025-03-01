@@ -7,19 +7,17 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
 import '../../../core/resources/data_state.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../../domain/entities/secure_db/x_auth_tokens.dart';
-import '../../navigation/app_navigator.dart';
 import '../../providers/auth/x/x_auth_providers.dart';
 import '../../providers/auth/x/x_token_providers.dart';
-import '../../providers/local_db/local_user_providers.dart';
-import 'home_screen.dart';
+import '../../providers/user/user_profile_provider.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A screen that allows the user to edit or create a local profile.
 /// It collects full name, date of birth, gender, and optionally links X (Twitter).
@@ -73,12 +71,50 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _initialize();
   }
 
-  /// Removes the splash and configures the status bar color.
+  /// Removes the splash and configures the status bar color, then loads user data if editing
   void _initialize() {
     setStatusBarColor(Colors.white, statusBarIconBrightness: Brightness.dark);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
+
+      // If editing profile, load existing data
+      if (widget.isEditProfile) {
+        _loadExistingUserData();
+      }
     });
+  }
+
+  /// Load existing user data when editing profile
+  Future<void> _loadExistingUserData() async {
+    // Get user profile from provider
+    final userProfileState = ref.read(userProfileProvider);
+    final userProfile = userProfileState.user;
+
+    if (userProfile != null) {
+      setState(() {
+        fullNameController.text = userProfile.fullName;
+        selectedDOB = userProfile.dateOfBirth;
+        dateOfBirthController.text = DateFormat('yyyy-MM-dd').format(userProfile.dateOfBirth);
+        selectedGender = userProfile.gender;
+        localAvatarPath = userProfile.avatarPath;
+      });
+    }
+
+    // Check if X is connected
+    await _checkXConnection();
+  }
+
+  /// Check if X (Twitter) is already connected
+  Future<void> _checkXConnection() async {
+    final getTokensUC = ref.read(getXTokensUseCaseProvider);
+    final result = await getTokensUC.call();
+
+    if (result is DataSuccess<XAuthTokens?> && result.data?.accessToken != null) {
+      setState(() {
+        _isXConnected = true;
+        connectXController.text = 'X account connected';
+      });
+    }
   }
 
   @override
@@ -92,7 +128,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// If chosen, updates [selectedDOB] and [dateOfBirthController].
   Future<void> _pickDateOfBirth() async {
     final now = DateTime.now();
-    final initialDate = DateTime(2000, 1, 1);
+    final initialDate = selectedDOB ?? DateTime(2000, 1, 1);
 
     final picked = await showDatePicker(
       context: context,
@@ -165,21 +201,17 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       avatarPath: localAvatarPath,
     );
 
-    // Save to local DB
+    // Save to local DB using the user profile provider
     setState(() => _isProcessing = true);
     try {
-      final saveResult =
-          await ref.read(saveUserUseCaseProvider).call(params: entity);
+      final saveResult = await ref.read(userProfileProvider.notifier).updateUserProfile(entity);
       if (!mounted) return;
 
       if (saveResult is DataSuccess<void>) {
         if (widget.isEditProfile) {
           Navigator.pop(context);
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AppNavigator()),
-          );
+          ref.read(navigationServiceProvider).navigateToAppNavigator(context, clearStack: true);
         }
       } else if (saveResult is DataFailed<void>) {
         toast("Error saving user: ${saveResult.error?.error}");
@@ -212,10 +244,13 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back_ios),
                   color: Colors.black,
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignInScreen()),
-                  ),
+                  onPressed: () {
+                    if (widget.isEditProfile) {
+                      Navigator.pop(context);
+                    } else {
+                      ref.read(navigationServiceProvider).navigateToSignIn(context, clearStack: true);
+                    }
+                  },
                 ),
               ),
               centerTitle: true,
@@ -276,7 +311,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       // Full Name
                                       Text('Full Name',
@@ -337,7 +372,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                           prefixIcon: Icons.transgender,
                                         ),
                                         items:
-                                            genderOptions.map((String value) {
+                                        genderOptions.map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
                                             child: Text(value,
@@ -364,13 +399,13 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       Builder(
                                         builder: (ctx) {
                                           final baseDecoration =
-                                              waInputDecoration(
+                                          waInputDecoration(
                                             hint:
-                                                'Tap to connect your X account',
+                                            'Tap to connect your X account',
                                           );
 
                                           final updatedDecoration =
-                                              baseDecoration.copyWith(
+                                          baseDecoration.copyWith(
                                             filled: true,
                                             fillColor: vAccentColor.withAlpha(
                                                 (0.06 * 255).toInt()),
@@ -382,7 +417,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                               borderSide: BorderSide(
                                                   color: vAccentColor),
                                             ),
@@ -414,9 +449,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left:
-                                        MediaQuery.of(context).size.width * 0.1,
+                                    MediaQuery.of(context).size.width * 0.1,
                                     right:
-                                        MediaQuery.of(context).size.width * 0.1,
+                                    MediaQuery.of(context).size.width * 0.1,
                                   ),
                                   child: AppButton(
                                     color: vPrimaryColor,
@@ -424,7 +459,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     onTap: _handleContinue,
                                     child: Text('Continue',
                                         style:
-                                            boldTextStyle(color: Colors.white)),
+                                        boldTextStyle(color: Colors.white)),
                                   ),
                                 ),
                               ],

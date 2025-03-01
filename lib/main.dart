@@ -1,11 +1,10 @@
-// In lib/main.dart - modify main() function
+// lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:vouse_flutter/core/util/ui_settings.dart'; // Import the new utility
+import 'package:vouse_flutter/presentation/theme/app_theme.dart';
 import 'package:vouse_flutter/presentation/screens/splash/app_wrapper.dart';
 import 'firebase_options.dart';
 
@@ -18,9 +17,6 @@ import 'firebase_options.dart';
 /// 4. Runs the app wrapped in a [ProviderScope] to enable Riverpod state management.
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-
-  // Hide system navigation bar at app startup
-  UiSettings.hideSystemNavBar();
 
   // Preserve the native splash screen so that it can be manually removed later.
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
@@ -37,23 +33,25 @@ void main() async {
 /// The root widget of the Vouse app.
 ///
 /// This widget sets up the [MaterialApp] and defines [AppWrapper] as the home screen.
-class App extends StatelessWidget {
+class App extends ConsumerWidget {
   /// Creates an [App] widget.
   const App({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Get theme from provider
+    final appTheme = ref.watch(appThemeProvider);
+    final themeData = ref.watch(themeDataProvider);
+
+    // Configure edge-to-edge display and system UI
+    appTheme.configureEdgeToEdge();
+    appTheme.configureSystemUI();
+
     return MaterialApp(
-      home: AppWrapper(),
-      theme: ThemeData(
-        // Use a transparent system navigation bar color
-        appBarTheme: const AppBarTheme(
-          systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-          ),
-        ),
-      ),
+      title: 'Vouse Social',
+      theme: themeData,
+      debugShowCheckedModeBanner: false,
+      home: const AppWrapper(),
     );
   }
 }

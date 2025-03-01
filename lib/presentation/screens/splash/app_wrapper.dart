@@ -2,20 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
+// Import the auth state provider
+import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
 
-// Screens
-import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
-import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
-import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
-import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
-
-import '../../../domain/entities/local_db/user_entity.dart';
-import '../../providers/local_db/local_user_providers.dart';
+import '../../providers/auth/firebase/auth_state_provider.dart';
 import '../../providers/local_db/database_provider.dart';
+import '../../widgets/common/loading/full_screen_loading.dart';
+import '../../widgets/navigation/navigation_service.dart';
 
 /// A wrapper that directs the user flow based on authentication and local DB status.
 ///
@@ -41,28 +35,49 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the local database provider.
+    // Watch the auth state provider
+    final authStateAsync = ref.watch(authStateProvider);
+
+    // Watch database initialization state (from the original provider)
     final dbAsyncValue = ref.watch(localDatabaseProvider);
 
-    // Render different UI based on the DB state.
+    // Render different UI based on the DB and auth state
     return dbAsyncValue.when(
       data: (db) {
-        // Run the initialization flow only once.
+        // Run the initialization flow only once when DB is ready
         if (!_didInitFlow) {
           _didInitFlow = true;
           WidgetsBinding.instance.addPostFrameCallback((_) => _initFlow());
         }
 
-        // While the flow initializes, show an empty scaffold.
-        return const Scaffold(body: SizedBox.shrink());
+        // Handle auth state changes
+        return authStateAsync.when(
+          data: (authState) {
+            // Show a loading indicator while determining the right screen
+            if (!_didInitFlow) {
+              return const Scaffold(
+                body: FullScreenLoading(message: "Preparing your experience..."),
+              );
+            }
+
+            // Render an empty scaffold during routing (handled in _initFlow)
+            return const Scaffold(body: SizedBox.shrink());
+          },
+          loading: () => const Scaffold(
+            body: FullScreenLoading(message: "Checking login status..."),
+          ),
+          error: (err, stack) => Scaffold(
+            body: Center(child: Text('Authentication error: $err')),
+          ),
+        );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: FullScreenLoading(message: "Initializing..."),
       ),
       error: (err, stack) {
-        // Display an error message if the DB fails to load.
+        // Display an error message if the DB fails to load
         return Scaffold(
-          body: Center(child: Text('DB error: $err')),
+          body: Center(child: Text('Database error: $err')),
         );
       },
     );
@@ -70,74 +85,55 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
   /// Initializes the user flow based on authentication and local user profile.
   ///
-  /// This method performs the following steps:
-  /// 1. Checks for a signed-in user.
-  /// 2. Verifies the user's email.
-  /// 3. Retrieves the user profile from the local database.
-  /// 4. Navigates to the appropriate screen.
+  /// This method dispatches to the appropriate screen based on auth state and user profile
   Future<void> _initFlow() async {
-    // Ensure the widget is still mounted before proceeding.
     if (!mounted) return;
 
-    final user = FirebaseAuth.instance.currentUser;
+    final navigationService = ref.read(navigationServiceProvider);
 
-    // No user signed in: navigate to SignInScreen after a short delay.
-    if (user == null) {
-      await Future.delayed(_shortDelay);
-      if (!mounted) return;
-      _pushNext(const SignInScreen());
+    // Get current auth state
+    final authStateValue = ref.read(authStateProvider).value;
+
+    // If state isn't determined yet, wait
+    if (authStateValue == null) {
       return;
     }
 
-    await user.reload();
-    if (!mounted) return;
+    // Handle different auth states
+    switch (authStateValue) {
+      case AuthState.unauthenticated:
+        await Future.delayed(_shortDelay);
+        if (!mounted) return;
+        navigationService.navigateToSignIn(context, clearStack: true);
+        break;
 
-    // If the email is not verified: navigate to VerificationPendingScreen.
-    if (!user.emailVerified) {
-      await Future.delayed(_shortDelay);
-      if (!mounted) return;
-      _pushNext(const VerificationPendingScreen());
-      return;
-    }
+      case AuthState.unverified:
+        await Future.delayed(_shortDelay);
+        if (!mounted) return;
+        navigationService.navigateToVerificationPending(context, clearStack: true);
+        break;
 
-    // User is verified; now check the local database for user profile
-    // specifically for this Firebase user ID.
-    final getUserUC = ref.read(getUserUseCaseProvider);
-    final result = await getUserUC.call(params: GetUserParams(user.uid));
-    if (!mounted) return;
+      case AuthState.authenticated:
+      // Load user profile
+        await ref.read(userProfileProvider.notifier).loadUserProfile();
 
-    if (result is DataSuccess<UserEntity?>) {
-      final localUser = result.data;
-      if (localUser == null) {
-        // No profile for THIS specific user ID - go to EditProfileScreen
-        _pushNext(const EditProfileScreen());
-      } else {
+        // Check if profile exists
+        final userProfile = ref.read(userProfileProvider).user;
         await Future.delayed(_homeDelay);
         if (!mounted) return;
-        _pushNext(const AppNavigator());
-      }
-    } else if (result is DataFailed<UserEntity?>) {
-      // On DB error, fallback to SignInScreen
-      _pushNext(const SignInScreen());
-    } else {
-      // Fallback navigation with a short delay
-      await Future.delayed(_shortDelay);
-      if (!mounted) return;
-      _pushNext(const SignInScreen());
+
+        if (userProfile == null) {
+          // No profile - go to profile creation
+          navigationService.navigateToEditProfile(context, clearStack: true);
+        } else {
+          // Has profile - go to main app
+          navigationService.navigateToAppNavigator(context, clearStack: true);
+        }
+        break;
+
+      case AuthState.initial:
+      // Still initializing, wait for a definitive state
+        break;
     }
-  }
-
-  /// Navigates to the next screen by replacing the current route.
-  ///
-  /// The navigation occurs only if the widget is still mounted.
-// lib/presentation/screens/splash/app_wrapper.dart
-
-  void _pushNext(Widget screen) {
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-    );
   }
 }

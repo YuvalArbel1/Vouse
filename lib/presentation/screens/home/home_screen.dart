@@ -1,45 +1,28 @@
 // lib/presentation/screens/home/home_screen.dart
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:vouse_flutter/core/util/colors.dart';
-import 'package:vouse_flutter/core/resources/data_state.dart';
-import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
-import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 import 'package:vouse_flutter/presentation/widgets/common/section_header.dart';
-import 'package:vouse_flutter/presentation/widgets/common/loading_states.dart';
-import 'package:vouse_flutter/presentation/widgets/home/stat_item.dart';
 import 'package:vouse_flutter/presentation/widgets/home/quick_actions_panel.dart';
 import 'package:vouse_flutter/presentation/widgets/home/motivation_card.dart';
 
-import '../../providers/local_db/local_user_providers.dart';
+// Import new providers and components
+import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
+import 'package:vouse_flutter/presentation/providers/home/home_content_provider.dart';
+import 'package:vouse_flutter/presentation/widgets/common/common_ui_components.dart';
+
+import '../../../core/resources/data_state.dart';
+import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/auth/firebase/firebase_auth_notifier.dart';
-import '../../providers/home/home_posts_providers.dart';
+import '../../widgets/common/loading/post_loading.dart';
+import '../../widgets/home/stat_item.dart';
+import '../../widgets/navigation/navigation_service.dart';
 import '../../widgets/post/post_preview/post_card.dart';
 import '../auth/signin.dart';
-import '../home/edit_profile_screen.dart';
-import '../post_history/published_posts_screen.dart';
-import '../post_history/upcoming_posts.dart';
-import '../profile/profile_screen.dart';
-import '../post/create_post_screen.dart';
-
-/// Home screen provider to manage loading state
-final homeScreenLoadingProvider = StateProvider<bool>((ref) => true);
-
-/// Home screen provider to manage user profile
-final homeUserProfileProvider = StateProvider<UserEntity?>((ref) => null);
-
-/// Home screen provider to manage post counts
-final homePostCountsProvider = StateProvider<Map<String, int>>((ref) => {
-  'posted': 0,
-  'scheduled': 0,
-  'drafts': 0,
-});
 
 /// A modern, visually engaging home screen with dynamic content sections
 /// and personalized user experience.
@@ -81,10 +64,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
     );
 
-    // Remove splash screen and load user profile after first frame
+    // Remove splash screen and load app data after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
-      _loadUserProfile();
+      _loadInitialData();
     });
 
     // Set preferred status bar style
@@ -104,52 +87,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  /// Loads user profile and post counts
-  Future<void> _loadUserProfile() async {
-    ref.read(homeScreenLoadingProvider.notifier).state = true;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ref.read(homeScreenLoadingProvider.notifier).state = false;
-      return;
+  /// Loads all initial data required for the home screen
+  Future<void> _loadInitialData() async {
+    // Load user profile if not already loaded
+    if (ref.read(userProfileProvider).loadingState == UserProfileLoadingState.initial) {
+      await ref.read(userProfileProvider.notifier).loadUserProfile();
     }
 
-    final getUserUC = ref.read(getUserUseCaseProvider);
-    final result = await getUserUC.call(params: GetUserParams(user.uid));
-
-    if (result is DataSuccess<UserEntity?>) {
-      ref.read(homeUserProfileProvider.notifier).state = result.data;
-    }
-
-    await _loadPostCounts();
+    // Load home content
+    await ref.read(homeContentProvider.notifier).loadHomeContent();
 
     // Start animations after data is loaded
     _animationController.forward();
-
-    ref.read(homeScreenLoadingProvider.notifier).state = false;
-  }
-
-  /// Loads post counts for the user
-  Future<void> _loadPostCounts() async {
-    final postedPostsAsync = await ref.read(postedPostsProvider.future);
-    final scheduledPostsAsync = await ref.read(scheduledPostsProvider.future);
-    final draftPostsAsync = await ref.read(draftPostsProvider.future);
-
-    ref.read(homePostCountsProvider.notifier).state = {
-      'posted': postedPostsAsync.length,
-      'scheduled': scheduledPostsAsync.length,
-      'drafts': draftPostsAsync.length,
-    };
   }
 
   /// Refreshes user data and post providers
   Future<void> _refreshData() async {
     _animationController.reset();
 
-    await _loadUserProfile();
-    ref.invalidate(postedPostsProvider);
-    ref.invalidate(scheduledPostsProvider);
-    ref.invalidate(draftPostsProvider);
+    // Reload user profile and home content
+    await ref.read(userProfileProvider.notifier).loadUserProfile();
+    await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
     _animationController.forward();
   }
@@ -208,29 +166,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
   }
 
-  // Navigation helpers
+  // Navigation helpers - now using the navigation service
   void _navigateToCreatePost() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToCreatePost(context);
   }
 
   void _navigateToPostHistory() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PublishedPostsScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToPublishedPosts(context);
   }
 
   void _navigateToScheduledPosts() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const UpcomingPostsScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToUpcomingPosts(context);
   }
 
   void _navigateToSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
+    ref.read(navigationServiceProvider).navigateToProfile(context);
+  }
+
+  void _navigateToEditProfile() {
+    ref.read(navigationServiceProvider).navigateToEditProfile(context, isEditProfile: true, clearStack: false);
   }
 
   void _showFeatureComingSoon(String feature) {
@@ -247,16 +201,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(homeScreenLoadingProvider);
-    final userProfile = ref.watch(homeUserProfileProvider);
-    final postCounts = ref.watch(homePostCountsProvider);
+    // Read from the user profile provider and home content provider
+    final userProfileState = ref.watch(userProfileProvider);
+    final homeContentState = ref.watch(homeContentProvider);
+
+    final isLoading = homeContentState.isLoading ||
+        userProfileState.loadingState == UserProfileLoadingState.loading ||
+        userProfileState.loadingState == UserProfileLoadingState.initial;
+
+    final userProfile = userProfileState.user;
+    final postCounts = homeContentState.postCounts;
 
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
       body: isLoading
-          ? _buildShimmerLoading()
+          ? const HomeScreenLoading()
           : RefreshIndicator(
         onRefresh: _refreshData,
         child: SafeArea(
@@ -268,7 +228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 opacity: 0.8,
               ),
             ),
-            child: CustomScrollView(  // Replace SingleChildScrollView with CustomScrollView
+            child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
@@ -321,6 +281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                           ),
                           _buildUpcomingPostsSection(),
                           MotivationCard(tip: _getRandomTip()),
+                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
@@ -330,72 +291,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// Builds a shimmer loading effect while content is loading
-  Widget _buildShimmerLoading() {
-    return Container(
-      color: vAppLayoutBackground,
-      child: Column(
-        children: [
-          // Shimmer for header
-          Container(
-            height: 140,
-            width: double.infinity,
-            color: Colors.white,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ShimmerLoading.circle(size: 60),
-                const SizedBox(height: 12),
-                ShimmerLoading.roundedRectangle(
-                  width: 150,
-                  height: 20,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Shimmer for action buttons
-          ShimmerLoading.roundedRectangle(
-            width: double.infinity,
-            height: 120,
-            borderRadius: 20,
-          ),
-
-          const SizedBox(height: 20),
-
-          // Shimmer for content sections
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ShimmerLoading.roundedRectangle(
-                  width: 200,
-                  height: 24,
-                  borderRadius: 4,
-                ),
-                const SizedBox(height: 16),
-                const HorizontalPostListLoading(),
-
-                const SizedBox(height: 24),
-
-                ShimmerLoading.roundedRectangle(
-                  width: 200,
-                  height: 24,
-                  borderRadius: 4,
-                ),
-                const SizedBox(height: 16),
-                const HorizontalPostListLoading(),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -438,42 +333,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           // User info row
           Row(
             children: [
-              // Avatar with tap action
+              // Avatar with tap action - now using ProfileAvatarDisplay
               GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                    const EditProfileScreen(isEditProfile: true),
-                  ),
-                ),
+                onTap: _navigateToEditProfile,
                 child: Hero(
                   tag: 'profile-avatar',
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: vPrimaryColor.withAlpha(26),
-                      border: Border.all(color: vPrimaryColor, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: vPrimaryColor.withAlpha(40),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                      image: userProfile?.avatarPath != null
-                          ? DecorationImage(
-                        image: FileImage(File(userProfile!.avatarPath!)),
-                        fit: BoxFit.cover,
-                      )
-                          : null,
-                    ),
-                    child: userProfile?.avatarPath == null
-                        ? const Icon(Icons.person,
-                        color: vPrimaryColor, size: 30)
-                        : null,
+                  child: ProfileAvatarDisplay(
+                    user: userProfile,
+                    size: 60,
+                    showEditStyle: true,
                   ),
                 ),
               ),
@@ -567,38 +435,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       height: 350,
       child: Consumer(
         builder: (context, ref, child) {
-          final postsAsync = ref.watch(postedPostsProvider);
+          final recentPosts = ref.watch(recentPostsProvider);
 
-          return postsAsync.when(
-            data: (posts) {
-              if (posts.isEmpty) {
-                return _buildEmptyPostsCard(
-                  'No posts yet',
-                  'Your published posts will appear here',
-                  Icons.post_add,
-                );
-              }
+          if (recentPosts.isEmpty) {
+            return _buildEmptyPostsCard(
+              'No posts yet',
+              'Your published posts will appear here',
+              Icons.post_add,
+            );
+          }
 
-              // Take just the most recent 5 posts
-              final recentPosts = posts.take(5).toList();
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: recentPosts.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: 280,
-                      child: PostCard(post: recentPosts[index]),
-                    ),
-                  );
-                },
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: recentPosts.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: SizedBox(
+                  width: 280,
+                  child: PostCard(post: recentPosts[index]),
+                ),
               );
             },
-            loading: () => const HorizontalPostListLoading(),
-            error: (error, _) => Center(child: Text('Error: $error')),
           );
         },
       ),
@@ -611,40 +470,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       height: 350,
       child: Consumer(
         builder: (context, ref, child) {
-          final postsAsync = ref.watch(scheduledPostsProvider);
+          final upcomingPosts = ref.watch(upcomingPostsProvider);
 
-          return postsAsync.when(
-            data: (posts) {
-              if (posts.isEmpty) {
-                return _buildEmptyPostsCard(
-                  'No scheduled posts',
-                  'Schedule posts to see them here',
-                  Icons.schedule,
-                );
-              }
+          if (upcomingPosts.isEmpty) {
+            return _buildEmptyPostsCard(
+              'No scheduled posts',
+              'Schedule posts to see them here',
+              Icons.schedule,
+            );
+          }
 
-              // Order by scheduled time
-              final scheduledPosts = List.from(posts)
-                ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: scheduledPosts.length,
-                itemBuilder: (context, index) {
-                  final post = scheduledPosts[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: 280,
-                      child: PostCard(post: post),
-                    ),
-                  );
-                },
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: upcomingPosts.length,
+            itemBuilder: (context, index) {
+              final post = upcomingPosts[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: SizedBox(
+                  width: 280,
+                  child: PostCard(post: post),
+                ),
               );
             },
-            loading: () => const HorizontalPostListLoading(),
-            error: (error, _) => Center(child: Text('Error: $error')),
           );
         },
       ),

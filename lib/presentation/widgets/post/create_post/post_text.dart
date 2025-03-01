@@ -73,10 +73,14 @@ class _PostTextState extends ConsumerState<PostText> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch for external updates to the post text.
+    // Only watch for external changes to post text
     final postText = ref.watch(postTextProvider);
 
-    // If the external text has changed (e.g., due to AI insertion), sync the controller.
+    // Only watch location when needed (place this in a dedicated Consumer widget)
+    final hasLocation =
+        ref.watch(postLocationProvider.select((loc) => loc != null));
+
+    // Only sync controller if the external text changes
     if (postText != _controller.text) {
       _controller.text = postText;
       _controller.selection = TextSelection.collapsed(offset: postText.length);
@@ -86,12 +90,6 @@ class _PostTextState extends ConsumerState<PostText> {
       _isNearLimit = remainingChars < 40 && remainingChars >= 0;
       _isOverLimit = remainingChars < 0;
     }
-
-    // Watch the post location provider for a selected location.
-    final placeLocation = ref.watch(postLocationProvider);
-
-    // Calculate remaining characters
-    // final remainingChars = _maxCharCount - _controller.text.length;
 
     return Column(
       children: [
@@ -112,8 +110,12 @@ class _PostTextState extends ConsumerState<PostText> {
                 focusNode: _focusNode,
                 autofocus: false,
                 maxLines: 13,
-                maxLength: _maxCharCount + 20, // Allow some overflow but show warning
-                buildCounter: (context, {required currentLength, required isFocused, maxLength}) =>
+                maxLength: _maxCharCount + 20,
+                // Allow some overflow but show warning
+                buildCounter: (context,
+                        {required currentLength,
+                        required isFocused,
+                        maxLength}) =>
                     _buildCharacterCounter(currentLength),
                 style: const TextStyle(
                   fontSize: 16,
@@ -122,23 +124,26 @@ class _PostTextState extends ConsumerState<PostText> {
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   hintText: _getRandomPlaceholderText(),
-                  hintStyle: secondaryTextStyle(size: 16, color: vBodyGrey.withAlpha(180)),
+                  hintStyle: secondaryTextStyle(
+                      size: 16, color: vBodyGrey.withAlpha(180)),
                   helperStyle: TextStyle(color: vPrimaryColor),
                   counterStyle: TextStyle(color: vPrimaryColor),
                 ),
               ),
 
               // If a location is selected, display the location tag below the text field.
-              if (placeLocation != null) ...[
-                const SizedBox(height: 8),
-                LocationTagWidget(
-                  entity: placeLocation,
-                  onRemove: () {
-                    // Clear the selected location when the remove icon is tapped.
-                    ref.read(postLocationProvider.notifier).state = null;
+              if (hasLocation)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final location = ref.watch(postLocationProvider);
+                    return LocationTagWidget(
+                      entity: location!,
+                      onRemove: () {
+                        ref.read(postLocationProvider.notifier).state = null;
+                      },
+                    );
                   },
                 ),
-              ],
             ],
           ),
         ),
@@ -188,8 +193,8 @@ class _PostTextState extends ConsumerState<PostText> {
                 color: _isOverLimit
                     ? Colors.red
                     : _isNearLimit
-                    ? Colors.orange
-                    : vPrimaryColor,
+                        ? Colors.orange
+                        : vPrimaryColor,
               ),
             ),
             const SizedBox(width: 8),
@@ -200,7 +205,9 @@ class _PostTextState extends ConsumerState<PostText> {
             remaining.toString(),
             style: TextStyle(
               color: counterColor,
-              fontWeight: _isNearLimit || _isOverLimit ? FontWeight.bold : FontWeight.normal,
+              fontWeight: _isNearLimit || _isOverLimit
+                  ? FontWeight.bold
+                  : FontWeight.normal,
             ),
           ),
         ],

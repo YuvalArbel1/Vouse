@@ -34,7 +34,8 @@ class UpcomingPostsScreen extends ConsumerStatefulWidget {
   const UpcomingPostsScreen({super.key});
 
   @override
-  ConsumerState<UpcomingPostsScreen> createState() => _UpcomingPostsScreenState();
+  ConsumerState<UpcomingPostsScreen> createState() =>
+      _UpcomingPostsScreenState();
 }
 
 class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
@@ -201,20 +202,104 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                   ),
 
                   // Tab Content
+                  // Optimized TabBarView in UpcomingPostsScreen
+// Replace the current implementation with this version that properly
+// uses your existing filter providers
+
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        // Scheduled Posts Tab
+                        // Scheduled Posts Tab - Using Consumer to isolate rebuilds
                         FadeTransition(
                           opacity: _fadeAnimation,
-                          child: _buildScheduledPostsTab(),
+                          child: Consumer(
+                            builder: (context, ref, child) {
+                              // Use your existing filter provider instead of direct watching and sorting
+                              final scheduledPostsAsync =
+                                  ref.watch(scheduledPostsProvider);
+
+                              return scheduledPostsAsync.when(
+                                data: (posts) {
+                                  if (posts.isEmpty) {
+                                    return _buildEmptyState(
+                                      icon: Icons.schedule,
+                                      title: 'No scheduled posts',
+                                      message:
+                                          'Start scheduling posts to see them here',
+                                      buttonText: 'Create Post',
+                                    );
+                                  }
+
+                                  // No need to sort here since your filter provider already handles it
+                                  return ListView.builder(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.only(
+                                        top: 16, bottom: 100),
+                                    itemCount: posts.length,
+                                    itemBuilder: (context, index) {
+                                      return TimelinePostItem(
+                                        post: posts[index],
+                                        index: index,
+                                        isLast: index == posts.length - 1,
+                                      );
+                                    },
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: FullScreenLoading(
+                                      message: 'Loading scheduled posts...'),
+                                ),
+                                error: (error, _) =>
+                                    Center(child: Text('Error: $error')),
+                              );
+                            },
+                          ),
                         ),
 
-                        // Drafts Tab
+                        // Drafts Tab - Using Consumer to isolate rebuilds
                         FadeTransition(
                           opacity: _fadeAnimation,
-                          child: _buildDraftsTab(),
+                          child: Consumer(
+                            builder: (context, ref, child) {
+                              // Use your existing filter provider
+                              final draftPostsAsync =
+                                  ref.watch(draftPostsProvider);
+
+                              return draftPostsAsync.when(
+                                data: (posts) {
+                                  if (posts.isEmpty) {
+                                    return _buildEmptyState(
+                                      icon: Icons.edit_note,
+                                      title: 'No drafts yet',
+                                      message:
+                                          'Save drafts to continue editing later',
+                                      buttonText: 'Create Draft',
+                                    );
+                                  }
+
+                                  // No need to sort here
+                                  return ListView.builder(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.only(
+                                        top: 16, bottom: 100),
+                                    itemCount: posts.length,
+                                    itemBuilder: (context, index) {
+                                      return DraftCard(post: posts[index]);
+                                    },
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: FullScreenLoading(
+                                      message: 'Loading drafts...'),
+                                ),
+                                error: (error, _) =>
+                                    Center(child: Text('Error: $error')),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -225,88 +310,6 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
           ),
         ],
       ),
-    );
-  }
-
-  /// Build the scheduled posts tab content
-  Widget _buildScheduledPostsTab() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final scheduledPostsAsync = ref.watch(scheduledPostsProvider);
-
-        return scheduledPostsAsync.when(
-          data: (posts) {
-            if (posts.isEmpty) {
-              return _buildEmptyState(
-                icon: Icons.schedule,
-                title: 'No scheduled posts',
-                message: 'Start scheduling posts to see them here',
-                buttonText: 'Create Post',
-              );
-            }
-
-            // Sort posts by scheduled time
-            final sortedPosts = List<PostEntity>.from(posts)
-              ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
-
-            return ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 16, bottom: 100),
-              itemCount: sortedPosts.length,
-              itemBuilder: (context, index) {
-                return TimelinePostItem(
-                  post: sortedPosts[index],
-                  index: index,
-                  isLast: index == sortedPosts.length - 1,
-                );
-              },
-            );
-          },
-          loading: () => const Center(
-            child: FullScreenLoading(message: 'Loading scheduled posts...'),
-          ),
-          error: (error, _) => Center(child: Text('Error: $error')),
-        );
-      },
-    );
-  }
-
-  /// Build the drafts tab content
-  Widget _buildDraftsTab() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final draftPostsAsync = ref.watch(draftPostsProvider);
-
-        return draftPostsAsync.when(
-          data: (posts) {
-            if (posts.isEmpty) {
-              return _buildEmptyState(
-                icon: Icons.edit_note,
-                title: 'No drafts yet',
-                message: 'Save drafts to continue editing later',
-                buttonText: 'Create Draft',
-              );
-            }
-
-            // Sort drafts by creation date (newest first)
-            final sortedDrafts = List<PostEntity>.from(posts)
-              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-            return ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 16, bottom: 100),
-              itemCount: sortedDrafts.length,
-              itemBuilder: (context, index) {
-                return DraftCard(post: sortedDrafts[index]);
-              },
-            );
-          },
-          loading: () => const Center(
-            child: FullScreenLoading(message: 'Loading drafts...'),
-          ),
-          error: (error, _) => Center(child: Text('Error: $error')),
-        );
-      },
     );
   }
 

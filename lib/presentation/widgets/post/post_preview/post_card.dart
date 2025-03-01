@@ -22,7 +22,8 @@ class PostCard extends StatelessWidget {
   static const double cardHeight = 350;
 
   /// Creates a [PostCard] for displaying a [post].
-  const PostCard({super.key, required this.post});
+  PostCard({Key? key, required this.post})
+      : super(key: key ?? ValueKey('post-${post.postIdLocal}'));
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +58,8 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 4),
 
             // 3) Location (if any)
-            if (post.locationAddress != null && post.locationAddress!.isNotEmpty)
+            if (post.locationAddress != null &&
+                post.locationAddress!.isNotEmpty)
               Align(
                 alignment: Alignment.centerLeft,
                 child: _buildLocationRow(),

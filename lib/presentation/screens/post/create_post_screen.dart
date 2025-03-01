@@ -42,7 +42,8 @@ class CreatePostScreen extends ConsumerStatefulWidget {
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends ConsumerState<CreatePostScreen> with SingleTickerProviderStateMixin {
+class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
+    with SingleTickerProviderStateMixin {
   /// Tracks whether content is being processed
   bool _isProcessing = false;
 

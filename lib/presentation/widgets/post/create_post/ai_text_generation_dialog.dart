@@ -104,13 +104,22 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
       return;
     }
 
+    // Add category context to the prompt
+    final enhancedPrompt = """
+Category: $_selectedCategory
+
+Write a ${_selectedCategory.toLowerCase()} social media post that is under $_lengthInt characters (max 280).
+
+User request: $prompt
+""";
+
     setState(() => _hasGenerated = true);
 
     final temperature = _creativityInt / 10.0;
     final desiredChars = _lengthInt;
 
-    // Generate AI text via the notifier.
-    ref.read(aiTextNotifierProvider.notifier).generateText(prompt,
+    // Generate AI text via the notifier with the enhanced prompt
+    ref.read(aiTextNotifierProvider.notifier).generateText(enhancedPrompt,
         desiredChars: desiredChars, temperature: temperature);
   }
 
@@ -266,7 +275,7 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                       labelStyle: TextStyle(
                         color: isSelected ? vPrimaryColor : Colors.grey,
                         fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   );
@@ -393,7 +402,7 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
             ),
             const SizedBox(height: 12),
 
-            // Error or generating state
+            // Display error if any with improved styling
             if (error != null)
               Container(
                 padding: const EdgeInsets.all(8),
@@ -421,7 +430,7 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
               Center(
                 child: Column(
                   children: [
-                    // Animated AI icon
+                    // Animated loading indicator
                     AnimatedBuilder(
                       animation: _animationController,
                       builder: (context, child) {
@@ -437,7 +446,7 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                               ],
                               stops: const [0.5, 1.0],
                               transform:
-                                  GradientRotation(_animation.value * 6.28),
+                              GradientRotation(_animation.value * 6.28),
                             ),
                           ),
                           child: Center(

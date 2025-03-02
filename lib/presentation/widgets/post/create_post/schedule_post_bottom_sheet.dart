@@ -301,28 +301,29 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         // Explicitly refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Text(
-                    'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
-              ],
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Text(
+                      'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
+                ],
+              ),
+              backgroundColor: vAccentColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            backgroundColor: vAccentColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-
+          );
+        }
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
         ref.read(postLocationProvider.notifier).state = null;
-        ref.read(navigationServiceProvider).navigateBack(context);
+        if (mounted) ref.read(navigationServiceProvider).navigateBack(context);
       } else if (result is DataFailed) {
         toast("Error saving scheduled post: ${result.error?.error}");
       }
@@ -344,406 +345,434 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       top: false,
       child: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Grab bar
-                Container(
+          // Add Column with GestureDetector for drag-to-dismiss
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Draggable grab bar
+              GestureDetector(
+                onVerticalDragEnd: (details) {
+                  // Check if the drag was upward or downward
+                  if (details.primaryVelocity! > 0) {
+                    // If the drag was downward, close the bottom sheet
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Container(
                   width: 50,
                   height: 5,
+                  margin: const EdgeInsets.only(top: 16, bottom: 16),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade400,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
+              ),
 
-                // Header
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.schedule, color: vPrimaryColor, size: 22),
-                      const SizedBox(width: 12),
-                      Text(
-                        "Schedule Your Post",
-                        style: boldTextStyle(size: 20, color: vPrimaryColor),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Post Title input using elegant decoration
-                Container(
-                  width: context.width(),
-                  padding: const EdgeInsets.all(16),
-                  decoration: vouseBoxDecoration(
-                    backgroundColor: Colors.white,
-                    radius: 16,
-                    shadowOpacity: 15,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
+              // Rest of content in a scrollable container
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        "Post Title",
-                        style: boldTextStyle(size: 14, color: vPrimaryColor),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          hintText: "Give your post a catchy title",
-                          hintStyle: secondaryTextStyle(
-                              size: 14, color: vBodyGrey.withAlpha(180)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: vPrimaryColor.withAlpha(50)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: vPrimaryColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: vPrimaryColor.withAlpha(50)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Post snippet + location container
-                Container(
-                  width: context.width(),
-                  padding: const EdgeInsets.all(16),
-                  decoration: vouseBoxDecoration(
-                    backgroundColor: Colors.white,
-                    radius: 16,
-                    shadowOpacity: 15,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Post Content",
-                        style: boldTextStyle(size: 14, color: vPrimaryColor),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () {
-                          if (postText.isNotEmpty) {
-                            _showFullTextDialog(postText);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: vPrimaryColor.withAlpha(20),
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: vPrimaryColor.withAlpha(40)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  snippet.isEmpty ? "No content yet" : snippet,
-                                  style: primaryTextStyle(
-                                    color: snippet.isEmpty
-                                        ? vBodyGrey.withAlpha(150)
-                                        : vBodyGrey,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (postText.length > 30) ...[
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.more_horiz,
-                                  color: vPrimaryColor,
-                                  size: 20,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (location != null) ...[
-                        const SizedBox(height: 12),
-                        LocationTagWidget(
-                          entity: location,
-                          onRemove: () {
-                            ref.read(postLocationProvider.notifier).state =
-                                null;
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // "Who can reply?" container
-                Container(
-                  width: context.width(),
-                  padding: const EdgeInsets.all(16),
-                  decoration: vouseBoxDecoration(
-                    backgroundColor: Colors.white,
-                    radius: 16,
-                    shadowOpacity: 15,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Who can reply?",
-                        style: boldTextStyle(size: 14, color: vPrimaryColor),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          border:
-                              Border.all(color: vPrimaryColor.withAlpha(50)),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: _selectedReplyOption,
-                            dropdownColor: Colors.white,
-                            iconEnabledColor: vPrimaryColor,
-                            style: primaryTextStyle(),
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                color: vPrimaryColor),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedReplyOption = value ?? 'Everyone';
-                              });
-                            },
-                            items: _replyOptions.map((option) {
-                              return DropdownMenuItem<String>(
-                                value: option['label'],
-                                child: Row(
-                                  children: [
-                                    Icon(option['icon'],
-                                        color: vPrimaryColor, size: 20),
-                                    const SizedBox(width: 12),
-                                    Text(option['label'],
-                                        style: primaryTextStyle()),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Selected images preview
-                if (images.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    "Selected Images (${images.length})",
-                    style: boldTextStyle(size: 14, color: vPrimaryColor),
-                  ),
-                  const SizedBox(height: 8),
-                  const SelectedImagesPreview(),
-                ],
-
-                const SizedBox(height: 24),
-
-                // Schedule options section
-                Container(
-                  width: context.width(),
-                  padding: const EdgeInsets.all(16),
-                  decoration: vouseBoxDecoration(
-                    backgroundColor: Colors.white,
-                    radius: 16,
-                    shadowOpacity: 15,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "When to Post",
-                        style: boldTextStyle(size: 14, color: vPrimaryColor),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Scheduling options in a row
-                      // Scheduling options in a row
-                      // Scheduling options in a row
+                      // Header
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          // Pick date button
-                          ElevatedButton.icon(
-                            onPressed: _pickDateTime,
-                            icon: const Icon(Icons.calendar_today,
-                                size: 20, color: Colors.white),
-                            label: const Text("Pick Date"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: vPrimaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-
-                          // Now button
-                          ElevatedButton.icon(
-                            onPressed: _scheduleNow,
-                            icon: const Icon(Icons.bolt,
-                                size: 20, color: Colors.white),
-                            label: const Text("Now!"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: vPrimaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-
-                          // AI suggestion button
-                          ElevatedButton.icon(
-                            onPressed: _openAIDialog,
-                            icon: const Icon(Icons.auto_awesome,
-                                size: 20, color: Colors.white),
-                            label: const Text("AI"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: vPrimaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                          Icon(Icons.schedule, color: vPrimaryColor, size: 22),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Schedule Your Post",
+                            style:
+                                boldTextStyle(size: 20, color: vPrimaryColor),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
 
-                      // Display selected date/time
-                      if (_scheduledDateTime != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: vPrimaryColor.withAlpha(30),
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: vPrimaryColor.withAlpha(50)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.event, color: vPrimaryColor),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  "Scheduled for: ${DateFormat('EEEE, MMM d, y • h:mm a').format(_scheduledDateTime!)}",
-                                  style: primaryTextStyle(color: vPrimaryColor),
+                      // Post Title input using elegant decoration
+                      Container(
+                        width: context.width(),
+                        padding: const EdgeInsets.all(16),
+                        decoration: vouseBoxDecoration(
+                          backgroundColor: Colors.white,
+                          radius: 16,
+                          shadowOpacity: 15,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Post Title",
+                              style:
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _titleController,
+                              decoration: InputDecoration(
+                                hintText: "Give your post a catchy title",
+                                hintStyle: secondaryTextStyle(
+                                    size: 14, color: vBodyGrey.withAlpha(180)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: vPrimaryColor.withAlpha(50)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: vPrimaryColor),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                      color: vPrimaryColor.withAlpha(50)),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Post snippet + location container
+                      Container(
+                        width: context.width(),
+                        padding: const EdgeInsets.all(16),
+                        decoration: vouseBoxDecoration(
+                          backgroundColor: Colors.white,
+                          radius: 16,
+                          shadowOpacity: 15,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Post Content",
+                              style:
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () {
+                                if (postText.isNotEmpty) {
+                                  _showFullTextDialog(postText);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: vPrimaryColor.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: vPrimaryColor.withAlpha(40)),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        snippet.isEmpty
+                                            ? "No content yet"
+                                            : snippet,
+                                        style: primaryTextStyle(
+                                          color: snippet.isEmpty
+                                              ? vBodyGrey.withAlpha(150)
+                                              : vBodyGrey,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (postText.length > 30) ...[
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.more_horiz,
+                                        color: vPrimaryColor,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                              IconButton(
-                                icon: Icon(Icons.close,
-                                    color: vBodyGrey, size: 18),
-                                onPressed: () {
-                                  setState(() {
-                                    _scheduledDateTime = null;
-                                  });
+                            ),
+                            if (location != null) ...[
+                              const SizedBox(height: 12),
+                              LocationTagWidget(
+                                entity: location,
+                                onRemove: () {
+                                  ref
+                                      .read(postLocationProvider.notifier)
+                                      .state = null;
                                 },
-                                tooltip: "Clear date",
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
                               ),
                             ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // "Who can reply?" container
+                      Container(
+                        width: context.width(),
+                        padding: const EdgeInsets.all(16),
+                        decoration: vouseBoxDecoration(
+                          backgroundColor: Colors.white,
+                          radius: 16,
+                          shadowOpacity: 15,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Who can reply?",
+                              style:
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    color: vPrimaryColor.withAlpha(50)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: _selectedReplyOption,
+                                  dropdownColor: Colors.white,
+                                  iconEnabledColor: vPrimaryColor,
+                                  style: primaryTextStyle(),
+                                  icon: Icon(Icons.keyboard_arrow_down,
+                                      color: vPrimaryColor),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedReplyOption =
+                                          value ?? 'Everyone';
+                                    });
+                                  },
+                                  items: _replyOptions.map((option) {
+                                    return DropdownMenuItem<String>(
+                                      value: option['label'],
+                                      child: Row(
+                                        children: [
+                                          Icon(option['icon'],
+                                              color: vPrimaryColor, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text(option['label'],
+                                              style: primaryTextStyle()),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Selected images preview
+                      if (images.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          "Selected Images (${images.length})",
+                          style: boldTextStyle(size: 14, color: vPrimaryColor),
+                        ),
+                        const SizedBox(height: 8),
+                        const SelectedImagesPreview(),
+                      ],
+
+                      const SizedBox(height: 24),
+
+                      // Schedule options section
+                      Container(
+                        width: context.width(),
+                        padding: const EdgeInsets.all(16),
+                        decoration: vouseBoxDecoration(
+                          backgroundColor: Colors.white,
+                          radius: 16,
+                          shadowOpacity: 15,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "When to Post",
+                              style:
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Scheduling options in a row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                // Pick date button
+                                ElevatedButton.icon(
+                                  onPressed: _pickDateTime,
+                                  icon: const Icon(Icons.calendar_today,
+                                      size: 20, color: Colors.white),
+                                  label: const Text("Pick Date"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: vPrimaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+
+                                // Now button
+                                ElevatedButton.icon(
+                                  onPressed: _scheduleNow,
+                                  icon: const Icon(Icons.bolt,
+                                      size: 20, color: Colors.white),
+                                  label: const Text("Now!"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: vPrimaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+
+                                // AI suggestion button
+                                ElevatedButton.icon(
+                                  onPressed: _openAIDialog,
+                                  icon: const Icon(Icons.auto_awesome,
+                                      size: 20, color: Colors.white),
+                                  label: const Text("AI"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: vPrimaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Display selected date/time
+                            if (_scheduledDateTime != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: vPrimaryColor.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: vPrimaryColor.withAlpha(50)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.event, color: vPrimaryColor),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        "Scheduled for: ${DateFormat('EEEE, MMM d, y • h:mm a').format(_scheduledDateTime!)}",
+                                        style: primaryTextStyle(
+                                            color: vPrimaryColor),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.close,
+                                          color: vBodyGrey, size: 18),
+                                      onPressed: () {
+                                        setState(() {
+                                          _scheduledDateTime = null;
+                                        });
+                                      },
+                                      tooltip: "Clear date",
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // "Schedule Post" button
+                      Container(
+                        width: double.infinity,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              vPrimaryColor,
+                              vPrimaryColor.withAlpha(220)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: vPrimaryColor.withAlpha(100),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: _onSchedulePressed,
+                          icon: const Icon(
+                            Icons.schedule,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            "Schedule Post",
+                            style: boldTextStyle(color: Colors.white, size: 16),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+
+                      // Bottom padding for safety
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // "Schedule Post" button
-                Container(
-                  width: double.infinity,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [vPrimaryColor, vPrimaryColor.withAlpha(220)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: vPrimaryColor.withAlpha(100),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: _onSchedulePressed,
-                    icon: const Icon(
-                      Icons.schedule,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      "Schedule Post",
-                      style: boldTextStyle(color: Colors.white, size: 16),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Bottom padding for safety
-                const SizedBox(height: 16),
-              ],
-            ),
+              ),
+            ],
           ),
 
           // Spinner overlay while scheduling

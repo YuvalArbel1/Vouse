@@ -36,8 +36,8 @@ class FirebaseVertexAiClient {
     required double temperature,
   }) async* {
     final userPrompt = """
-Write a social media post under $maxTokens tokens (~${maxTokens * 4} chars), 
-but at least $minTokens tokens (~${minTokens * 4} chars). 
+Write a social media post between $minTokens and $maxTokens tokens (~${minTokens * 4} to ${maxTokens * 4} chars).
+IMPORTANT: Your response MUST be under 280 characters (Twitter limit).
 Only final text, no disclaimers.
 
 $prompt

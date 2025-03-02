@@ -19,18 +19,25 @@ class AiTextRepositoryImpl implements AiTextRepository {
     required int desiredChars,
     required double temperature,
   }) {
-    // Approximate tokens from desired character count (~4 chars per token).
-    final approxTokens = (desiredChars / 4).round();
+    // Set max chars to 280 for Twitter limit
+    final maxChars = 280;
 
-    // Provide ±20% leeway around approxTokens.
+    // If desired chars is more than Twitter limit, cap it
+    final targetChars = desiredChars > maxChars ? maxChars : desiredChars;
+
+    // Approximate tokens from desired character count (~4 chars per token)
+    final approxTokens = (targetChars / 4).round();
+
+    // Provide some leeway but ensure we don't exceed Twitter's character limit
     final minTokens = (approxTokens * 0.8).round();
-    final maxTokens = (approxTokens * 1.2).round();
+    // For max tokens, use a smaller safe factor to prevent overflow
+    final maxTokens = (approxTokens * 1.0).round();
 
-    // Ensure tokens are at least 1 and at most 280.
-    final finalMin = minTokens.clamp(1, 280);
-    final finalMax = maxTokens.clamp(1, 280);
+    // Ensure tokens are at least 1 and at most 70 (approximately 280 chars)
+    final finalMin = minTokens.clamp(1, 70);
+    final finalMax = maxTokens.clamp(1, 70);
 
-    // Call the client stream method with the computed bounds.
+    // Call the client stream method with the computed bounds
     return _client.generateTextStream(
       prompt: prompt,
       minTokens: finalMin,

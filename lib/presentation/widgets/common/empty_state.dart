@@ -84,31 +84,38 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 title,
-                style: titleStyle ?? TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: vPrimaryColor,
-                ),
+                style: titleStyle ??
+                    TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: vPrimaryColor,
+                    ),
               ),
               const SizedBox(height: 12),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: messageStyle ?? TextStyle(
-                  fontSize: 16,
-                  color: vBodyGrey,
-                ),
+                style: messageStyle ??
+                    TextStyle(
+                      fontSize: 16,
+                      color: vBodyGrey,
+                    ),
               ),
               if (buttonText != null && onButtonPressed != null) ...[
                 const SizedBox(height: 32),
                 ElevatedButton.icon(
                   onPressed: onButtonPressed,
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(
+                    Icons.add,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                   label: Text(buttonText!),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: vPrimaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),

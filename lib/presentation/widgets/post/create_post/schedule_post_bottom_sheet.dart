@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/resources/data_state.dart';
 import '../../../../core/util/colors.dart';
@@ -18,22 +19,26 @@ import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../providers/post/save_post_with_upload_provider.dart';
-import '../../../providers/home/home_content_provider.dart'; // Import the home content provider
+import '../../../providers/home/home_content_provider.dart';
 import '../../../providers/navigation/navigation_service.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
 
-/// A bottom sheet that allows the user to schedule a post for a future date/time,
-/// optionally leveraging AI suggestions.
+/// A beautifully designed bottom sheet that allows the user to schedule a post for a future date/time,
+/// with options for AI suggestions or immediate posting.
 ///
-/// The sheet provides:
-/// - A post title input field
+/// Features:
+/// - A post title input field with elegant styling
 /// - A preview snippet of the main post text (with full text dialog)
-/// - An optional location tag
+/// - An optional location tag display
 /// - A dropdown to select who can reply
-/// - Controls to pick a date/time (within 7 days) or use AI for best time prediction
-/// - A final "Schedule Post" button that saves and uploads the post
+/// - Image previews for selected media
+/// - Multiple scheduling options:
+///   - "Now!" button for immediate scheduling
+///   - Manual date picker for custom scheduling
+///   - AI suggestion for optimal posting time
+/// - A clear, visually distinct "Schedule Post" button
 class SharePostBottomSheet extends ConsumerStatefulWidget {
   /// The draft post being edited (if any)
   final PostEntity? editingDraft;
@@ -68,6 +73,15 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
   String _selectedReplyOption = 'Everyone';
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize with existing draft title if available
+    if (widget.editingDraft != null) {
+      _titleController.text = widget.editingDraft!.title;
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     super.dispose();
@@ -85,19 +99,31 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
+          title:
+              Text('Post Content', style: boldTextStyle(color: vPrimaryColor)),
           content: SingleChildScrollView(
             child: Text(fullText, style: primaryTextStyle()),
           ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           actions: [
             TextButton(
-              onPressed: () =>
-                  ref.read(navigationServiceProvider).navigateBack(context),
-              child: const Text('Close'),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Close', style: TextStyle(color: vPrimaryColor)),
             ),
           ],
         );
       },
     );
+  }
+
+  /// Sets the scheduled time to right now (immediately)
+  void _scheduleNow() {
+    final now = DateTime.now();
+    setState(() {
+      _scheduledDateTime = now;
+    });
+    toast('Post will be published immediately');
   }
 
   /// Lets the user pick a date/time within the next 7 days.
@@ -110,30 +136,87 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       initialDate: now,
       firstDate: now,
       lastDate: oneWeekLater,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: vPrimaryColor,
+              onPrimary: Colors.white,
+              onSurface: vBodyGrey,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: vPrimaryColor,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (!mounted || pickedDate == null) return;
 
+    // Calculate minimum time (if today, must be at least 5 minutes from now)
+    final isToday = pickedDate.year == now.year &&
+        pickedDate.month == now.month &&
+        pickedDate.day == now.day;
+
+    TimeOfDay initialTime = TimeOfDay.now();
+    if (isToday) {
+      // Add 5 minutes to current time
+      final minutes = initialTime.minute + 5;
+      initialTime = TimeOfDay(
+          hour: initialTime.hour + (minutes ~/ 60), minute: minutes % 60);
+    }
+
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: vPrimaryColor,
+              onPrimary: Colors.white,
+              onSurface: vBodyGrey,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: vPrimaryColor,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (!mounted || pickedTime == null) return;
 
+    // Create the datetime
+    final scheduledDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
     setState(() {
-      _scheduledDateTime = DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      );
+      _scheduledDateTime = scheduledDateTime;
     });
   }
 
-  /// Handles scheduling the post.
-  ///
-  /// Validates the post title, text, and date/time, moves images to a permanent folder,
-  /// creates the post entity, and calls the "save + upload" use case.
+  /// Opens the AI dialog that can predict the best time to post.
+  Future<void> _openAIDialog() async {
+    final bestTime = await showDialog<DateTime?>(
+      context: context,
+      builder: (_) => const ScheduleAiDialog(),
+    );
+    if (mounted && bestTime != null) {
+      setState(() => _scheduledDateTime = bestTime);
+    }
+  }
+
   /// Handles scheduling the post.
   Future<void> _onSchedulePressed() async {
     if (_isScheduling) return;
@@ -157,6 +240,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         toast('Please pick a date & time first!');
         return;
       }
+
       final scheduledDate = _scheduledDateTime!;
 
       final text = ref.read(postTextProvider).trim();
@@ -217,7 +301,24 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         // Explicitly refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
-        toast('Post scheduled successfully!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(
+                    'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
+              ],
+            ),
+            backgroundColor: vAccentColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
         ref.read(postLocationProvider.notifier).state = null;
@@ -232,22 +333,12 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     }
   }
 
-  /// Opens the AI dialog that can predict the best time to post.
-  Future<void> _openAIDialog() async {
-    final bestTime = await showDialog<DateTime?>(
-      context: context,
-      builder: (_) => const ScheduleAiDialog(),
-    );
-    if (mounted && bestTime != null) {
-      setState(() => _scheduledDateTime = bestTime);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final postText = ref.watch(postTextProvider);
     final location = ref.watch(postLocationProvider);
     final snippet = _truncateText(postText, 30);
+    final images = ref.watch(postImagesProvider);
 
     return SafeArea(
       top: false,
@@ -258,7 +349,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Grab bar.
+                // Grab bar
                 Container(
                   width: 50,
                   height: 5,
@@ -267,61 +358,133 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Post Title input using common decoration.
-                Container(
-                  width: context.width(),
-                  padding: const EdgeInsets.all(12),
-                  decoration: vouseBoxDecoration(
-                    backgroundColor: vAppLayoutBackground,
-                    radius: 12,
-                    shadowOpacity: 20,
-                    blurRadius: 6,
-                    offset: const Offset(0, 4),
-                  ),
-                  child: TextField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      hintText: "Give a title to your amazing post!",
-                      hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
-                      border: InputBorder.none,
-                    ),
+
+                // Header
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule, color: vPrimaryColor, size: 22),
+                      const SizedBox(width: 12),
+                      Text(
+                        "Schedule Your Post",
+                        style: boldTextStyle(size: 20, color: vPrimaryColor),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Post snippet + location container.
+
+                // Post Title input using elegant decoration
                 Container(
                   width: context.width(),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: vouseBoxDecoration(
-                    backgroundColor: vAppLayoutBackground,
-                    radius: 12,
-                    shadowOpacity: 20,
-                    blurRadius: 6,
-                    offset: const Offset(0, 4),
+                    backgroundColor: Colors.white,
+                    radius: 16,
+                    shadowOpacity: 15,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        "Post Title",
+                        style: boldTextStyle(size: 14, color: vPrimaryColor),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          hintText: "Give your post a catchy title",
+                          hintStyle: secondaryTextStyle(
+                              size: 14, color: vBodyGrey.withAlpha(180)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: vPrimaryColor.withAlpha(50)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: vPrimaryColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: vPrimaryColor.withAlpha(50)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Post snippet + location container
+                Container(
+                  width: context.width(),
+                  padding: const EdgeInsets.all(16),
+                  decoration: vouseBoxDecoration(
+                    backgroundColor: Colors.white,
+                    radius: 16,
+                    shadowOpacity: 15,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Post Content",
+                        style: boldTextStyle(size: 14, color: vPrimaryColor),
+                      ),
+                      const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () {
-                          if (postText.length > 30) {
+                          if (postText.isNotEmpty) {
                             _showFullTextDialog(postText);
                           }
                         },
-                        child: TextField(
-                          enabled: false,
-                          controller: TextEditingController(text: snippet),
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            hintText: "What's on your mind?",
-                            border: InputBorder.none,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: vPrimaryColor.withAlpha(20),
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: vPrimaryColor.withAlpha(40)),
                           ),
-                          style: primaryTextStyle(),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  snippet.isEmpty ? "No content yet" : snippet,
+                                  style: primaryTextStyle(
+                                    color: snippet.isEmpty
+                                        ? vBodyGrey.withAlpha(150)
+                                        : vBodyGrey,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (postText.length > 30) ...[
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.more_horiz,
+                                  color: vPrimaryColor,
+                                  size: 20,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                       if (location != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         LocationTagWidget(
                           entity: location,
                           onRemove: () {
@@ -333,97 +496,257 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 16),
-                // "Who can reply?" container.
+
+                // "Who can reply?" container
                 Container(
                   width: context.width(),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: vouseBoxDecoration(
-                    backgroundColor: vAppLayoutBackground,
-                    radius: 12,
-                    shadowOpacity: 20,
-                    blurRadius: 6,
-                    offset: const Offset(0, 4),
+                    backgroundColor: Colors.white,
+                    radius: 16,
+                    shadowOpacity: 15,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedReplyOption,
-                      dropdownColor: vAppLayoutBackground,
-                      iconEnabledColor: vPrimaryColor,
-                      style: primaryTextStyle(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedReplyOption = value ?? 'Everyone';
-                        });
-                      },
-                      items: _replyOptions.map((option) {
-                        return DropdownMenuItem<String>(
-                          value: option['label'],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Who can reply?",
+                        style: boldTextStyle(size: 14, color: vPrimaryColor),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: vPrimaryColor.withAlpha(50)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: _selectedReplyOption,
+                            dropdownColor: Colors.white,
+                            iconEnabledColor: vPrimaryColor,
+                            style: primaryTextStyle(),
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                color: vPrimaryColor),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedReplyOption = value ?? 'Everyone';
+                              });
+                            },
+                            items: _replyOptions.map((option) {
+                              return DropdownMenuItem<String>(
+                                value: option['label'],
+                                child: Row(
+                                  children: [
+                                    Icon(option['icon'],
+                                        color: vPrimaryColor, size: 20),
+                                    const SizedBox(width: 12),
+                                    Text(option['label'],
+                                        style: primaryTextStyle()),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Selected images preview
+                if (images.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    "Selected Images (${images.length})",
+                    style: boldTextStyle(size: 14, color: vPrimaryColor),
+                  ),
+                  const SizedBox(height: 8),
+                  const SelectedImagesPreview(),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Schedule options section
+                Container(
+                  width: context.width(),
+                  padding: const EdgeInsets.all(16),
+                  decoration: vouseBoxDecoration(
+                    backgroundColor: Colors.white,
+                    radius: 16,
+                    shadowOpacity: 15,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "When to Post",
+                        style: boldTextStyle(size: 14, color: vPrimaryColor),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Scheduling options in a row
+                      // Scheduling options in a row
+                      // Scheduling options in a row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          // Pick date button
+                          ElevatedButton.icon(
+                            onPressed: _pickDateTime,
+                            icon: const Icon(Icons.calendar_today,
+                                size: 20, color: Colors.white),
+                            label: const Text("Pick Date"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: vPrimaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+
+                          // Now button
+                          ElevatedButton.icon(
+                            onPressed: _scheduleNow,
+                            icon: const Icon(Icons.bolt,
+                                size: 20, color: Colors.white),
+                            label: const Text("Now!"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: vPrimaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+
+                          // AI suggestion button
+                          ElevatedButton.icon(
+                            onPressed: _openAIDialog,
+                            icon: const Icon(Icons.auto_awesome,
+                                size: 20, color: Colors.white),
+                            label: const Text("AI"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: vPrimaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Display selected date/time
+                      if (_scheduledDateTime != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: vPrimaryColor.withAlpha(30),
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: vPrimaryColor.withAlpha(50)),
+                          ),
                           child: Row(
                             children: [
-                              Icon(option['icon'], color: vPrimaryColor),
-                              const SizedBox(width: 8),
-                              Text(option['label'], style: primaryTextStyle()),
+                              Icon(Icons.event, color: vPrimaryColor),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Scheduled for: ${DateFormat('EEEE, MMM d, y • h:mm a').format(_scheduledDateTime!)}",
+                                  style: primaryTextStyle(color: vPrimaryColor),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.close,
+                                    color: vBodyGrey, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    _scheduledDateTime = null;
+                                  });
+                                },
+                                tooltip: "Clear date",
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
                             ],
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Selected images preview.
-                const SelectedImagesPreview(),
-                const SizedBox(height: 16),
-                // Row: Pick date/time and AI.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _pickDateTime,
-                      icon: const Icon(Icons.calendar_today,
-                          size: 16, color: Colors.white),
-                      label: const Text("Pick Date"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: vPrimaryColor.withAlpha(204),
-                        foregroundColor: Colors.white,
+
+                const SizedBox(height: 24),
+
+                // "Schedule Post" button
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [vPrimaryColor, vPrimaryColor.withAlpha(220)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: vPrimaryColor.withAlpha(100),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed: _onSchedulePressed,
+                    icon: const Icon(
+                      Icons.schedule,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      "Schedule Post",
+                      style: boldTextStyle(color: Colors.white, size: 16),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    const SizedBox(width: 24),
-                    IconButton(
-                      onPressed: _openAIDialog,
-                      icon: const Icon(Icons.auto_awesome),
-                      color: vPrimaryColor,
-                      tooltip: "Generate AI text",
-                    ),
-                  ],
-                ),
-                if (_scheduledDateTime != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    "Scheduled for: $_scheduledDateTime",
-                    style: primaryTextStyle(color: vPrimaryColor),
                   ),
-                ],
+                ),
+
+                // Bottom padding for safety
                 const SizedBox(height: 16),
-                // "Schedule Post" button.
-                ElevatedButton(
-                  onPressed: _onSchedulePressed,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(context.width(), 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: vPrimaryColor.withAlpha(204),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text("Schedule Post"),
-                ),
               ],
             ),
           ),
-          // Spinner overlay while scheduling.
+
+          // Spinner overlay while scheduling
           BlockingSpinnerOverlay(isVisible: _isScheduling),
         ],
       ),

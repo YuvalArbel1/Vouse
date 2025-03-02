@@ -39,22 +39,29 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 /// - Clear user feedback with toasts
 /// - Autosave for preventing lost work
 class CreatePostScreen extends ConsumerStatefulWidget {
+  /// Creates a new post creation screen.
   const CreatePostScreen({super.key});
 
   @override
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
+/// The state for the [CreatePostScreen].
+///
+/// Handles user interactions, provides feedback, and manages state transitions
+/// throughout the post creation process.
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     with SingleTickerProviderStateMixin {
-  /// Tracks whether content is being processed
+  /// Tracks whether content is being processed (saving, uploading, etc.).
   bool _isProcessing = false;
 
-  /// Animation controller for the screen
+  /// Animation controller for the screen transition effects.
   late AnimationController _animationController;
+
+  /// Animation for fading in the screen content.
   late Animation<double> _fadeAnimation;
 
-  /// Indicates if there are unsaved changes
+  /// Indicates if there are unsaved changes that should be confirmed before leaving.
   bool _hasUnsavedChanges = false;
 
   @override
@@ -62,7 +69,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     super.initState();
     _initializeScreen();
 
-    // Set up animation controller
+    // Set up animation controller for smooth transitions
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -77,65 +84,86 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
     // Add a focus listener for navigation returns
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       // Using Flutter's focus system to detect when screen gets focus
       SystemChannels.lifecycle.setMessageHandler((msg) {
-        if (msg == AppLifecycleState.resumed.toString()) {
-          _setupChangeListeners(); // Your existing refresh method
+        if (msg == AppLifecycleState.resumed.toString() && mounted) {
+          _setupChangeListeners();
         }
         return Future.value(msg);
       });
+
+      // Setup listeners immediately after build
+      _setupChangeListeners();
     });
   }
 
+  /// Initializes the screen by removing splash screen and setting status bar color.
   void _initializeScreen() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       FlutterNativeSplash.remove();
     });
 
     // Once the widget is built, set the status bar color to match the card theme
     afterBuildCreated(() {
+      if (!mounted) return;
       setStatusBarColor(context.cardColor);
     });
   }
 
+  /// Sets up listeners for tracking changes to post content.
+  ///
+  /// These listeners update the [_hasUnsavedChanges] flag when content changes,
+  /// which is used to prompt for confirmation before discarding changes.
   void _setupChangeListeners() {
+    // Only set up new listeners if the widget is still mounted
+    if (!mounted) return;
+
     // Listen to changes in the post content providers to track unsaved changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen(postTextProvider, (_, __) {
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
+    ref.listen(postTextProvider, (_, __) {
+      if (!mounted) return;
+      setState(() {
+        _hasUnsavedChanges = true;
       });
+    });
 
-      ref.listen(postImagesProvider, (_, __) {
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
+    ref.listen(postImagesProvider, (_, __) {
+      if (!mounted) return;
+      setState(() {
+        _hasUnsavedChanges = true;
       });
+    });
 
-      ref.listen(postLocationProvider, (_, __) {
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
+    ref.listen(postLocationProvider, (_, __) {
+      if (!mounted) return;
+      setState(() {
+        _hasUnsavedChanges = true;
       });
     });
   }
 
   @override
   void dispose() {
-    // Restore the status bar color
+    // Restore the status bar color to default
     setStatusBarColor(vAppLayoutBackground);
+
+    // Dispose animation resources
     _animationController.dispose();
+
     super.dispose();
   }
 
   /// Shows a confirmation dialog to ensure the user really wants to clear post data.
-  /// Returns `true` if the user pressed "Yes."
+  ///
+  /// Returns `true` if the user confirms, `false` otherwise.
   Future<bool> _confirmClearPost() async {
     if (!_hasUnsavedChanges) return true;
 
+    final BuildContext currentContext = context;
     final result = await showDialog<bool>(
-      context: context,
+      context: currentContext,
       builder: (ctx) {
         return AlertDialog(
           title: Text('Clear Post?', style: boldTextStyle()),
@@ -156,14 +184,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         );
       },
     );
-    return result == true;
+    return result ?? false;
   }
 
-  /// Called when the user taps the "Clear" button.
-  /// Prompts the user, and if confirmed, clears the text, images, and location providers.
+  /// Handles the "Clear" button press.
+  ///
+  /// Prompts for confirmation, then clears all post content if confirmed.
   Future<void> _onClearPressed() async {
     final shouldClear = await _confirmClearPost();
-    if (!shouldClear) return;
+    if (!shouldClear || !mounted) return;
 
     ref.read(postTextProvider.notifier).state = '';
     ref.read(postImagesProvider.notifier).clearAll();
@@ -173,17 +202,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       _hasUnsavedChanges = false;
     });
 
-    if (mounted) {
-      toast('Post content cleared');
-    }
+    toast('Post content cleared');
   }
 
-  /// Prompts the user to enter a draft title using a dialog.
-  /// Returns the provided title, or null if canceled.
+  /// Shows a dialog to prompt the user for a draft title.
+  ///
+  /// Returns the entered title, or null if the dialog was canceled.
   Future<String?> _showDraftTitleDialog() async {
     final titleController = TextEditingController();
+    final BuildContext currentContext = context;
+
     return showDialog<String>(
-      context: context,
+      context: currentContext,
       builder: (ctx) {
         return AlertDialog(
           title: Text('Enter Draft Title', style: boldTextStyle()),
@@ -216,13 +246,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     );
   }
 
-  /// Handles saving the current post as a draft:
-  /// - Ensures there's text
-  /// - Retrieves the current Firebase user
-  /// - Asks for a draft title
-  /// - Moves images to a stable path
-  /// - Builds and saves a draft [PostEntity]
-  /// - Clears the post content and closes the screen if successful
+  /// Handles saving the current post as a draft.
+  ///
+  /// The flow:
+  /// 1. Validates text content
+  /// 2. Gets the current user
+  /// 3. Prompts for a draft title
+  /// 4. Moves images to permanent storage
+  /// 5. Creates and saves a draft PostEntity
+  /// 6. Refreshes providers and gives feedback
   Future<void> _onDraftPressed() async {
     final text = ref.read(postTextProvider).trim();
     if (text.isEmpty) {
@@ -249,6 +281,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
       if (!mounted) return;
 
+      // Extract location data if present
       final loc = ref.read(postLocationProvider);
       double? lat;
       double? lng;
@@ -259,6 +292,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         addr = loc.address;
       }
 
+      // Create the post entity
       final postEntity = PostEntity(
         postIdLocal: const Uuid().v4(),
         postIdX: null,
@@ -275,6 +309,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         locationAddress: addr,
       );
 
+      // Save the draft post
       final saveUC = ref.read(savePostUseCaseProvider);
       final result = await saveUC.call(
         params: SavePostParams(postEntity, user.uid),
@@ -290,6 +325,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         // Explicitly refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
+        if (!mounted) return;
+
         // Clear everything
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
@@ -299,7 +336,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           _hasUnsavedChanges = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        // Show success message
+        final BuildContext currentContext = context;
+        ScaffoldMessenger.of(currentContext).showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -316,7 +355,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           ),
         );
 
-        ref.read(navigationServiceProvider).navigateBack(context);
+        // Go back to previous screen
+        ref.read(navigationServiceProvider).navigateBack(currentContext);
       } else if (result is DataFailed) {
         toast("Error saving draft: ${result.error?.error}");
       }
@@ -327,7 +367,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     }
   }
 
-  /// Opens the bottom sheet to share or schedule the post, if there's text.
+  /// Opens the bottom sheet to share or schedule the post.
+  ///
+  /// Verifies there's text content before showing the sheet.
   void _openShareBottomSheet() {
     final currentText = ref.read(postTextProvider).trim();
     if (currentText.isEmpty) {
@@ -337,8 +379,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
     if (!mounted) return;
 
+    final BuildContext currentContext = context;
     showModalBottomSheet(
-      context: context,
+      context: currentContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
@@ -367,12 +410,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     );
   }
 
-  /// Show unsaved changes confirmation dialog
+  /// Shows a dialog for confirming exit with unsaved changes.
+  ///
+  /// Returns true if it's safe to pop the screen, false otherwise.
   Future<bool> _onWillPop() async {
     if (!_hasUnsavedChanges) return true;
 
+    final BuildContext currentContext = context;
     final result = await showDialog<bool>(
-      context: context,
+      context: currentContext,
       builder: (ctx) => AlertDialog(
         title: Text('Discard Changes?', style: boldTextStyle()),
         content: Text(
@@ -397,16 +443,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) async {
-        if (didPop) return;
-
-        final shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
-          ref.read(navigationServiceProvider).navigateBack(context);
-        }
-      },
+    return WillPopScope(
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: context.cardColor,
         appBar: _buildAppBar(),
@@ -430,7 +468,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     );
   }
 
-  /// Builds the app bar without a progress indicator.
+  /// Builds the app bar with navigation, clear, draft and post buttons.
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       automaticallyImplyLeading: false,
@@ -446,7 +484,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
             onPressed: () async {
               final shouldPop = await _onWillPop();
               if (shouldPop && mounted) {
-                ref.read(navigationServiceProvider).navigateBack(context);
+                final BuildContext currentContext = context;
+                ref.read(navigationServiceProvider).navigateBack(currentContext);
               }
             },
             padding: EdgeInsets.zero,
@@ -497,7 +536,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     );
   }
 
-  /// Builds the main content of the screen.
+  /// Builds the main content area with the text input, image previews, and options.
   Widget _buildContent() {
     return SafeArea(
       child: SizedBox(

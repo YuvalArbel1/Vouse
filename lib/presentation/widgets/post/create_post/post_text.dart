@@ -1,6 +1,7 @@
 // lib/presentation/widgets/post/create_post/post_text.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 
@@ -22,6 +23,7 @@ import 'location_tag_widget.dart';
 /// - Attractive placeholder text
 /// - Location tag display
 /// - Smooth text input experience
+/// - Enforced character limit
 class PostText extends ConsumerStatefulWidget {
   /// Creates a [PostText] widget.
   const PostText({super.key});
@@ -76,9 +78,9 @@ class _PostTextState extends ConsumerState<PostText> {
     // Only watch for external changes to post text
     final postText = ref.watch(postTextProvider);
 
-    // Only watch location when needed (place this in a dedicated Consumer widget)
+    // Only watch location when needed
     final hasLocation =
-        ref.watch(postLocationProvider.select((loc) => loc != null));
+    ref.watch(postLocationProvider.select((loc) => loc != null));
 
     // Only sync controller if the external text changes
     if (postText != _controller.text) {
@@ -103,6 +105,7 @@ class _PostTextState extends ConsumerState<PostText> {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Main text field for entering post content.
               TextField(
@@ -110,16 +113,16 @@ class _PostTextState extends ConsumerState<PostText> {
                 focusNode: _focusNode,
                 autofocus: false,
                 maxLines: 13,
-                maxLength: _maxCharCount + 20,
-                // Allow some overflow but show warning
+                maxLength: _maxCharCount,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced, // Enforce the character limit
                 buildCounter: (context,
-                        {required currentLength,
-                        required isFocused,
-                        maxLength}) =>
-                    _buildCharacterCounter(currentLength),
+                    {required currentLength,
+                      required isFocused,
+                      maxLength}) =>
+                    Container(),
                 style: const TextStyle(
                   fontSize: 16,
-                  height: 1.4, // Better line spacing for readability
+                  height: 1.4,
                 ),
                 decoration: InputDecoration(
                   border: InputBorder.none,
@@ -131,16 +134,28 @@ class _PostTextState extends ConsumerState<PostText> {
                 ),
               ),
 
+              // Character counter
+              Align(
+                alignment: Alignment.centerRight,
+                child: _buildCharacterCounter(_controller.text.length),
+              ),
+
+              // Add spacing before location tag
+              const SizedBox(height: 12),
+
               // If a location is selected, display the location tag below the text field.
               if (hasLocation)
                 Consumer(
                   builder: (context, ref, _) {
                     final location = ref.watch(postLocationProvider);
-                    return LocationTagWidget(
-                      entity: location!,
-                      onRemove: () {
-                        ref.read(postLocationProvider.notifier).state = null;
-                      },
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4), // Add top padding
+                      child: LocationTagWidget(
+                        entity: location!,
+                        onRemove: () {
+                          ref.read(postLocationProvider.notifier).state = null;
+                        },
+                      ),
                     );
                   },
                 ),
@@ -179,6 +194,7 @@ class _PostTextState extends ConsumerState<PostText> {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           // Show circular progress indicator for visual feedback
@@ -193,8 +209,8 @@ class _PostTextState extends ConsumerState<PostText> {
                 color: _isOverLimit
                     ? Colors.red
                     : _isNearLimit
-                        ? Colors.orange
-                        : vPrimaryColor,
+                    ? Colors.orange
+                    : vPrimaryColor,
               ),
             ),
             const SizedBox(width: 8),

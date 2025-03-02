@@ -2,7 +2,6 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -74,17 +73,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// Animation for fading in the screen content.
   late Animation<double> _fadeAnimation;
 
-  /// Indicates if there are unsaved changes that should be confirmed before leaving.
-  bool _hasUnsavedChanges = false;
-
+  /// Text controller for draft title input
   final TextEditingController _titleController = TextEditingController();
 
+  /// Initial values for comparison to detect changes
+  String _initialPostText = '';
+  List<String> _initialImagePaths = [];
+  PlaceLocationEntity? _initialLocation;
 
   @override
   void initState() {
     super.initState();
     _initializeScreen();
-
     _loadDraftIfEditing();
 
     // Set up animation controller for smooth transitions
@@ -100,20 +100,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
     _animationController.forward();
 
-    // Add a focus listener for navigation returns
+    // Store initial values for change detection
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
-      // Using Flutter's focus system to detect when screen gets focus
-      SystemChannels.lifecycle.setMessageHandler((msg) {
-        if (msg == AppLifecycleState.resumed.toString() && mounted) {
-          _setupChangeListeners();
-        }
-        return Future.value(msg);
-      });
-
-      // Setup listeners immediately after build
-      _setupChangeListeners();
+      _captureInitialValues();
     });
   }
 
@@ -131,35 +121,38 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     });
   }
 
-  /// Sets up listeners for tracking changes to post content.
-  ///
-  /// These listeners update the [_hasUnsavedChanges] flag when content changes,
-  /// which is used to prompt for confirmation before discarding changes.
-  void _setupChangeListeners() {
-    // Only set up new listeners if the widget is still mounted
-    if (!mounted) return;
+  /// Captures the initial state of the post content for change detection
+  void _captureInitialValues() {
+    _initialPostText = ref.read(postTextProvider);
+    _initialImagePaths = List.from(ref.read(postImagesProvider));
+    _initialLocation = ref.read(postLocationProvider);
+  }
 
-    // Listen to changes in the post content providers to track unsaved changes
-    ref.listen(postTextProvider, (_, __) {
-      if (!mounted) return;
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-    });
+  /// Checks if there are unsaved changes by comparing current values with initial values
+  bool _checkForUnsavedChanges() {
+    // If editing a draft, compare with the original content
+    if (_isEditing && _editingDraft != null) {
+      final currentText = ref.read(postTextProvider);
+      final currentLocation = ref.read(postLocationProvider);
+      final currentImages = ref.read(postImagesProvider);
 
-    ref.listen(postImagesProvider, (_, __) {
-      if (!mounted) return;
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-    });
+      return currentText != _editingDraft!.content ||
+          currentLocation?.latitude != _editingDraft!.locationLat ||
+          currentLocation?.longitude != _editingDraft!.locationLng ||
+          currentImages.length != _editingDraft!.localImagePaths.length;
+    }
 
-    ref.listen(postLocationProvider, (_, __) {
-      if (!mounted) return;
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-    });
+    // For a new post, check if there's any content
+    final currentText = ref.read(postTextProvider).trim();
+    final currentImages = ref.read(postImagesProvider);
+    final currentLocation = ref.read(postLocationProvider);
+
+    // Compare with initial values
+    final textChanged = currentText != _initialPostText.trim();
+    final imagesChanged = currentImages.length != _initialImagePaths.length;
+    final locationChanged = currentLocation != _initialLocation;
+
+    return textChanged || imagesChanged || locationChanged;
   }
 
   @override
@@ -177,7 +170,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   ///
   /// Returns `true` if the user confirms, `false` otherwise.
   Future<bool> _confirmClearPost() async {
-    if (!_hasUnsavedChanges) return true;
+    if (!_checkForUnsavedChanges()) return true;
 
     final BuildContext currentContext = context;
     final result = await showDialog<bool>(
@@ -217,9 +210,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     ref.read(postImagesProvider.notifier).clearAll();
     ref.read(postLocationProvider.notifier).state = null;
 
-    setState(() {
-      _hasUnsavedChanges = false;
-    });
+    // Capture new initial values after clearing
+    _captureInitialValues();
 
     toast('Post content cleared');
   }
@@ -293,8 +285,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           _titleController.text = draftToEdit.title;
           _editingDraft = draftToEdit;
           _isEditing = true;
-          _hasUnsavedChanges = false; // Initially no unsaved changes
         });
+
+        // Capture initial values after loading the draft
+        _captureInitialValues();
       } catch (e) {
         toast("Error loading draft: $e");
       }
@@ -364,7 +358,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         content: text,
         title: draftTitle,
         createdAt: _editingDraft?.createdAt ?? DateTime.now(),
-        updatedAt: DateTime.now(), // Always update the updatedAt time
+        updatedAt: DateTime.now(),
+        // Always update the updatedAt time
         scheduledAt: null,
         visibility: _editingDraft?.visibility,
         localImagePaths: localPaths,
@@ -398,11 +393,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         ref.read(postLocationProvider.notifier).state = null;
 
         setState(() {
-          _hasUnsavedChanges = false;
           _isEditing = false;
           _editingDraft = null;
           _titleController.clear();
         });
+
+        // Update initial values after saving
+        _captureInitialValues();
 
         // Show success message
         final BuildContext currentContext = context;
@@ -412,7 +409,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text(_isEditing ? "Draft updated successfully" : "Draft \"$draftTitle\" saved successfully"),
+                Text(_isEditing
+                    ? "Draft updated successfully"
+                    : "Draft \"$draftTitle\" saved successfully"),
               ],
             ),
             backgroundColor: vAccentColor,
@@ -483,8 +482,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// Shows a dialog for confirming exit with unsaved changes.
   ///
   /// Returns true if it's safe to pop the screen, false otherwise.
+  /// Shows a dialog for confirming exit with unsaved changes.
+  ///
+  /// Returns true if it's safe to pop the screen, false otherwise.
+  /// If user confirms discarding changes, it clears all post content.
   Future<bool> _onWillPop() async {
-    if (!_hasUnsavedChanges) return true;
+    // Only check for changes on demand when actually needed
+    if (!_checkForUnsavedChanges()) return true;
 
     final BuildContext currentContext = context;
     final result = await showDialog<bool>(
@@ -507,6 +511,23 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         ],
       ),
     );
+
+    // If user confirms discarding changes, clear all content
+    if (result == true) {
+      // Clear all post content
+      ref.read(postTextProvider.notifier).state = '';
+      ref.read(postImagesProvider.notifier).clearAll();
+      ref.read(postLocationProvider.notifier).state = null;
+
+      // Reset state
+      setState(() {
+        _titleController.clear();
+        if (!_isEditing) {
+          // Only capture new values if not editing to avoid confusion
+          _captureInitialValues();
+        }
+      });
+    }
 
     return result ?? false;
   }

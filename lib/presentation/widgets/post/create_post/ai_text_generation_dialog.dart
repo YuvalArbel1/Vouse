@@ -23,14 +23,16 @@ class AiTextGenerationDialog extends ConsumerStatefulWidget {
   const AiTextGenerationDialog({super.key});
 
   @override
-  ConsumerState<AiTextGenerationDialog> createState() => _AiTextGenerationDialogState();
+  ConsumerState<AiTextGenerationDialog> createState() =>
+      _AiTextGenerationDialogState();
 }
 
 /// State class for [AiTextGenerationDialog].
 ///
 /// Handles user interactions, manages the [TextEditingController] for the prompt,
 /// and updates UI based on the AI generation state from [AiTextNotifier].
-class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog> with SingleTickerProviderStateMixin {
+class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
+    with SingleTickerProviderStateMixin {
   /// The controller for the prompt text field.
   final TextEditingController _promptController = TextEditingController();
 
@@ -223,13 +225,14 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                       size: 24,
                     ),
                     const SizedBox(width: 8),
-                    Text("✨ AI Post Generator",
+                    Text(" AI Post Generator",
                         style: boldTextStyle(size: 18, color: vPrimaryColor)),
                   ],
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => ref.read(navigationServiceProvider).navigateBack(context),
+                  onPressed: () =>
+                      ref.read(navigationServiceProvider).navigateBack(context),
                 ),
               ],
             ),
@@ -262,7 +265,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                       selectedColor: vPrimaryColor.withAlpha(40),
                       labelStyle: TextStyle(
                         color: isSelected ? vPrimaryColor : Colors.grey,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   );
@@ -399,7 +403,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -431,7 +436,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
                                 Colors.transparent,
                               ],
                               stops: const [0.5, 1.0],
-                              transform: GradientRotation(_animation.value * 6.28),
+                              transform:
+                                  GradientRotation(_animation.value * 6.28),
                             ),
                           ),
                           child: Center(

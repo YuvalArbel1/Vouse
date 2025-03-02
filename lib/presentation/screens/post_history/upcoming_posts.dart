@@ -17,6 +17,7 @@ import 'package:vouse_flutter/presentation/widgets/post/post_preview/draft_card.
 import 'package:vouse_flutter/presentation/widgets/post/timeline/timeline_item.dart';
 
 import '../../../core/resources/data_state.dart';
+import '../../providers/post/post_refresh_provider.dart';
 import '../../widgets/post/post_preview/upcoming_posts_header.dart';
 
 /// A comprehensive screen for managing upcoming and draft posts
@@ -113,27 +114,30 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
   }
 
   /// Refresh posts data
+  // CURRENT CODE (lib/presentation/screens/post_history/upcoming_posts.dart)
   Future<void> _refreshPosts() async {
+    if (_isRefreshing) return;
+
     setState(() => _isRefreshing = true);
 
-    // Invalidate providers to force refresh
-    ref.invalidate(scheduledPostsProvider);
-    ref.invalidate(draftPostsProvider);
+    try {
+      // Use a single refresh call that handles all child providers
+      ref.read(postRefreshProvider.notifier).refreshAll();
 
-    // Reload user profile
-    await _loadUserProfile();
-
-    // Simulate refresh delay
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    if (mounted) {
-      setState(() => _isRefreshing = false);
+      // Only load user profile if needed
+      await _loadUserProfile();
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
     }
   }
 
   /// Navigate to create post screen
   void _navigateToCreatePost() {
-    ref.read(navigationServiceProvider).navigateToCreatePost(context, animate: true);
+    ref
+        .read(navigationServiceProvider)
+        .navigateToCreatePost(context, animate: true);
     // Add post-frame callback to refresh data after navigation completes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshPosts();
@@ -207,7 +211,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                             builder: (context, ref, child) {
                               // Use your existing filter provider instead of direct watching and sorting
                               final scheduledPostsAsync =
-                              ref.watch(scheduledPostsProvider);
+                                  ref.watch(scheduledPostsProvider);
 
                               return scheduledPostsAsync.when(
                                 data: (posts) {
@@ -216,7 +220,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                       icon: Icons.schedule,
                                       title: 'No scheduled posts',
                                       message:
-                                      'Start scheduling posts to see them here',
+                                          'Start scheduling posts to see them here',
                                       buttonText: 'Create Post',
                                     );
                                   }
@@ -224,7 +228,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                   // No need to sort here since your filter provider already handles it
                                   return ListView.builder(
                                     physics:
-                                    const AlwaysScrollableScrollPhysics(),
+                                        const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.only(
                                         top: 16, bottom: 100),
                                     itemCount: posts.length,
@@ -255,7 +259,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                             builder: (context, ref, child) {
                               // Use your existing filter provider
                               final draftPostsAsync =
-                              ref.watch(draftPostsProvider);
+                                  ref.watch(draftPostsProvider);
 
                               return draftPostsAsync.when(
                                 data: (posts) {
@@ -264,7 +268,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                       icon: Icons.edit_note,
                                       title: 'No drafts yet',
                                       message:
-                                      'Save drafts to continue editing later',
+                                          'Save drafts to continue editing later',
                                       buttonText: 'Create Draft',
                                     );
                                   }
@@ -272,7 +276,7 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
                                   // No need to sort here
                                   return ListView.builder(
                                     physics:
-                                    const AlwaysScrollableScrollPhysics(),
+                                        const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.only(
                                         top: 16, bottom: 100),
                                     itemCount: posts.length,

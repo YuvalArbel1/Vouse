@@ -10,6 +10,8 @@ import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.d
 // Import refresh providers
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
 
+import '../user/user_profile_provider.dart';
+
 /// State for home screen content
 class HomeContentState {
   /// Loading state for home content
@@ -118,7 +120,8 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
     try {
       // Get all post data from providers
       final postedPostsAsync = await _ref.read(postedPostsProvider.future);
-      final scheduledPostsAsync = await _ref.read(scheduledPostsProvider.future);
+      final scheduledPostsAsync =
+          await _ref.read(scheduledPostsProvider.future);
       final draftPostsAsync = await _ref.read(draftPostsProvider.future);
 
       // Update post counts
@@ -163,6 +166,11 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
     _isRefreshing = true;
 
     try {
+      if (_ref.read(userProfileProvider).loadingState !=
+          UserProfileLoadingState.loading) {
+        await _ref.read(userProfileProvider.notifier).loadUserProfile();
+      }
+
       // Invalidate all post providers to force refetching
       _ref.invalidate(postedPostsProvider);
       _ref.invalidate(scheduledPostsProvider);
@@ -182,7 +190,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
 
 /// Provider for the home content
 final homeContentProvider =
-StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
+    StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
   return HomeContentNotifier(ref);
 });
 

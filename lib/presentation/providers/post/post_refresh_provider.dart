@@ -7,6 +7,8 @@ enum PostRefreshEvent { draft, scheduled, posted, all }
 class PostRefreshNotifier extends StateNotifier<DateTime> {
   PostRefreshNotifier() : super(DateTime.now());
 
+  bool _isRefreshing = false;
+
   void refreshDrafts() => _refreshType(PostRefreshEvent.draft);
 
   void refreshScheduled() => _refreshType(PostRefreshEvent.scheduled);
@@ -16,7 +18,14 @@ class PostRefreshNotifier extends StateNotifier<DateTime> {
   void refreshAll() => _refreshType(PostRefreshEvent.all);
 
   void _refreshType(PostRefreshEvent type) {
-    state = DateTime.now(); // Update state to trigger listeners
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+
+    // Use Future.microtask to ensure we're not blocking the UI thread
+    Future.microtask(() {
+      state = DateTime.now();
+      _isRefreshing = false;
+    });
   }
 }
 

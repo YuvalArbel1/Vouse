@@ -39,6 +39,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late Animation<double> _actionsAnimation;
   late Animation<double> _contentAnimation;
 
+  bool _isRefreshing = false;
+
   @override
   void initState() {
     super.initState();
@@ -103,14 +105,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   /// Refreshes user data and post providers
+  // FIXED CODE
   Future<void> _refreshData() async {
     _animationController.reset();
 
-    // Reload user profile and home content
-    await ref.read(userProfileProvider.notifier).loadUserProfile();
-    await ref.read(homeContentProvider.notifier).refreshHomeContent();
+    // Use a debouncer to prevent multiple refreshes
+    if (_isRefreshing) return;
+    _isRefreshing = true;
 
-    _animationController.forward();
+    try {
+      // Use single refresh method that handles both concerns
+      await ref.read(homeContentProvider.notifier).refreshHomeContent();
+      // User profile is already refreshed by auth state changes, no need for explicit refresh
+    } finally {
+      _isRefreshing = false;
+      _animationController.forward();
+    }
   }
 
   /// Returns a random social media tip
@@ -193,10 +203,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _navigateToEditProfile() {
     ref.read(navigationServiceProvider).navigateToEditProfile(
-      context,
-      isEditProfile: true,
-      clearStack: false,
-    );
+          context,
+          isEditProfile: true,
+          clearStack: false,
+        );
   }
 
   void _showFeatureComingSoon(String feature) {

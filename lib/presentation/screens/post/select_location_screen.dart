@@ -16,7 +16,7 @@ import '../../../domain/usecases/google_maps/reverse_geocode_usecase.dart';
 import '../../../domain/usecases/google_maps/search_places_usecase.dart';
 import '../../providers/google_maps/location_providers.dart';
 import '../../providers/post/post_location_provider.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A screen that allows the user to pick a location on a Google Map:
 /// - Requests location permission, placing a red marker at the user's current position (if granted).

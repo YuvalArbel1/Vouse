@@ -7,7 +7,7 @@ import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A dialog widget that prompts the user for their email to reset the password.
 /// If successful, a toast is shown and the dialog is closed. If an error occurs,

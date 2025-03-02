@@ -19,12 +19,11 @@ import '../../providers/post/post_location_provider.dart';
 import '../../providers/post/post_refresh_provider.dart';
 import '../../providers/post/post_text_provider.dart';
 import '../../providers/home/home_content_provider.dart';
-import '../../providers/filter/post_filtered_provider.dart';
 import '../../widgets/post/create_post/post_options.dart';
 import '../../widgets/post/create_post/post_text.dart';
 import '../../widgets/post/create_post/selected_images_preview.dart';
 import '../../widgets/post/create_post/schedule_post_bottom_sheet.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 import '../../widgets/common/loading/full_screen_loading.dart';
 
 /// A screen where the user can create a new post:

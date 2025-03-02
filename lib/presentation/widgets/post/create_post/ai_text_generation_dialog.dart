@@ -7,7 +7,7 @@ import 'package:nb_utils/nb_utils.dart';
 import '../../../../core/util/colors.dart';
 import '../../../providers/ai/ai_text_notifier.dart';
 import '../../../providers/post/post_text_provider.dart';
-import '../../../widgets/navigation/navigation_service.dart';
+import '../../../providers/navigation/navigation_service.dart';
 
 /// A dialog widget that enables AI-based text generation for social media posts.
 ///

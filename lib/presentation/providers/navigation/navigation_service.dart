@@ -1,4 +1,4 @@
-// lib/presentation/widgets/navigation/navigation_service.dart
+// lib/presentation/providers/navigation/navigation_service.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

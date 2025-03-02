@@ -9,7 +9,7 @@ import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A screen to register (sign up) a new user with Firebase.
 /// Uses a [Form] for validation, plus the [firebaseAuthNotifierProvider] for sign-up logic.

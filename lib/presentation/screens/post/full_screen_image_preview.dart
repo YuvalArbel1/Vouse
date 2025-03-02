@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/ui_settings.dart';
 import '../../providers/post/post_images_provider.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A full-screen viewer for images, which can operate in two modes:
 ///

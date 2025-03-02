@@ -20,7 +20,7 @@ import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/auth/firebase/firebase_auth_notifier.dart';
 import '../../widgets/common/loading/post_loading.dart';
 import '../../widgets/home/stat_item.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 import '../../widgets/post/post_preview/post_card.dart';
 
 /// A modern, visually engaging home screen with dynamic content sections

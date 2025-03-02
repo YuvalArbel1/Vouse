@@ -10,7 +10,7 @@ import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
 import 'package:vouse_flutter/presentation/widgets/common/common_ui_components.dart';
 
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// Profile screen shows user information and account settings
 class ProfileScreen extends ConsumerStatefulWidget {

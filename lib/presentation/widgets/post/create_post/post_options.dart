@@ -9,7 +9,7 @@ import 'ai_text_generation_dialog.dart';
 import 'post_option_icon.dart';
 import 'recent_images_row.dart';
 import '../../../providers/post/post_images_provider.dart';
-import '../../../widgets/navigation/navigation_service.dart';
+import '../../../providers/navigation/navigation_service.dart';
 
 /// A widget that provides post options for creating a new post.
 ///

@@ -18,7 +18,7 @@ import '../../../core/util/common.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../providers/local_db/local_user_providers.dart';
 import '../../widgets/auth/forgot_password_dialog.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A screen that handles Firebase sign-in with form validation,
 /// plus a "Sign in with Google" button.

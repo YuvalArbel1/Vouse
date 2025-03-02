@@ -17,7 +17,7 @@ import '../../providers/auth/x/x_token_providers.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A screen that allows the user to edit or create a local profile.
 /// It collects full name, date of birth, gender, and optionally links X (Twitter).

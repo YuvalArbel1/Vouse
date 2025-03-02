@@ -19,7 +19,7 @@ import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../providers/post/save_post_with_upload_provider.dart';
 import '../../../providers/home/home_content_provider.dart'; // Import the home content provider
-import '../../navigation/navigation_service.dart';
+import '../../../providers/navigation/navigation_service.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';

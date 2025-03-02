@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/presentation/screens/home/home_screen.dart';
-import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
 import 'package:vouse_flutter/presentation/screens/profile/profile_screen.dart';
 import 'package:vouse_flutter/presentation/widgets/navigation/custom_bottom_nav.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
@@ -13,7 +12,7 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import '../../core/util/ui_settings.dart';
 import '../screens/post_history/published_posts_screen.dart';
 import '../screens/post_history/upcoming_posts.dart';
-import '../widgets/navigation/navigation_service.dart';
+import '../providers/navigation/navigation_service.dart';
 
 // State provider for the main navigation screens
 final currentScreenProvider = StateProvider<int>((ref) => 0);

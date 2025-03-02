@@ -10,7 +10,7 @@ import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth
 import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 
 /// A screen prompting the user to verify their email.
 /// Provides options to check verification status or resend the verification email.

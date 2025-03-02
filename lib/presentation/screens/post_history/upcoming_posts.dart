@@ -10,7 +10,7 @@ import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 
 import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_user_providers.dart';
-import '../../widgets/navigation/navigation_service.dart';
+import '../../providers/navigation/navigation_service.dart';
 import 'package:vouse_flutter/presentation/widgets/common/empty_state.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading_states.dart';
 import 'package:vouse_flutter/presentation/widgets/post/post_preview/draft_card.dart';

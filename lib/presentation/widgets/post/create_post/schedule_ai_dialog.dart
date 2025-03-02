@@ -1,4 +1,4 @@
-// lib/presentation/widgets/post/schedule_ai_dialog.dart
+// lib/presentation/widgets/post/create_post/schedule_ai_dialog.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,9 +29,16 @@ class ScheduleAiDialog extends ConsumerStatefulWidget {
   ConsumerState<ScheduleAiDialog> createState() => _ScheduleAiDialogState();
 }
 
-class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
+class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog>
+    with SingleTickerProviderStateMixin {
   /// Controller for the meta text input.
   final TextEditingController _metaController = TextEditingController();
+
+  /// Animation controller for loading effects
+  late AnimationController _animationController;
+
+  /// Animation for the loading indicator
+  late Animation<double> _animation;
 
   /// Contextual toggles (by index):
   ///   0 -> "Add location"
@@ -39,6 +46,17 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
   final List<String> _contextOptions = [
     "Add location",
     "Add post text",
+  ];
+
+  /// Selected category for the meta prompt
+  String _selectedCategory = 'General';
+
+  /// List of meta prompt categories
+  final List<String> _categories = [
+    'General',
+    'Business',
+    'Personal',
+    'Social',
   ];
 
   /// Tracks which context options are selected (by index).
@@ -61,8 +79,29 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
   PlaceLocationEntity? _aiLocation;
 
   @override
+  void initState() {
+    super.initState();
+
+    // Set up animation controller for loading effects
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _animationController.repeat();
+  }
+
+  @override
   void dispose() {
     _metaController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -111,6 +150,21 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
         _hasPredicted = false;
         _errorMessage = e.toString();
       });
+    }
+  }
+
+  /// Returns an example prompt based on the selected category
+  String _getExampleForCategory() {
+    switch (_selectedCategory) {
+      case 'Business':
+        return "Professional product update for business audience";
+      case 'Personal':
+        return "Casual life update for friends and family";
+      case 'Social':
+        return "Trending topic discussion for maximum engagement";
+      case 'General':
+      default:
+        return "General post about current activities";
     }
   }
 
@@ -184,12 +238,22 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title and close button.
+            // Title and close button with icon
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("ScheduleAI - Predict Post Time",
-                    style: boldTextStyle(size: 16)),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      color: vPrimaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text("ScheduleAI - Best Time",
+                        style: boldTextStyle(size: 18, color: vPrimaryColor)),
+                  ],
+                ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -197,13 +261,78 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               ],
             ),
             const SizedBox(height: 8),
+
+            // Category selector similar to the AI text dialog
+            Container(
+              height: 50,
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = category == _selectedCategory;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        }
+                      },
+                      backgroundColor: Colors.grey.withAlpha(30),
+                      selectedColor: vPrimaryColor.withAlpha(40),
+                      labelStyle: TextStyle(
+                        color: isSelected ? vPrimaryColor : Colors.grey,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
             Text(
-              "Provide up to 50 characters describing your post. "
-              "Optionally include location or post text. We'll suggest the best time to post.",
+              "Describe your post type in a few words:",
               style: secondaryTextStyle(size: 14),
             ),
-            const SizedBox(height: 12),
-            // Meta prompt input.
+            const SizedBox(height: 8),
+
+            // Example suggestion box
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: vPrimaryColor.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: vPrimaryColor.withAlpha(40)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline,
+                      color: vPrimaryColor, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Example: ${_getExampleForCategory()}",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: vBodyGrey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Meta prompt input with improved styling
             AppTextField(
               controller: _metaController,
               maxLength: 50,
@@ -212,7 +341,7 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               maxLines: 2,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: vPrimaryColor.withAlpha(20),
+                fillColor: vPrimaryColor.withAlpha(15),
                 hintStyle: secondaryTextStyle(size: 13, color: Colors.grey),
                 hintText: "Describe your post briefly...",
                 counterText: '',
@@ -223,70 +352,231 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            // Toggles row.
-            _buildToggleRow(),
+
+            // Toggles row with improved styling
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Additional context:",
+                  style: secondaryTextStyle(size: 14),
+                ),
+                const SizedBox(height: 8),
+                _buildToggleRow(),
+              ],
+            ),
             const SizedBox(height: 16),
-            // Display error if any.
+
+            // Display error if any with improved styling
             if (_errorMessage != null)
-              Text(
-                "Error: $_errorMessage",
-                style: primaryTextStyle(color: Colors.redAccent),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withAlpha(30),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Error: $_errorMessage",
+                        style: primaryTextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            // Display loading spinner or prediction result, or show "Predict" button.
+
+            // Display loading spinner with animation, prediction result, or show "Predict" button.
             if (_isPredicting) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(width: 8),
-                  Text("Predicting best date/time...",
-                      style: primaryTextStyle()),
-                ],
+              const SizedBox(height: 16),
+              Center(
+                child: Column(
+                  children: [
+                    // Animated loading indicator
+                    AnimatedBuilder(
+                      animation: _animationController,
+                      builder: (context, child) {
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: const [
+                                vPrimaryColor,
+                                Colors.transparent,
+                              ],
+                              stops: const [0.5, 1.0],
+                              transform:
+                                  GradientRotation(_animation.value * 6.28),
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.schedule,
+                                  color: vPrimaryColor,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "AI is finding the best time...",
+                      style: primaryTextStyle(color: vPrimaryColor),
+                    ),
+                  ],
+                ),
               ),
             ] else if (_hasPredicted) ...[
-              const SizedBox(height: 8),
-              Text(
-                _predictedDateTime == null
-                    ? "No date/time found!"
-                    : "AI suggests: $_predictedDateTime",
-                style: primaryTextStyle(color: vPrimaryColor),
+              const SizedBox(height: 16),
+              // Result container with improved styling
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: vPrimaryColor.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: vPrimaryColor.withAlpha(50)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _predictedDateTime == null
+                              ? Icons.error_outline
+                              : Icons.check_circle,
+                          color: _predictedDateTime == null
+                              ? Colors.red
+                              : vAccentColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _predictedDateTime == null
+                                ? "No optimal time found!"
+                                : "AI suggests:",
+                            style: boldTextStyle(
+                              color: _predictedDateTime == null
+                                  ? Colors.red
+                                  : vPrimaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_predictedDateTime != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _predictedDateTime!
+                                .toLocal()
+                                .toString()
+                                .substring(0, 16),
+                            style: boldTextStyle(size: 18, color: vAccentColor),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              // Action buttons with improved styling
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  AppButton(
-                    color: vAccentColor.withAlpha(240),
-                    text: "Close",
-                    textColor: Colors.white,
-                    shapeBorder: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text("Close"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: vPrimaryColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      side: const BorderSide(color: vPrimaryColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onTap: _onClosePressed,
+                    onPressed: _onClosePressed,
                   ),
-                  const SizedBox(width: 16),
-                  AppButton(
-                    color: vPrimaryColor.withAlpha(240),
-                    text: "Use",
-                    textColor: Colors.white,
-                    shapeBorder: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text("Use This Time"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: vAccentColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onTap: _onUsePressed,
+                    onPressed:
+                        _predictedDateTime == null ? null : _onUsePressed,
                   ),
                 ],
               ),
             ] else ...[
-              const SizedBox(height: 8),
-              AppButton(
-                color: vPrimaryColor,
-                text: "Predict",
-                textColor: Colors.white,
-                width: context.width(),
-                shapeBorder: RoundedRectangleBorder(
+              const SizedBox(height: 20),
+              // Predict button with improved styling
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [vPrimaryColor, vPrimaryColor.withAlpha(220)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: vPrimaryColor.withAlpha(50),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                onTap: _onPredictPressed,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.auto_awesome, color: Colors.white),
+                  label: Text("Find Best Time",
+                      style: boldTextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _onPredictPressed,
+                ),
               ),
             ],
           ],
@@ -295,15 +585,16 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
     );
   }
 
-  /// Builds a row of toggle buttons based on [_contextOptions].
+  /// Builds a row of toggle buttons based on [_contextOptions] with improved styling.
   Widget _buildToggleRow() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(_contextOptions.length, (index) {
         final label = _contextOptions[index];
-        return Padding(
-          padding: EdgeInsets.only(left: index > 0 ? 12 : 0),
-          child: _buildToggleButton(index, label),
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(left: index > 0 ? 12 : 0),
+            child: _buildToggleButton(index, label),
+          ),
         );
       }),
     );
@@ -315,6 +606,8 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
   /// prompts the user to pick a new location or reuse the existing one.
   Widget _buildToggleButton(int index, String label) {
     final isSelected = _selectedIndices.contains(index);
+    final IconData iconData =
+        index == 0 ? Icons.location_on : Icons.text_fields;
 
     return GestureDetector(
       onTap: () async {
@@ -359,18 +652,39 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? vPrimaryColor.withAlpha(240)
-              : vPrimaryColor.withAlpha(20),
+          color: isSelected ? vPrimaryColor : vPrimaryColor.withAlpha(20),
           borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: vPrimaryColor.withAlpha(40),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(
-          label,
-          style: isSelected
-              ? boldTextStyle(color: Colors.white)
-              : primaryTextStyle(color: vPrimaryColor),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              iconData,
+              size: 16,
+              color: isSelected ? Colors.white : vPrimaryColor,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: isSelected
+                    ? boldTextStyle(color: Colors.white, size: 12)
+                    : primaryTextStyle(color: vPrimaryColor, size: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );

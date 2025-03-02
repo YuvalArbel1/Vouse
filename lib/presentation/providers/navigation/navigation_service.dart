@@ -12,6 +12,8 @@ import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart'
 import 'package:vouse_flutter/presentation/screens/post/select_location_screen.dart';
 import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
+import '../../../domain/entities/local_db/post_entity.dart';
+
 /// A service that manages app navigation.
 ///
 /// This centralizes navigation logic and provides consistent
@@ -107,6 +109,11 @@ class NavigationService {
   /// Navigate to location selection screen
   void navigateToLocationSelection(BuildContext context) {
     _slideUpScreen(context, const SelectLocationScreen());
+  }
+
+  /// Navigate to edit a draft post
+  void navigateToEditDraft(BuildContext context, PostEntity draft) {
+    _navigate(context, CreatePostScreen(draftToEdit: draft));
   }
 
   /// Navigate back

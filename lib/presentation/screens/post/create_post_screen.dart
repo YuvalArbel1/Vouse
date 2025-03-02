@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/resources/data_state.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/image_utils.dart';
+import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../providers/local_db/local_post_providers.dart';
@@ -39,8 +40,14 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 /// - Clear user feedback with toasts
 /// - Autosave for preventing lost work
 class CreatePostScreen extends ConsumerStatefulWidget {
+  /// The draft post to edit (if any)
+  final PostEntity? draftToEdit;
+
   /// Creates a new post creation screen.
-  const CreatePostScreen({super.key});
+  const CreatePostScreen({
+    super.key,
+    this.draftToEdit,
+  });
 
   @override
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
@@ -55,6 +62,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// Tracks whether content is being processed (saving, uploading, etc.).
   bool _isProcessing = false;
 
+  /// Whether we're editing an existing draft
+  bool _isEditing = false;
+
+  /// The draft being edited
+  PostEntity? _editingDraft;
+
   /// Animation controller for the screen transition effects.
   late AnimationController _animationController;
 
@@ -64,10 +77,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// Indicates if there are unsaved changes that should be confirmed before leaving.
   bool _hasUnsavedChanges = false;
 
+  final TextEditingController _titleController = TextEditingController();
+
+
   @override
   void initState() {
     super.initState();
     _initializeScreen();
+
+    _loadDraftIfEditing();
 
     // Set up animation controller for smooth transitions
     _animationController = AnimationController(
@@ -166,7 +184,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       context: currentContext,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Clear Post?', style: boldTextStyle()),
+          title: Text(_isEditing ? 'Edit Draft' : 'New Post',
+              style: boldTextStyle(size: 20)),
           content: Text(
             'Are you sure you want to clear all text, images, and location? This is irreversible.',
             style: primaryTextStyle(),
@@ -209,7 +228,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   ///
   /// Returns the entered title, or null if the dialog was canceled.
   Future<String?> _showDraftTitleDialog() async {
-    final titleController = TextEditingController();
     final BuildContext currentContext = context;
 
     return showDialog<String>(
@@ -218,7 +236,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         return AlertDialog(
           title: Text('Enter Draft Title', style: boldTextStyle()),
           content: TextField(
-            controller: titleController,
+            controller: _titleController,
             decoration: InputDecoration(
               hintText: 'E.g. My Awesome Draft',
               hintStyle: secondaryTextStyle(size: 12, color: vBodyGrey),
@@ -231,7 +249,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
             ),
             TextButton(
               onPressed: () {
-                final title = titleController.text.trim();
+                final title = _titleController.text.trim();
                 if (title.isEmpty) {
                   toast('Please enter a draft title.');
                   return;
@@ -244,6 +262,43 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         );
       },
     );
+  }
+
+  /// Loads draft data if we're editing an existing draft
+  void _loadDraftIfEditing() {
+    final draftToEdit = widget.draftToEdit;
+    if (draftToEdit != null) {
+      try {
+        // Set the post text
+        ref.read(postTextProvider.notifier).state = draftToEdit.content;
+
+        // Load existing images
+        for (final path in draftToEdit.localImagePaths) {
+          ref.read(postImagesProvider.notifier).addImageFromGallery(path);
+        }
+
+        // Load location if available
+        if (draftToEdit.locationLat != null &&
+            draftToEdit.locationLng != null) {
+          final location = PlaceLocationEntity(
+            latitude: draftToEdit.locationLat!,
+            longitude: draftToEdit.locationLng!,
+            address: draftToEdit.locationAddress,
+          );
+          ref.read(postLocationProvider.notifier).state = location;
+        }
+
+        // Set state to track that we're editing
+        setState(() {
+          _titleController.text = draftToEdit.title;
+          _editingDraft = draftToEdit;
+          _isEditing = true;
+          _hasUnsavedChanges = false; // Initially no unsaved changes
+        });
+      } catch (e) {
+        toast("Error loading draft: $e");
+      }
+    }
   }
 
   /// Handles saving the current post as a draft.
@@ -268,9 +323,19 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       return;
     }
 
-    final draftTitle = await _showDraftTitleDialog();
-    if (!mounted) return; // Check if still mounted after dialog
-    if (draftTitle == null) return; // user canceled
+    // If editing, use the existing title, otherwise prompt for a new one
+    String? draftTitle;
+    if (_isEditing) {
+      draftTitle = _titleController.text.trim();
+      if (draftTitle.isEmpty) {
+        toast('Draft title cannot be empty');
+        return;
+      }
+    } else {
+      draftTitle = await _showDraftTitleDialog();
+      if (!mounted) return; // Check if still mounted after dialog
+      if (draftTitle == null) return; // user canceled
+    }
 
     setState(() => _isProcessing = true);
 
@@ -292,18 +357,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         addr = loc.address;
       }
 
-      // Create the post entity
+      // Create or update the post entity
       final postEntity = PostEntity(
-        postIdLocal: const Uuid().v4(),
-        postIdX: null,
+        postIdLocal: _editingDraft?.postIdLocal ?? const Uuid().v4(),
+        postIdX: _editingDraft?.postIdX,
         content: text,
         title: draftTitle,
-        createdAt: DateTime.now(),
-        updatedAt: null,
+        createdAt: _editingDraft?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(), // Always update the updatedAt time
         scheduledAt: null,
-        visibility: null,
+        visibility: _editingDraft?.visibility,
         localImagePaths: localPaths,
-        cloudImageUrls: [],
+        cloudImageUrls: _editingDraft?.cloudImageUrls ?? [],
         locationLat: lat,
         locationLng: lng,
         locationAddress: addr,
@@ -334,6 +399,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
         setState(() {
           _hasUnsavedChanges = false;
+          _isEditing = false;
+          _editingDraft = null;
+          _titleController.clear();
         });
 
         // Show success message
@@ -344,7 +412,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text("Draft \"$draftTitle\" saved successfully"),
+                Text(_isEditing ? "Draft updated successfully" : "Draft \"$draftTitle\" saved successfully"),
               ],
             ),
             backgroundColor: vAccentColor,
@@ -403,7 +471,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
                 ),
               ],
             ),
-            child: const SharePostBottomSheet(),
+            child: SharePostBottomSheet(
+              editingDraft: _editingDraft,
+            ),
           ),
         );
       },
@@ -485,7 +555,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
               final shouldPop = await _onWillPop();
               if (shouldPop && mounted) {
                 final BuildContext currentContext = context;
-                ref.read(navigationServiceProvider).navigateBack(currentContext);
+                ref
+                    .read(navigationServiceProvider)
+                    .navigateBack(currentContext);
               }
             },
             padding: EdgeInsets.zero,

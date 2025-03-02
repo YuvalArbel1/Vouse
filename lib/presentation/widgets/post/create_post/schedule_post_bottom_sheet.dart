@@ -35,8 +35,14 @@ import 'schedule_ai_dialog.dart';
 /// - Controls to pick a date/time (within 7 days) or use AI for best time prediction
 /// - A final "Schedule Post" button that saves and uploads the post
 class SharePostBottomSheet extends ConsumerStatefulWidget {
+  /// The draft post being edited (if any)
+  final PostEntity? editingDraft;
+
   /// Creates a [SharePostBottomSheet].
-  const SharePostBottomSheet({super.key});
+  const SharePostBottomSheet({
+    super.key,
+    this.editingDraft,
+  });
 
   @override
   ConsumerState<SharePostBottomSheet> createState() =>
@@ -174,17 +180,18 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         addr = loc.address;
       }
 
+      // Create post entity, using existing ID if editing
       final postEntity = PostEntity(
-        postIdLocal: const Uuid().v4(),
-        postIdX: null,
+        postIdLocal: widget.editingDraft?.postIdLocal ?? const Uuid().v4(),
+        postIdX: widget.editingDraft?.postIdX,
         content: text,
         title: title,
-        createdAt: DateTime.now(),
-        updatedAt: null,
+        createdAt: widget.editingDraft?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
         scheduledAt: scheduledDate,
         visibility: _selectedReplyOption,
         localImagePaths: localPaths,
-        cloudImageUrls: [],
+        cloudImageUrls: widget.editingDraft?.cloudImageUrls ?? [],
         locationLat: lat,
         locationLng: lng,
         locationAddress: addr,

@@ -21,7 +21,8 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
   bool _isXConnected = false;
   bool _isConnectingX = false;
@@ -149,22 +150,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   /// Disconnect from X
   Future<void> _disconnectFromX() async {
     final shouldDisconnect = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Disconnect X Account'),
-        content: const Text('Are you sure you want to disconnect your X account?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Disconnect X Account'),
+            content: const Text(
+                'Are you sure you want to disconnect your X account?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Disconnect',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Disconnect', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!shouldDisconnect) return;
 
@@ -181,13 +185,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('X account disconnected successfully')),
+            const SnackBar(
+                content: Text('X account disconnected successfully')),
           );
         }
       } else if (result is DataFailed) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to disconnect: ${result.error?.error}')),
+            SnackBar(
+                content: Text('Failed to disconnect: ${result.error?.error}')),
           );
         }
       }
@@ -201,22 +207,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   /// Handles user logout
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Log Out',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text('Are you sure you want to log out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child:
+                    const Text('Log Out', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log Out', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!shouldLogout) return;
 
@@ -229,10 +238,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
 
       final authState = ref.read(firebaseAuthNotifierProvider);
       if (authState is DataSuccess<void>) {
-        ref.read(navigationServiceProvider).navigateToSignIn(
-            context,
-            clearStack: true
-        );
+        ref
+            .read(navigationServiceProvider)
+            .navigateToSignIn(context, clearStack: true);
       } else if (authState is DataFailed<void>) {
         final errorMsg = authState.error?.error ?? 'Unknown error';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -247,11 +255,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   }
 
   void _navigateToEditProfile() {
-    ref.read(navigationServiceProvider).navigateToEditProfile(
-        context,
-        isEditProfile: true,
-        clearStack: false
-    );
+    ref
+        .read(navigationServiceProvider)
+        .navigateToEditProfile(context, isEditProfile: true, clearStack: false);
   }
 
   void _showTermsOfService() {
@@ -358,113 +364,121 @@ We may update this policy from time to time. We will notify you of any significa
       body: isLoading
           ? const FullScreenLoading(message: 'Loading profile...')
           : RefreshIndicator(
-        onRefresh: _refreshUserProfile,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Column(
-                children: [
-                  // Profile Header with Avatar and Logout
-                  _buildProfileHeader(user),
-
-                  // Main Content
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+              onRefresh: _refreshUserProfile,
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 20),
+                        // Profile Header with Avatar and Logout
+                        _buildProfileHeader(user),
 
-                        // Account Settings Section
-                        _buildSectionTitle('Account Settings'),
-                        const SizedBox(height: 12),
-                        _buildSettingsCard([
-                          _buildSettingsTile(
-                            'Edit Profile',
-                            Icons.person_outline,
-                            vPrimaryColor,
-                            onTap: _navigateToEditProfile,
-                          ),
-                          _buildSettingsTile(
-                            _isXConnected ? 'Disconnect X Account' : 'Connect X Account',
-                            Icons.link,
-                            _isXConnected ? Colors.red : vPrimaryColor,
-                            onTap: _isXConnected ? _disconnectFromX : _connectToX,
-                          ),
-                        ]),
+                        // Main Content
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 20),
 
-                        const SizedBox(height: 24),
+                              // Account Settings Section
+                              _buildSectionTitle('Account Settings'),
+                              const SizedBox(height: 12),
+                              _buildSettingsCard([
+                                _buildSettingsTile(
+                                  'Edit Profile',
+                                  Icons.person_outline,
+                                  vPrimaryColor,
+                                  onTap: _navigateToEditProfile,
+                                ),
+                                _buildSettingsTile(
+                                  _isXConnected
+                                      ? 'Disconnect X Account'
+                                      : 'Connect X Account',
+                                  Icons.link,
+                                  _isXConnected ? Colors.red : vPrimaryColor,
+                                  onTap: _isXConnected
+                                      ? _disconnectFromX
+                                      : _connectToX,
+                                ),
+                              ]),
 
-                        // App Information Section
-                        _buildSectionTitle('App Information'),
-                        const SizedBox(height: 12),
-                        _buildSettingsCard([
-                          _buildSettingsTile(
-                            'About Vouse',
-                            Icons.info_outline,
-                            vPrimaryColor,
-                            onTap: () {},
-                          ),
-                          _buildSettingsTile(
-                            'Terms of Service',
-                            Icons.description_outlined,
-                            vPrimaryColor,
-                            onTap: _showTermsOfService,
-                          ),
-                          _buildSettingsTile(
-                            'Privacy Policy',
-                            Icons.privacy_tip_outlined,
-                            vPrimaryColor,
-                            onTap: _showPrivacyPolicy,
-                          ),
-                        ]),
+                              const SizedBox(height: 24),
 
-                        const SizedBox(height: 40),
+                              // App Information Section
+                              _buildSectionTitle('App Information'),
+                              const SizedBox(height: 12),
+                              _buildSettingsCard([
+                                _buildSettingsTile(
+                                  'About Vouse',
+                                  Icons.info_outline,
+                                  vPrimaryColor,
+                                  onTap: () {},
+                                ),
+                                _buildSettingsTile(
+                                  'Terms of Service',
+                                  Icons.description_outlined,
+                                  vPrimaryColor,
+                                  onTap: _showTermsOfService,
+                                ),
+                                _buildSettingsTile(
+                                  'Privacy Policy',
+                                  Icons.privacy_tip_outlined,
+                                  vPrimaryColor,
+                                  onTap: _showPrivacyPolicy,
+                                ),
+                              ]),
 
-                        // Logout Button
-                        Center(
-                          child: SizedBox(
-                            width: MediaQuery.of(context).size.width * 0.7,
-                            child: ElevatedButton.icon(
-                              onPressed: _handleLogout,
-                              icon: const Icon(Icons.logout, color: Colors.white),
-                              label: const Text('Logout', style: TextStyle(color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade400,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 40),
+
+                              // Logout Button
+                              Center(
+                                child: SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.7,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _handleLogout,
+                                    icon: const Icon(Icons.logout,
+                                        color: Colors.white),
+                                    label: const Text('Logout',
+                                        style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade400,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+
+                              // Version info
+                              const SizedBox(height: 16),
+                              Center(
+                                child: Text(
+                                  'Vouse v1.0.0',
+                                  style: TextStyle(
+                                    color: vBodyGrey.withAlpha(150),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+
+                              // Bottom padding for safe area
+                              const SizedBox(height: 40),
+                            ],
                           ),
                         ),
-
-                        // Version info
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Text(
-                            'Vouse v1.0.0',
-                            style: TextStyle(
-                              color: vBodyGrey.withAlpha(150),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-
-                        // Bottom padding for safe area
-                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -508,50 +522,54 @@ We may update this policy from time to time. We will notify you of any significa
           const SizedBox(height: 24),
           GestureDetector(
             onTap: _navigateToEditProfile,
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                // Using a direct Container instead of ProfileAvatarDisplay
-                Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: vPrimaryColor.withAlpha(26),
-                    border: Border.all(color: vPrimaryColor, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: vPrimaryColor.withAlpha(40),
-                        blurRadius: 8,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                    image: user?.avatarPath != null
-                        ? DecorationImage(
-                      image: FileImage(File(user!.avatarPath!)),
-                      fit: BoxFit.cover,
-                    )
+            child: Hero(
+              tag: 'profile-avatar',
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  // Avatar container
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: vPrimaryColor.withAlpha(26),
+                      border: Border.all(color: vPrimaryColor, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: vPrimaryColor.withAlpha(40),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                      image: user?.avatarPath != null
+                          ? DecorationImage(
+                              image: FileImage(File(user!.avatarPath!)),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: user?.avatarPath == null
+                        ? Icon(Icons.person, color: vPrimaryColor, size: 60)
                         : null,
                   ),
-                  child: user?.avatarPath == null
-                      ? Icon(Icons.person, color: vPrimaryColor, size: 60)
-                      : null,
-                ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: vAccentColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                  // Edit icon
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: vAccentColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.edit,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -607,7 +625,8 @@ We may update this policy from time to time. We will notify you of any significa
     );
   }
 
-  Widget _buildSettingsTile(String title, IconData icon, Color iconColor, {required VoidCallback onTap}) {
+  Widget _buildSettingsTile(String title, IconData icon, Color iconColor,
+      {required VoidCallback onTap}) {
     return InkWell(
       onTap: _isConnectingX && title.contains('Connect') ? null : onTap,
       borderRadius: BorderRadius.circular(16),
@@ -623,13 +642,13 @@ We may update this policy from time to time. We will notify you of any significa
               ),
               child: _isConnectingX && title.contains('Connect')
                   ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: iconColor,
-                ),
-              )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: iconColor,
+                      ),
+                    )
                   : Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 16),

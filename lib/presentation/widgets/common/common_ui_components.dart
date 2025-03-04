@@ -24,6 +24,12 @@ class ProfileAvatarDisplay extends StatelessWidget {
   /// Callback when tapped
   final VoidCallback? onTap;
 
+  /// Whether to use hero animation
+  final bool useHero;
+
+  /// Hero tag to use
+  final String heroTag;
+
   /// Creates a profile avatar display widget
   const ProfileAvatarDisplay({
     super.key,
@@ -31,11 +37,13 @@ class ProfileAvatarDisplay extends StatelessWidget {
     this.size = 60,
     this.showEditStyle = false,
     this.onTap,
+    this.useHero = false,
+    this.heroTag = 'profile-avatar',
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    Widget avatarContainer = GestureDetector(
       onTap: onTap,
       child: Container(
         width: size,
@@ -73,6 +81,15 @@ class ProfileAvatarDisplay extends StatelessWidget {
             : null,
       ),
     );
+
+    if (useHero) {
+      return Hero(
+        tag: heroTag,
+        child: avatarContainer,
+      );
+    }
+
+    return avatarContainer;
   }
 }
 

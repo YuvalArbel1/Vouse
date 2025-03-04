@@ -74,6 +74,16 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Removes the splash and configures the status bar color, then loads user data if editing
   void _initialize() {
     setStatusBarColor(Colors.white, statusBarIconBrightness: Brightness.dark);
+
+    // Set localAvatarPath early to avoid flickering
+    if (widget.isEditProfile) {
+      final userProfileState = ref.read(userProfileProvider);
+      final userProfile = userProfileState.user;
+      if (userProfile != null) {
+        localAvatarPath = userProfile.avatarPath;
+      }
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FlutterNativeSplash.remove();
 
@@ -486,6 +496,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           setState(() => localAvatarPath = newPath);
                         },
                         size: 110,
+                        useHero: true,
+                        heroTag: 'profile-avatar',
                       ),
                     ),
                   ],

@@ -364,13 +364,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // Avatar with tap action - now using ProfileAvatarDisplay
               GestureDetector(
                 onTap: _navigateToEditProfile,
-                child: Hero(
-                  tag: 'profile-avatar',
-                  child: ProfileAvatarDisplay(
-                    user: userProfile,
-                    size: 60,
-                    showEditStyle: true,
-                  ),
+                child: ProfileAvatarDisplay(
+                  user: userProfile,
+                  size: 60,
+                  showEditStyle: true,
+                  useHero: true,
+                  heroTag: 'profile-avatar',
+                  onTap: _navigateToEditProfile,
                 ),
               ),
               const SizedBox(width: 16),

@@ -1,3 +1,5 @@
+// lib/presentation/widgets/home/profile_avatar_widget.dart
+
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,11 +24,19 @@ class ProfileAvatarWidget extends StatefulWidget {
   /// The size of the avatar circle. Defaults to 110.
   final double size;
 
+  /// Whether this is part of a hero animation
+  final bool useHero;
+
+  /// Hero tag to use for animation
+  final String heroTag;
+
   const ProfileAvatarWidget({
     super.key,
     required this.onAvatarChanged,
     this.initialAvatarPath,
     this.size = 110,
+    this.useHero = false,
+    this.heroTag = 'profile-avatar',
   });
 
   @override
@@ -37,10 +47,13 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
   String? _localAvatarPath;
   bool _fileExists = false;
   final ImagePicker _picker = ImagePicker();
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    // Set initial path immediately to avoid flickering
+    _localAvatarPath = widget.initialAvatarPath;
     _initializeAvatar();
   }
 
@@ -49,6 +62,7 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
     super.didUpdateWidget(oldWidget);
     // If initialAvatarPath changes (e.g., from parent widget)
     if (oldWidget.initialAvatarPath != widget.initialAvatarPath) {
+      _localAvatarPath = widget.initialAvatarPath;
       _initializeAvatar();
     }
   }
@@ -65,6 +79,7 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
           setState(() {
             _localAvatarPath = widget.initialAvatarPath;
             _fileExists = exists;
+            _isInitialized = true;
           });
         }
 
@@ -84,8 +99,15 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
         if (mounted) {
           setState(() {
             _fileExists = false;
+            _isInitialized = true;
           });
         }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
       }
     }
   }
@@ -207,39 +229,50 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Build the avatar container with image or icon
+    Widget avatarContainer = Container(
+      margin: const EdgeInsets.only(right: 8),
+      height: widget.size,
+      width: widget.size,
+      decoration: BoxDecoration(
+        color: vPrimaryColor.withAlpha(26), // fallback color if no image
+        shape: BoxShape.circle,
+        border: Border.all(color: vPrimaryColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: vPrimaryColor.withAlpha(40),
+            blurRadius: 8,
+            spreadRadius: 2,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        image: (_localAvatarPath != null && (_fileExists || !_isInitialized))
+            ? DecorationImage(
+          image: FileImage(File(_localAvatarPath!)),
+          fit: BoxFit.cover,
+        )
+            : null,
+      ),
+      child: (_localAvatarPath == null || (!_fileExists && _isInitialized))
+          ? Icon(Icons.person, color: vPrimaryColor, size: widget.size * 0.5)
+          : null,
+    );
+
+    // Wrap in hero if needed
+    if (widget.useHero) {
+      avatarContainer = Hero(
+        tag: widget.heroTag,
+        child: avatarContainer,
+      );
+    }
+
     return GestureDetector(
       onTap: _pickProfileImage,
       child: Stack(
         alignment: AlignmentDirectional.bottomEnd,
         children: [
           // The circle background with either an image or a default icon.
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            height: widget.size,
-            width: widget.size,
-            decoration: BoxDecoration(
-              color: vPrimaryColor, // fallback color if no image
-              shape: BoxShape.circle,
-              border: Border.all(color: vPrimaryColor, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: vPrimaryColor.withAlpha(40),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-              image: (_fileExists && _localAvatarPath != null)
-                  ? DecorationImage(
-                image: FileImage(File(_localAvatarPath!)),
-                fit: BoxFit.cover,
-              )
-                  : null,
-            ),
-            child: (!_fileExists || _localAvatarPath == null)
-                ? const Icon(Icons.person, color: Colors.white, size: 60)
-                : null,
-          ),
+          avatarContainer,
 
           // The small edit icon
           Container(

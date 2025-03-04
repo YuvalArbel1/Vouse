@@ -96,27 +96,23 @@ class AboutDialogContent extends StatelessWidget {
   }
 
   /// Launches the YouTube Easter egg
-  void _launchEasterEgg(BuildContext context) async {
-    final Uri url = Uri.parse('https://www.youtube.com/watch?v=bSfpSOBD30U');
+  /// Launches the YouTube Easter egg
+  void _launchEasterEgg(BuildContext context) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final Uri url = Uri.parse(
+        'https://www.youtube.com/watch?v=K533gW3boIY&ab_channel=GEazyMusicVEVO');
 
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url,
-          mode: LaunchMode.externalApplication,
-          webViewConfiguration: const WebViewConfiguration(
-            enableJavaScript: true,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $url')),
+    launchUrl(url, mode: LaunchMode.externalApplication).then((success) {
+      if (!success) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Could not launch YouTube')),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error launching URL: $e')),
+    }).catchError((e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
-    }
+    });
   }
 
   /// Returns the app introduction text

@@ -194,7 +194,9 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog>
     if (_aiLocation != null && _selectedIndices.contains(0)) {
       ref.read(postLocationProvider.notifier).state = _aiLocation;
     }
-    Navigator.pop(context, _predictedDateTime);
+    ref
+        .read(navigationServiceProvider)
+        .navigateBack(context, _predictedDateTime);
   }
 
   /// Opens the [SelectLocationScreen] for the user to choose a new location.
@@ -259,7 +261,8 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog>
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () =>
+                      ref.read(navigationServiceProvider).navigateBack(context),
                 ),
               ],
             ),
@@ -627,11 +630,15 @@ class _ScheduleAiDialogState extends ConsumerState<ScheduleAiDialog>
                     "Do you want to use the existing location or choose a new one?"),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(ctx, "useExisting"),
+                    onPressed: () => ref
+                        .read(navigationServiceProvider)
+                        .navigateBack(context, "useExisting"),
                     child: const Text("Use Existing"),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pop(ctx, "chooseNew"),
+                    onPressed: () => ref
+                        .read(navigationServiceProvider)
+                        .navigateBack(context, "chooseNew"),
                     child: const Text("Choose New"),
                   ),
                 ],

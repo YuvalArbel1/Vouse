@@ -273,7 +273,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 // "Already have an account?" link
                                 Center(
                                   child: InkWell(
-                                    onTap: () => Navigator.pop(context),
+                                    onTap: () => ref
+                                        .read(navigationServiceProvider)
+                                        .navigateBack(context),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:

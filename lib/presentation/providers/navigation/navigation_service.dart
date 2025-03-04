@@ -14,27 +14,11 @@ import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
 import '../../../domain/entities/local_db/post_entity.dart';
 
-/// A service that manages app navigation.
+/// The single source of truth for navigation in the app.
 ///
-/// This centralizes navigation logic and provides consistent
-/// navigation methods for use throughout the app.
-///
-/// Features:
-/// - Consistent navigation patterns
-/// - Animation options
-/// - Support for route transitions
-/// - Named routes support
-/// - Stack management
-/// A service that manages app navigation.
-///
-/// This centralizes navigation logic and provides consistent
-/// navigation methods for use throughout the app.
-///
-/// Features:
-/// - Consistent navigation patterns
-/// - Support for both tab switching and direct navigation
-/// - Stack management
-/// - Dialog helpers
+/// Always use this service instead of direct Navigator calls to ensure
+/// consistent navigation behavior, enable analytics tracking, and
+/// support future navigation patterns like deep linking.
 class NavigationService {
   final Ref _ref;
 
@@ -48,18 +32,14 @@ class NavigationService {
     _ref.read(currentScreenProvider.notifier).state = tabIndex;
 
     // If we've navigated away from AppNavigator, return to it
-    Navigator.of(context).popUntil((route) =>
-    route.settings.name == 'app_navigator' || route.isFirst);
+    Navigator.of(context).popUntil(
+        (route) => route.settings.name == 'app_navigator' || route.isFirst);
   }
 
   /// Navigate to the app navigator (main flow)
   void navigateToAppNavigator(BuildContext context, {bool clearStack = false}) {
-    _navigate(
-        context,
-        const AppNavigator(),
-        routeName: 'app_navigator',
-        clearStack: clearStack
-    );
+    _navigate(context, const AppNavigator(),
+        routeName: 'app_navigator', clearStack: clearStack);
   }
 
   /// Navigate to the sign in screen
@@ -73,8 +53,10 @@ class NavigationService {
   }
 
   /// Navigate to the verification pending screen
-  void navigateToVerificationPending(BuildContext context, {bool clearStack = false}) {
-    _navigate(context, const VerificationPendingScreen(), clearStack: clearStack);
+  void navigateToVerificationPending(BuildContext context,
+      {bool clearStack = false}) {
+    _navigate(context, const VerificationPendingScreen(),
+        clearStack: clearStack);
   }
 
   /// Navigate to the create post screen
@@ -102,8 +84,10 @@ class NavigationService {
   }
 
   /// Navigate to the edit profile screen
-  void navigateToEditProfile(BuildContext context, {bool isEditProfile = false, required bool clearStack}) {
-    _navigate(context, EditProfileScreen(isEditProfile: isEditProfile), clearStack: clearStack);
+  void navigateToEditProfile(BuildContext context,
+      {bool isEditProfile = false, required bool clearStack}) {
+    _navigate(context, EditProfileScreen(isEditProfile: isEditProfile),
+        clearStack: clearStack);
   }
 
   /// Navigate to location selection screen
@@ -117,35 +101,19 @@ class NavigationService {
   }
 
   /// Navigate back
-  void navigateBack(BuildContext context) {
-    Navigator.of(context).pop();
-  }
-
-  /// Navigate back to a specific screen type
-  void navigateBackTo<T extends Widget>(BuildContext context) {
-    Navigator.of(context).popUntil((route) {
-      if (route is MaterialPageRoute) {
-        final widget = route.builder(context);
-        return widget is T;
-      }
-      return false;
-    });
-  }
-
-  /// Navigate to AppNavigator and select the home tab (0)
-  void navigateToHome(BuildContext context) {
-    navigateToMainTab(context, 0);
+  void navigateBack<T>(BuildContext context, [T? result]) {
+    Navigator.of(context).pop(result);
   }
 
   /// Helper method to show confirmation dialog
   /// Returns true if confirmed, false otherwise
   Future<bool> showConfirmationDialog(
-      BuildContext context,
-      String title,
-      String message, {
-        String cancelText = 'Cancel',
-        String confirmText = 'Confirm',
-      }) async {
+    BuildContext context,
+    String title,
+    String message, {
+    String cancelText = 'Cancel',
+    String confirmText = 'Confirm',
+  }) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -167,27 +135,27 @@ class NavigationService {
   }
 
   /// Helper method to navigate to a screen
-  void _navigate(BuildContext context, Widget screen, {bool clearStack = false, String? routeName}) {
+  void _navigate(BuildContext context, Widget screen,
+      {bool clearStack = false, String? routeName}) {
     if (clearStack) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
             settings: routeName != null ? RouteSettings(name: routeName) : null,
-            builder: (_) => screen
-        ),
-            (route) => false,
+            builder: (_) => screen),
+        (route) => false,
       );
     } else {
       Navigator.of(context).push(
         MaterialPageRoute(
             settings: routeName != null ? RouteSettings(name: routeName) : null,
-            builder: (_) => screen
-        ),
+            builder: (_) => screen),
       );
     }
   }
 
   /// Helper method to animate to a screen with custom transition
-  void _animateToScreen(BuildContext context, Widget screen, {String? routeName}) {
+  void _animateToScreen(BuildContext context, Widget screen,
+      {String? routeName}) {
     Navigator.of(context).push(
       PageRouteBuilder(
         settings: routeName != null ? RouteSettings(name: routeName) : null,
@@ -197,7 +165,8 @@ class NavigationService {
           const end = Offset.zero;
           const curve = Curves.easeInOutCubic;
 
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
           return SlideTransition(
             position: animation.drive(tween),
@@ -210,7 +179,8 @@ class NavigationService {
   }
 
   /// Helper method for sliding screens up from bottom
-  void _slideUpScreen(BuildContext context, Widget screen, {String? routeName}) {
+  void _slideUpScreen(BuildContext context, Widget screen,
+      {String? routeName}) {
     Navigator.of(context).push(
       PageRouteBuilder(
         settings: routeName != null ? RouteSettings(name: routeName) : null,
@@ -220,7 +190,8 @@ class NavigationService {
           const end = Offset.zero;
           const curve = Curves.easeOutCubic;
 
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
 
           return FadeTransition(
             opacity: animation,
@@ -231,16 +202,6 @@ class NavigationService {
           );
         },
         transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
-  }
-
-  /// Helper method to show fullscreen dialog
-  void showFullscreenDialog(BuildContext context, Widget dialog) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => dialog,
-        fullscreenDialog: true,
       ),
     );
   }

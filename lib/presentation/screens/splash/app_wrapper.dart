@@ -5,16 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-// Essential imports
-import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
-import 'package:vouse_flutter/presentation/screens/auth/signin.dart';
-import 'package:vouse_flutter/presentation/screens/auth/verification_pending_screen.dart';
-import 'package:vouse_flutter/presentation/screens/home/edit_profile_screen.dart';
-
 // Providers
 import '../../../core/util/ui_settings.dart';
 import '../../providers/auth/firebase/auth_state_provider.dart';
 import '../../providers/local_db/database_provider.dart';
+import '../../providers/navigation/navigation_service.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../providers/local_db/local_user_providers.dart';
 
@@ -158,38 +153,30 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   /// Navigation methods with proper context and stack clearing
   void _navigateToSignIn() {
     FlutterNativeSplash.remove();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const SignInScreen()),
-      (route) => false,
-    );
+    ref
+        .read(navigationServiceProvider)
+        .navigateToSignIn(context, clearStack: true);
   }
 
   void _navigateToVerificationPending() {
     FlutterNativeSplash.remove();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const VerificationPendingScreen()),
-      (route) => false,
-    );
+    ref
+        .read(navigationServiceProvider)
+        .navigateToVerificationPending(context, clearStack: true);
   }
 
   void _navigateToEditProfile() {
     FlutterNativeSplash.remove();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-          builder: (_) => const EditProfileScreen(isEditProfile: false)),
-      (route) => false,
-    );
+    ref
+        .read(navigationServiceProvider)
+        .navigateToEditProfile(context, clearStack: true);
   }
 
   void _navigateToMainApp() {
     FlutterNativeSplash.remove();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'app_navigator'),
-        builder: (_) => const AppNavigator(),
-      ),
-          (route) => false,
-    );
+    ref
+        .read(navigationServiceProvider)
+        .navigateToAppNavigator(context, clearStack: true);
   }
 
   @override

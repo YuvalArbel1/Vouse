@@ -108,7 +108,8 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () =>
+                  ref.read(navigationServiceProvider).navigateBack(context),
               child: Text('Close', style: TextStyle(color: vPrimaryColor)),
             ),
           ],
@@ -301,25 +302,24 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         // Explicitly refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  Text(
-                      'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
-                ],
-              ),
-              backgroundColor: vAccentColor,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(
+                    'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
+              ],
             ),
-          );
-        }
+            backgroundColor: vAccentColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
         ref.read(postTextProvider.notifier).state = '';
         ref.read(postImagesProvider.notifier).clearAll();
         ref.read(postLocationProvider.notifier).state = null;
@@ -355,7 +355,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                   // Check if the drag was upward or downward
                   if (details.primaryVelocity! > 0) {
                     // If the drag was downward, close the bottom sheet
-                    Navigator.of(context).pop();
+                    ref.read(navigationServiceProvider).navigateBack(context);
                   }
                 },
                 child: Container(

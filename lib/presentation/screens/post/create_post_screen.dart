@@ -188,11 +188,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: () =>
+                  ref.read(navigationServiceProvider).navigateBack(context),
               child: const Text('No'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () =>
+                  ref.read(navigationServiceProvider).navigateBack(context),
               child: const Text('Yes'),
             ),
           ],

@@ -10,10 +10,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
 import '../../../core/resources/data_state.dart';
+import '../../../core/util/twitter_x_auth_util.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
-import '../../../domain/entities/secure_db/x_auth_tokens.dart';
-import '../../providers/auth/x/x_auth_providers.dart';
-import '../../providers/auth/x/x_token_providers.dart';
+import '../../providers/auth/x/x_connection_provider.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
@@ -117,16 +116,13 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   /// Check if X (Twitter) is already connected
   Future<void> _checkXConnection() async {
-    final getTokensUC = ref.read(getXTokensUseCaseProvider);
-    final result = await getTokensUC.call();
-
-    if (result is DataSuccess<XAuthTokens?> &&
-        result.data?.accessToken != null) {
-      setState(() {
-        _isXConnected = true;
-        connectXController.text = 'X account connected';
-      });
-    }
+    // Use the connection status from the provider
+    final isConnected = ref.read(xConnectionStatusProvider);
+    setState(() {
+      _isXConnected = isConnected;
+      connectXController.text =
+          isConnected ? 'X account connected' : 'Tap to connect your X account';
+    });
   }
 
   @override
@@ -161,34 +157,17 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
   /// If successful, updates UI state to reflect connected status.
   Future<void> _connectToX() async {
-    setState(() => _isProcessing = true);
+    final success = await TwitterXAuthUtil.connectToX(
+      ref,
+      setLoadingState: (loading) => setState(() => _isProcessing = loading),
+      mounted: mounted,
+    );
 
-    try {
-      // Start the sign-in flow.
-      final result = await ref.read(signInToXUseCaseProvider).call();
-      if (!mounted) return;
-
-      if (result is DataSuccess<XAuthTokens>) {
-        final tokens = result.data!;
-        final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
-        final saveResult = await saveTokensUseCase.call(params: tokens);
-        if (!mounted) return;
-
-        if (saveResult is DataSuccess<void>) {
-          setState(() {
-            _isXConnected = true;
-            connectXController.text = 'X account connected';
-          });
-        } else if (saveResult is DataFailed<void>) {
-          final err = saveResult.error?.error ?? 'Unknown error';
-          toast("Error storing tokens: $err");
-        }
-      } else if (result is DataFailed<XAuthTokens>) {
-        final errorMsg = result.error?.error ?? 'Unknown error';
-        toast("Twitter Auth Error: $errorMsg");
-      }
-    } finally {
-      setState(() => _isProcessing = false);
+    if (success && mounted) {
+      setState(() {
+        _isXConnected = true;
+        connectXController.text = 'X account connected';
+      });
     }
   }
 

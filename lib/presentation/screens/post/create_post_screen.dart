@@ -13,6 +13,8 @@ import '../../../core/util/image_utils.dart';
 import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
+import '../../../core/util/twitter_x_auth_util.dart';
+import '../../providers/auth/x/x_connection_provider.dart';
 import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
@@ -438,16 +440,36 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
   /// Opens the bottom sheet to share or schedule the post.
   ///
-  /// Verifies there's text content before showing the sheet.
-  void _openShareBottomSheet() {
+  /// First verifies the user is connected to X (Twitter),
+  /// otherwise shows a dialog prompting them to connect.
+  void _openShareBottomSheet() async {
     final currentText = ref.read(postTextProvider).trim();
     if (currentText.isEmpty) {
       toast('Please enter some text first!');
       return;
     }
 
+    // Check if X is connected using the xConnectionStatusProvider
+    final isXConnected = ref.read(xConnectionStatusProvider);
+
+    if (!isXConnected) {
+      if (!mounted) return;
+
+      // Show dialog to prompt X connection
+      final shouldConnect = await _showConnectXDialog();
+      if (!shouldConnect) return;
+
+      // User wants to connect, initiate X connection
+      await _connectToX();
+
+      // Check if connection was successful - read the updated state
+      final nowConnected = ref.read(xConnectionStatusProvider);
+      if (!nowConnected || !mounted) return;
+    }
+
     if (!mounted) return;
 
+    // If we reach here, X is connected, open the share bottom sheet
     final BuildContext currentContext = context;
     showModalBottomSheet(
       context: currentContext,
@@ -481,9 +503,89 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     );
   }
 
-  /// Shows a dialog for confirming exit with unsaved changes.
+  /// Shows a dialog prompting the user to connect their X account.
   ///
-  /// Returns true if it's safe to pop the screen, false otherwise.
+  /// Returns true if the user wants to connect, false otherwise.
+  Future<bool> _showConnectXDialog() async {
+    final BuildContext currentContext = context;
+
+    return await showDialog<bool>(
+          context: currentContext,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.link, color: vAccentColor),
+                const SizedBox(width: 10),
+                Text('Connect to X', style: boldTextStyle()),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: vAccentColor.withAlpha(30),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.public,
+                        size: 48,
+                        color: vAccentColor,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Connect your X account',
+                        style: boldTextStyle(size: 16, color: vBodyGrey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'To schedule and post to X (Twitter), you need to connect your account first.',
+                        style: primaryTextStyle(color: vBodyGrey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Later', style: TextStyle(color: vBodyGrey)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: vAccentColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text('Connect Now'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
+  Future<void> _connectToX() async {
+    await TwitterXAuthUtil.connectToX(
+      ref,
+      setLoadingState: (loading) => setState(() => _isProcessing = loading),
+      mounted: mounted,
+    );
+  }
+
   /// Shows a dialog for confirming exit with unsaved changes.
   ///
   /// Returns true if it's safe to pop the screen, false otherwise.

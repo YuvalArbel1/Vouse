@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
-import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
-import 'package:vouse_flutter/presentation/providers/auth/x/x_auth_providers.dart';
-import 'package:vouse_flutter/presentation/providers/auth/x/x_token_providers.dart';
+import 'package:vouse_flutter/presentation/providers/auth/x/x_connection_provider.dart';
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
 import 'package:vouse_flutter/presentation/providers/navigation/navigation_service.dart';
+import 'package:vouse_flutter/core/util/twitter_x_auth_util.dart';
 
 // Import the widgets
 import 'package:vouse_flutter/presentation/widgets/profile/profile_header_widget.dart';
@@ -84,127 +83,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   /// Check if X (Twitter) is connected
   Future<void> _checkXConnection() async {
-    final getTokensUC = ref.read(getXTokensUseCaseProvider);
-    final result = await getTokensUC.call();
-
-    if (result is DataSuccess && result.data?.accessToken != null) {
-      if (mounted) {
-        setState(() {
-          _isXConnected = true;
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _isXConnected = false;
-        });
-      }
+    // Use the connection status directly from the provider
+    final isConnected = ref.read(xConnectionStatusProvider);
+    if (mounted) {
+      setState(() {
+        _isXConnected = isConnected;
+      });
     }
+
+    // Also refresh the provider's connection status (optional)
+    ref.read(xConnectionStatusProvider.notifier).checkConnection();
   }
 
-  /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
+  /// Connect to X (Twitter)
   Future<void> _connectToX() async {
-    setState(() {
-      _isConnectingX = true;
-      _isLoading = true;
-    });
+    setState(() => _isConnectingX = true);
 
-    try {
-      // Start the sign-in flow.
-      final signInUC = ref.read(signInToXUseCaseProvider);
-      final result = await signInUC.call();
-      if (!mounted) return;
+    final success = await TwitterXAuthUtil.connectToX(
+      ref,
+      setLoadingState: (loading) => setState(() => _isLoading = loading),
+      mounted: mounted,
+    );
 
-      if (result is DataSuccess<XAuthTokens>) {
-        final tokens = result.data!;
-        final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
-        final saveResult = await saveTokensUseCase.call(params: tokens);
-        if (!mounted) return;
-
-        if (saveResult is DataSuccess<void>) {
-          setState(() {
-            _isXConnected = true;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('X account connected successfully')),
-          );
-        } else if (saveResult is DataFailed<void>) {
-          final err = saveResult.error?.error ?? 'Unknown error';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error storing tokens: $err")),
-          );
+    if (mounted) {
+      setState(() {
+        _isConnectingX = false;
+        if (success) {
+          _isXConnected = true;
         }
-      } else if (result is DataFailed<XAuthTokens>) {
-        final errorMsg = result.error?.error ?? 'Unknown error';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Twitter Auth Error: $errorMsg")),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isConnectingX = false;
-          _isLoading = false;
-        });
-      }
+      });
     }
   }
 
-  /// Disconnect from X
+  /// Disconnect from X (Twitter)
   Future<void> _disconnectFromX() async {
-    final shouldDisconnect = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Disconnect X Account'),
-            content: const Text(
-                'Are you sure you want to disconnect your X account?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Disconnect',
-                    style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final success = await TwitterXAuthUtil.disconnectFromX(
+      context,
+      ref,
+      setLoadingState: (loading) => setState(() => _isLoading = loading),
+      mounted: mounted,
+    );
 
-    if (!shouldDisconnect) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final clearTokensUC = ref.read(clearXTokensUseCaseProvider);
-      final result = await clearTokensUC.call();
-
-      if (result is DataSuccess) {
-        setState(() {
-          _isXConnected = false;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('X account disconnected successfully')),
-          );
-        }
-      } else if (result is DataFailed) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Failed to disconnect: ${result.error?.error}')),
-          );
-        }
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    if (success && mounted) {
+      setState(() {
+        _isXConnected = false;
+      });
     }
   }
 

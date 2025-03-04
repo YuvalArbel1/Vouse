@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -34,24 +35,67 @@ class ProfileAvatarWidget extends StatefulWidget {
 
 class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
   String? _localAvatarPath;
+  bool _fileExists = false;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // Start with whatever parent passed in as the current avatar.
-    _localAvatarPath = widget.initialAvatarPath;
+    _initializeAvatar();
+  }
+
+  @override
+  void didUpdateWidget(ProfileAvatarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If initialAvatarPath changes (e.g., from parent widget)
+    if (oldWidget.initialAvatarPath != widget.initialAvatarPath) {
+      _initializeAvatar();
+    }
+  }
+
+  /// Initialize the avatar by validating the file exists
+  Future<void> _initializeAvatar() async {
+    if (widget.initialAvatarPath != null) {
+      try {
+        final file = File(widget.initialAvatarPath!);
+        final exists = await file.exists();
+
+        // Only update if mounted to avoid setState on unmounted widget
+        if (mounted) {
+          setState(() {
+            _localAvatarPath = widget.initialAvatarPath;
+            _fileExists = exists;
+          });
+        }
+
+        if (!exists) {
+          if (kDebugMode) {
+            print('Avatar file does not exist at path: ${widget.initialAvatarPath}');
+          }
+        } else {
+          if (kDebugMode) {
+            print('Avatar file exists at path: ${widget.initialAvatarPath}');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error checking avatar file: $e');
+        }
+        if (mounted) {
+          setState(() {
+            _fileExists = false;
+          });
+        }
+      }
+    }
   }
 
   /// Asks for camera/gallery permission (if needed), then shows a bottom sheet
   /// to let the user choose between camera or gallery.
-  ///
-  /// Checks [mounted] before calling [showModalBottomSheet].
   Future<void> _pickProfileImage() async {
     // 1) Request camera & gallery permissions.
     final statusCamera = await Permission.camera.request();
     final statusPhotos = await Permission.photos.request();
-    // (Or Permission.storage on Android, depending on your use case.)
 
     if (!mounted) return;
 
@@ -76,13 +120,9 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
                   final XFile? pickedFile = await _picker.pickImage(
                     source: ImageSource.camera,
                   );
-                  // Check if still mounted before updating UI.
                   if (!mounted) return;
                   if (pickedFile != null) {
-                    final savedPath = await _saveToPermanentFolder(pickedFile);
-                    if (!mounted) return;
-                    setState(() => _localAvatarPath = savedPath);
-                    widget.onAvatarChanged(savedPath);
+                    _processNewImage(pickedFile);
                   }
                 },
               ),
@@ -96,10 +136,7 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
                   );
                   if (!mounted) return;
                   if (pickedFile != null) {
-                    final savedPath = await _saveToPermanentFolder(pickedFile);
-                    if (!mounted) return;
-                    setState(() => _localAvatarPath = savedPath);
-                    widget.onAvatarChanged(savedPath);
+                    _processNewImage(pickedFile);
                   }
                 },
               ),
@@ -110,13 +147,61 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
     );
   }
 
+  /// Process a newly selected image - delete old image if it exists,
+  /// save the new one to a permanent location, and update state
+  Future<void> _processNewImage(XFile newImage) async {
+    try {
+      // 1. Delete old image file if it exists
+      if (_fileExists && _localAvatarPath != null) {
+        try {
+          final oldFile = File(_localAvatarPath!);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+            if (kDebugMode) {
+              print('Deleted old avatar at: $_localAvatarPath');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error deleting old avatar: $e');
+          }
+        }
+      }
+
+      // 2. Save the new image
+      final savedPath = await _saveToPermanentFolder(newImage);
+
+      // 3. Update state and notify parent
+      if (mounted) {
+        setState(() {
+          _localAvatarPath = savedPath;
+          _fileExists = true;
+        });
+        widget.onAvatarChanged(savedPath);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error processing new image: $e');
+      }
+      toast("Failed to update profile image: $e");
+    }
+  }
+
   /// Copies the picked file from a temp/cache directory to a stable app directory.
   Future<String> _saveToPermanentFolder(XFile pickedFile) async {
     final docsDir = await getApplicationDocumentsDirectory();
     final dirPath = docsDir.path;
-    final fileName = p.basename(pickedFile.path);
-    final newPath = p.join(dirPath, fileName);
+
+    // Generate a unique filename based on timestamp
+    final fileExt = p.extension(pickedFile.path);
+    final uniqueFileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}$fileExt';
+
+    final newPath = p.join(dirPath, uniqueFileName);
     final newFile = await File(pickedFile.path).copy(newPath);
+
+    if (kDebugMode) {
+      print('Saved new avatar to: ${newFile.path}');
+    }
     return newFile.path;
   }
 
@@ -135,28 +220,39 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
             decoration: BoxDecoration(
               color: vPrimaryColor, // fallback color if no image
               shape: BoxShape.circle,
-              image: _localAvatarPath == null
-                  ? null
-                  : DecorationImage(
-                      image: FileImage(File(_localAvatarPath!)),
-                      fit: BoxFit.cover,
-                    ),
+              border: Border.all(color: vPrimaryColor, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: vPrimaryColor.withAlpha(40),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              image: (_fileExists && _localAvatarPath != null)
+                  ? DecorationImage(
+                image: FileImage(File(_localAvatarPath!)),
+                fit: BoxFit.cover,
+              )
+                  : null,
             ),
-            child: _localAvatarPath == null
+            child: (!_fileExists || _localAvatarPath == null)
                 ? const Icon(Icons.person, color: Colors.white, size: 60)
                 : null,
           ),
 
           // The small edit icon
-          Positioned(
-            bottom: 16,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: Colors.green, // or vAccentColor if you prefer
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.edit, color: Colors.white, size: 20),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: vAccentColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(
+              Icons.edit,
+              color: Colors.white,
+              size: 16,
             ),
           ),
         ],

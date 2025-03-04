@@ -346,6 +346,8 @@ class HorizontalPostListLoading extends StatelessWidget {
 /// Features:
 /// - Simulates the appearance of a loading timeline
 /// - Customizable number of items and dimensions
+/// - Matching visual style with real timeline items
+/// - Shimmer animation effects for better user experience
 ///
 /// Usage:
 /// ```dart
@@ -369,11 +371,16 @@ class PostTimelineLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Use ListView to prevent overflow
+    return ListView.builder(
+      shrinkWrap: true, // Ensures the ListView takes only needed space
+      physics: const NeverScrollableScrollPhysics(), // Prevents scrolling within this component
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: List.generate(itemCount, (index) {
-          return Row(
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Timeline visualization
@@ -386,8 +393,8 @@ class PostTimelineLoading extends StatelessWidget {
                   if (index < itemCount - 1)
                     Container(
                       width: 2,
-                      height: cardHeight + 20,
-                      color: Colors.grey.withAlpha(100),
+                      height: cardHeight,
+                      color: vAccentColor.withAlpha(100), // Use accent color to match real timeline
                     ),
                 ],
               ),
@@ -416,16 +423,13 @@ class PostTimelineLoading extends StatelessWidget {
                         height: cardHeight,
                       ),
                     ),
-
-                    if (index < itemCount - 1)
-                      const SizedBox(height: 20),
                   ],
                 ),
               ),
             ],
-          );
-        }),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -450,33 +454,86 @@ class FullScreenLoading extends StatelessWidget {
   /// Color of the loading indicator
   final Color color;
 
+  /// Background color of the loading screen
+  final Color? backgroundColor;
+
   /// Creates a [FullScreenLoading] widget.
   const FullScreenLoading({
     super.key,
     this.message,
     this.color = vPrimaryColor,
+    this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: color,
-          ),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              message!,
-              style: TextStyle(
-                color: vBodyGrey,
-                fontSize: 16,
-              ),
+    return Container(
+      color: backgroundColor,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: color,
             ),
+            if (message != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                message!,
+                style: TextStyle(
+                  color: vBodyGrey,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A widget that blocks UI interaction and displays a loading spinner.
+///
+/// Features:
+/// - Full screen overlay with semi-transparent background
+/// - Centered loading indicator
+/// - Can be conditionally shown/hidden
+class BlockingSpinnerOverlay extends StatelessWidget {
+  /// Whether the overlay is visible
+  final bool isVisible;
+
+  /// Optional loading message
+  final String? message;
+
+  /// Creates a [BlockingSpinnerOverlay].
+  const BlockingSpinnerOverlay({
+    super.key,
+    required this.isVisible,
+    this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white),
+            if (message != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                message!,
+                style: const TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

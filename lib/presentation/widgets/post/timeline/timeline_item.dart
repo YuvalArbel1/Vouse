@@ -1,4 +1,4 @@
-// lib/presentation/widgets/post/timeline_post_item.dart
+// lib/presentation/widgets/post/timeline/timeline_item.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -64,8 +64,8 @@ class TimelinePostItem extends StatelessWidget {
     final dateLabel = isToday
         ? 'Today'
         : isTomorrow
-            ? 'Tomorrow'
-            : DateFormat('EEE, MMM d').format(scheduledTime);
+        ? 'Tomorrow'
+        : DateFormat('EEE, MMM d').format(scheduledTime);
 
     // Format the time
     final timeLabel = DateFormat('h:mm a').format(scheduledTime);
@@ -110,7 +110,7 @@ class TimelinePostItem extends StatelessWidget {
                 Container(
                   width: 2,
                   height: 310, // Fixed height for consistency
-                  color: vAccentColor, // Changed to green accent color
+                  color: vAccentColor, // Green accent color for timeline
                 ),
             ],
           ),
@@ -125,10 +125,10 @@ class TimelinePostItem extends StatelessWidget {
                 // Date/time header with emoji
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color:
-                        isPastDue ? Colors.grey.withAlpha(200) : vAccentColor,
+                    isPastDue ? Colors.grey.withAlpha(200) : vAccentColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(

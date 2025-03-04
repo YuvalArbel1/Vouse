@@ -138,9 +138,9 @@ class _ProfileAvatarWidgetState extends State<ProfileAvatarWidget> {
               image: _localAvatarPath == null
                   ? null
                   : DecorationImage(
-                image: FileImage(File(_localAvatarPath!)),
-                fit: BoxFit.cover,
-              ),
+                      image: FileImage(File(_localAvatarPath!)),
+                      fit: BoxFit.cover,
+                    ),
             ),
             child: _localAvatarPath == null
                 ? const Icon(Icons.person, color: Colors.white, size: 60)

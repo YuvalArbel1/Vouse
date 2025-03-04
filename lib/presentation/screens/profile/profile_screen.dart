@@ -1,4 +1,4 @@
-// lib/presentation/screens/profile/enhanced_profile_screen.dart
+// lib/presentation/screens/profile/profile_screen.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
+import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
+import 'package:vouse_flutter/presentation/providers/auth/x/x_auth_providers.dart';
 import 'package:vouse_flutter/presentation/providers/auth/x/x_token_providers.dart';
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
@@ -22,6 +24,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTickerProviderStateMixin {
   bool _isLoading = false;
   bool _isXConnected = false;
+  bool _isConnectingX = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -60,6 +63,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
 
       // Direct call to load profile
       await ref.read(userProfileProvider.notifier).loadUserProfile();
+      await _checkXConnection();
 
       // Start animations after data is loaded
       _animationController.forward();
@@ -78,9 +82,67 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     final result = await getTokensUC.call();
 
     if (result is DataSuccess && result.data?.accessToken != null) {
-      setState(() {
-        _isXConnected = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isXConnected = true;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isXConnected = false;
+        });
+      }
+    }
+  }
+
+  /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
+  /// If successful, updates UI state to reflect connected status.
+  Future<void> _connectToX() async {
+    setState(() {
+      _isConnectingX = true;
+      _isLoading = true;
+    });
+
+    try {
+      // Start the sign-in flow.
+      final signInUC = ref.read(signInToXUseCaseProvider);
+      final result = await signInUC.call();
+      if (!mounted) return;
+
+      if (result is DataSuccess<XAuthTokens>) {
+        final tokens = result.data!;
+        final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
+        final saveResult = await saveTokensUseCase.call(params: tokens);
+        if (!mounted) return;
+
+        if (saveResult is DataSuccess<void>) {
+          setState(() {
+            _isXConnected = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('X account connected successfully')),
+          );
+        } else if (saveResult is DataFailed<void>) {
+          final err = saveResult.error?.error ?? 'Unknown error';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error storing tokens: $err")),
+          );
+        }
+      } else if (result is DataFailed<XAuthTokens>) {
+        final errorMsg = result.error?.error ?? 'Unknown error';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Twitter Auth Error: $errorMsg")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isConnectingX = false;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -329,11 +391,7 @@ We may update this policy from time to time. We will notify you of any significa
                             _isXConnected ? 'Disconnect X Account' : 'Connect X Account',
                             Icons.link,
                             _isXConnected ? Colors.red : vPrimaryColor,
-                            onTap: _isXConnected ? _disconnectFromX : () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please connect X from the Edit Profile screen')),
-                              );
-                            },
+                            onTap: _isXConnected ? _disconnectFromX : _connectToX,
                           ),
                         ]),
 
@@ -453,7 +511,7 @@ We may update this policy from time to time. We will notify you of any significa
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
-                // Removed Hero animation to prevent conflicts
+                // Using a direct Container instead of ProfileAvatarDisplay
                 Container(
                   width: 110,
                   height: 110,
@@ -551,7 +609,7 @@ We may update this policy from time to time. We will notify you of any significa
 
   Widget _buildSettingsTile(String title, IconData icon, Color iconColor, {required VoidCallback onTap}) {
     return InkWell(
-      onTap: onTap,
+      onTap: _isConnectingX && title.contains('Connect') ? null : onTap,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -563,7 +621,16 @@ We may update this policy from time to time. We will notify you of any significa
                 color: iconColor.withAlpha(20),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: iconColor, size: 20),
+              child: _isConnectingX && title.contains('Connect')
+                  ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: iconColor,
+                ),
+              )
+                  : Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(

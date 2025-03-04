@@ -150,24 +150,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   /// Disconnect from X
   Future<void> _disconnectFromX() async {
     final shouldDisconnect = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Disconnect X Account'),
-            content: const Text(
-                'Are you sure you want to disconnect your X account?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Disconnect',
-                    style: TextStyle(color: Colors.red)),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Disconnect X Account'),
+        content: const Text(
+            'Are you sure you want to disconnect your X account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ) ??
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Disconnect',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!shouldDisconnect) return;
@@ -207,24 +207,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   /// Handles user logout
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Log Out',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text('Are you sure you want to log out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child:
-                    const Text('Log Out', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ) ??
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child:
+            const Text('Log Out', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!shouldLogout) return;
@@ -260,6 +260,97 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         .navigateToEditProfile(context, isEditProfile: true, clearStack: false);
   }
 
+  void _showAboutVouse() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('About Vouse'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildAboutSection('✨ Welcome to Vouse!', _getAboutVouseIntro()),
+              const SizedBox(height: 16),
+              _buildAboutSection('🚀 Key Features', _getAboutVouseFeatures()),
+              const SizedBox(height: 16),
+              _buildAboutSection('👥 Our Team', _getAboutVouseTeam()),
+              const SizedBox(height: 16),
+              _buildAboutSection('📱 Contact Us', _getAboutVouseContact()),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => ref.read(navigationServiceProvider).navigateBack(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: vPrimaryColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: const TextStyle(
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getAboutVouseIntro() {
+    return '''
+Vouse is your all-in-one social media management tool designed to streamline your posting experience. Our app helps content creators, small businesses, and social media enthusiasts create, schedule, and publish their content with ease.
+
+Launched in 2025, Vouse aims to simplify your social media workflow while maximizing engagement through smart scheduling and AI assistance.
+''';
+  }
+
+  String _getAboutVouseFeatures() {
+    return '''
+• 📝 AI-powered content creation
+• 🗓️ Smart scheduling with best time predictions
+• 📊 Post analytics and engagement tracking
+• 📱 Multi-platform support (Starting with X/Twitter)
+• 📷 Enhanced media management
+• 📍 Location tagging
+• 💾 Draft saving for work-in-progress
+''';
+  }
+
+  String _getAboutVouseTeam() {
+    return '''
+Vouse was created by a passionate team of developers dedicated to improving the social media experience. We combine expertise in mobile development, AI, and user experience design to create a tool that's both powerful and easy to use.
+
+Our mission is to help you share your voice effectively in the noisy world of social media.
+''';
+  }
+
+  String _getAboutVouseContact() {
+    return '''
+Email: support@vouse.app
+Website: www.vouse.app
+Twitter: @vouseapp
+
+We value your feedback and are constantly working to improve Vouse. Let us know how we can make it better for you!
+''';
+  }
+
   void _showTermsOfService() {
     showDialog(
       context: context,
@@ -270,7 +361,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => ref.read(navigationServiceProvider).navigateBack(context),
             child: const Text('Close'),
           ),
         ],
@@ -288,7 +379,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => ref.read(navigationServiceProvider).navigateBack(context),
             child: const Text('Close'),
           ),
         ],
@@ -364,121 +455,121 @@ We may update this policy from time to time. We will notify you of any significa
       body: isLoading
           ? const FullScreenLoading(message: 'Loading profile...')
           : RefreshIndicator(
-              onRefresh: _refreshUserProfile,
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
+        onRefresh: _refreshUserProfile,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  // Profile Header with Avatar and Logout
+                  _buildProfileHeader(user),
+
+                  // Main Content
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Profile Header with Avatar and Logout
-                        _buildProfileHeader(user),
+                        const SizedBox(height: 20),
 
-                        // Main Content
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 20),
+                        // Account Settings Section
+                        _buildSectionTitle('Account Settings'),
+                        const SizedBox(height: 12),
+                        _buildSettingsCard([
+                          _buildSettingsTile(
+                            'Edit Profile',
+                            Icons.person_outline,
+                            vPrimaryColor,
+                            onTap: _navigateToEditProfile,
+                          ),
+                          _buildSettingsTile(
+                            _isXConnected
+                                ? 'Disconnect X Account'
+                                : 'Connect X Account',
+                            Icons.link,
+                            _isXConnected ? Colors.red : vPrimaryColor,
+                            onTap: _isXConnected
+                                ? _disconnectFromX
+                                : _connectToX,
+                          ),
+                        ]),
 
-                              // Account Settings Section
-                              _buildSectionTitle('Account Settings'),
-                              const SizedBox(height: 12),
-                              _buildSettingsCard([
-                                _buildSettingsTile(
-                                  'Edit Profile',
-                                  Icons.person_outline,
-                                  vPrimaryColor,
-                                  onTap: _navigateToEditProfile,
-                                ),
-                                _buildSettingsTile(
-                                  _isXConnected
-                                      ? 'Disconnect X Account'
-                                      : 'Connect X Account',
-                                  Icons.link,
-                                  _isXConnected ? Colors.red : vPrimaryColor,
-                                  onTap: _isXConnected
-                                      ? _disconnectFromX
-                                      : _connectToX,
-                                ),
-                              ]),
+                        const SizedBox(height: 24),
 
-                              const SizedBox(height: 24),
+                        // App Information Section
+                        _buildSectionTitle('App Information'),
+                        const SizedBox(height: 12),
+                        _buildSettingsCard([
+                          _buildSettingsTile(
+                            'About Vouse',
+                            Icons.info_outline,
+                            vPrimaryColor,
+                            onTap: _showAboutVouse,
+                          ),
+                          _buildSettingsTile(
+                            'Terms of Service',
+                            Icons.description_outlined,
+                            vPrimaryColor,
+                            onTap: _showTermsOfService,
+                          ),
+                          _buildSettingsTile(
+                            'Privacy Policy',
+                            Icons.privacy_tip_outlined,
+                            vPrimaryColor,
+                            onTap: _showPrivacyPolicy,
+                          ),
+                        ]),
 
-                              // App Information Section
-                              _buildSectionTitle('App Information'),
-                              const SizedBox(height: 12),
-                              _buildSettingsCard([
-                                _buildSettingsTile(
-                                  'About Vouse',
-                                  Icons.info_outline,
-                                  vPrimaryColor,
-                                  onTap: () {},
-                                ),
-                                _buildSettingsTile(
-                                  'Terms of Service',
-                                  Icons.description_outlined,
-                                  vPrimaryColor,
-                                  onTap: _showTermsOfService,
-                                ),
-                                _buildSettingsTile(
-                                  'Privacy Policy',
-                                  Icons.privacy_tip_outlined,
-                                  vPrimaryColor,
-                                  onTap: _showPrivacyPolicy,
-                                ),
-                              ]),
+                        const SizedBox(height: 40),
 
-                              const SizedBox(height: 40),
-
-                              // Logout Button
-                              Center(
-                                child: SizedBox(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.7,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _handleLogout,
-                                    icon: const Icon(Icons.logout,
-                                        color: Colors.white),
-                                    label: const Text('Logout',
-                                        style: TextStyle(color: Colors.white)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade400,
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
+                        // Logout Button
+                        Center(
+                          child: SizedBox(
+                            width:
+                            MediaQuery.of(context).size.width * 0.7,
+                            child: ElevatedButton.icon(
+                              onPressed: _handleLogout,
+                              icon: const Icon(Icons.logout,
+                                  color: Colors.white),
+                              label: const Text('Logout',
+                                  style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade400,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-
-                              // Version info
-                              const SizedBox(height: 16),
-                              Center(
-                                child: Text(
-                                  'Vouse v1.0.0',
-                                  style: TextStyle(
-                                    color: vBodyGrey.withAlpha(150),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-
-                              // Bottom padding for safe area
-                              const SizedBox(height: 40),
-                            ],
+                            ),
                           ),
                         ),
+
+                        // Version info
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Text(
+                            'Vouse v1.0.0',
+                            style: TextStyle(
+                              color: vBodyGrey.withAlpha(150),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+
+                        // Bottom padding for safe area
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -545,9 +636,9 @@ We may update this policy from time to time. We will notify you of any significa
                       ],
                       image: user?.avatarPath != null
                           ? DecorationImage(
-                              image: FileImage(File(user!.avatarPath!)),
-                              fit: BoxFit.cover,
-                            )
+                        image: FileImage(File(user!.avatarPath!)),
+                        fit: BoxFit.cover,
+                      )
                           : null,
                     ),
                     child: user?.avatarPath == null
@@ -642,13 +733,13 @@ We may update this policy from time to time. We will notify you of any significa
               ),
               child: _isConnectingX && title.contains('Connect')
                   ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: iconColor,
-                      ),
-                    )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: iconColor,
+                ),
+              )
                   : Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 16),

@@ -64,8 +64,8 @@ class TimelinePostItem extends StatelessWidget {
     final dateLabel = isToday
         ? 'Today'
         : isTomorrow
-        ? 'Tomorrow'
-        : DateFormat('EEE, MMM d').format(scheduledTime);
+            ? 'Tomorrow'
+            : DateFormat('EEE, MMM d').format(scheduledTime);
 
     // Format the time
     final timeLabel = DateFormat('h:mm a').format(scheduledTime);
@@ -91,7 +91,8 @@ class TimelinePostItem extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color: (isPastDue ? Colors.grey : vAccentColor).withAlpha(100),
+                      color: (isPastDue ? Colors.grey : vAccentColor)
+                          .withAlpha(100),
                       blurRadius: 4,
                       spreadRadius: 1,
                     ),
@@ -109,7 +110,7 @@ class TimelinePostItem extends StatelessWidget {
                 Container(
                   width: 2,
                   height: 310, // Fixed height for consistency
-                  color: Colors.grey.withAlpha(100),
+                  color: vAccentColor, // Changed to green accent color
                 ),
             ],
           ),
@@ -123,13 +124,16 @@ class TimelinePostItem extends StatelessWidget {
               children: [
                 // Date/time header with emoji
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isPastDue ? Colors.grey.withAlpha(200) : vAccentColor,
+                    color:
+                        isPastDue ? Colors.grey.withAlpha(200) : vAccentColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: (isPastDue ? Colors.grey : vAccentColor).withAlpha(50),
+                        color: (isPastDue ? Colors.grey : vAccentColor)
+                            .withAlpha(50),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -176,8 +180,7 @@ class TimelinePostItem extends StatelessWidget {
                   child: PostCard(post: post),
                 ),
 
-                if (!isLast)
-                  const SizedBox(height: 20),
+                if (!isLast) const SizedBox(height: 20),
               ],
             ),
           ),

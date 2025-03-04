@@ -34,7 +34,6 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       height: 65,
 
@@ -237,10 +236,11 @@ class CustomBottomNavBar extends StatelessWidget {
                   child: child,
                 );
               },
-              child: const Icon(
-                Icons.add,
+              child: Image.asset(
+                'assets/images/vouse_app_logo_white.png',
+                width: 24,
+                height: 24,
                 color: Colors.white,
-                size: 30,
               ),
             ),
           ),

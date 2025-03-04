@@ -330,135 +330,145 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
-      body: isLoading
-          ? const FullScreenLoading(message: 'Loading profile...')
-          : RefreshIndicator(
-              onRefresh: _refreshUserProfile,
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Column(
-                      children: [
-                        // Profile Header with Avatar and Logout
-                        ProfileHeaderWidget(
-                          user: user,
-                          isXConnected: _isXConnected,
-                          onSettingsTap: _navigateToEditProfile,
-                          onAvatarTap: _navigateToEditProfile,
-                        ),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/background_image.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: isLoading
+            ? const FullScreenLoading(message: 'Loading profile...')
+            : RefreshIndicator(
+                onRefresh: _refreshUserProfile,
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
+                        children: [
+                          // Profile Header with Avatar and Logout
+                          ProfileHeaderWidget(
+                            user: user,
+                            isXConnected: _isXConnected,
+                            onSettingsTap: _navigateToEditProfile,
+                            onAvatarTap: _navigateToEditProfile,
+                          ),
 
-                        // Main Content
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 20),
+                          // Main Content
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 20),
 
-                              // Account Settings Section
-                              SettingsSectionWidget(
-                                title: 'Account Settings',
-                                children: [
-                                  SettingsTileWidget(
-                                    title: 'Edit Profile',
-                                    icon: Icons.person_outline,
-                                    iconColor: vPrimaryColor,
-                                    onTap: _navigateToEditProfile,
-                                  ),
-                                  SettingsTileWidget(
-                                    title: _isXConnected
-                                        ? 'Disconnect X Account'
-                                        : 'Connect X Account',
-                                    icon: Icons.link,
-                                    iconColor: _isXConnected
-                                        ? Colors.red
-                                        : vPrimaryColor,
-                                    onTap: _isXConnected
-                                        ? _disconnectFromX
-                                        : _connectToX,
-                                    isLoading: _isConnectingX,
-                                    isDestructive: _isXConnected,
-                                  ),
-                                ],
-                              ),
+                                // Account Settings Section
+                                SettingsSectionWidget(
+                                  title: 'Account Settings',
+                                  children: [
+                                    SettingsTileWidget(
+                                      title: 'Edit Profile',
+                                      icon: Icons.person_outline,
+                                      iconColor: vPrimaryColor,
+                                      onTap: _navigateToEditProfile,
+                                    ),
+                                    SettingsTileWidget(
+                                      title: _isXConnected
+                                          ? 'Disconnect X Account'
+                                          : 'Connect X Account',
+                                      icon: Icons.link,
+                                      iconColor: _isXConnected
+                                          ? Colors.red
+                                          : vPrimaryColor,
+                                      onTap: _isXConnected
+                                          ? _disconnectFromX
+                                          : _connectToX,
+                                      isLoading: _isConnectingX,
+                                      isDestructive: _isXConnected,
+                                    ),
+                                  ],
+                                ),
 
-                              const SizedBox(height: 24),
+                                const SizedBox(height: 24),
 
-                              // App Information Section
-                              SettingsSectionWidget(
-                                title: 'App Information',
-                                children: [
-                                  SettingsTileWidget(
-                                    title: 'About Vouse',
-                                    icon: Icons.info_outline,
-                                    iconColor: vPrimaryColor,
-                                    onTap: _showAboutVouse,
-                                  ),
-                                  SettingsTileWidget(
-                                    title: 'Terms of Service',
-                                    icon: Icons.description_outlined,
-                                    iconColor: vPrimaryColor,
-                                    onTap: _showTermsOfService,
-                                  ),
-                                  SettingsTileWidget(
-                                    title: 'Privacy Policy',
-                                    icon: Icons.privacy_tip_outlined,
-                                    iconColor: vPrimaryColor,
-                                    onTap: _showPrivacyPolicy,
-                                  ),
-                                ],
-                              ),
+                                // App Information Section
+                                SettingsSectionWidget(
+                                  title: 'App Information',
+                                  children: [
+                                    SettingsTileWidget(
+                                      title: 'About Vouse',
+                                      icon: Icons.info_outline,
+                                      iconColor: vPrimaryColor,
+                                      onTap: _showAboutVouse,
+                                    ),
+                                    SettingsTileWidget(
+                                      title: 'Terms of Service',
+                                      icon: Icons.description_outlined,
+                                      iconColor: vPrimaryColor,
+                                      onTap: _showTermsOfService,
+                                    ),
+                                    SettingsTileWidget(
+                                      title: 'Privacy Policy',
+                                      icon: Icons.privacy_tip_outlined,
+                                      iconColor: vPrimaryColor,
+                                      onTap: _showPrivacyPolicy,
+                                    ),
+                                  ],
+                                ),
 
-                              const SizedBox(height: 40),
+                                const SizedBox(height: 40),
 
-                              // Logout Button
-                              Center(
-                                child: SizedBox(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.7,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _handleLogout,
-                                    icon: const Icon(Icons.logout,
-                                        color: Colors.white),
-                                    label: const Text('Logout',
-                                        style: TextStyle(color: Colors.white)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade400,
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                // Logout Button
+                                Center(
+                                  child: SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.7,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _handleLogout,
+                                      icon: const Icon(Icons.logout,
+                                          color: Colors.white),
+                                      label: const Text('Logout',
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade400,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
 
-                              // Version info
-                              const SizedBox(height: 16),
-                              Center(
-                                child: Text(
-                                  'Vouse v1.0.0',
-                                  style: TextStyle(
-                                    color: vBodyGrey.withAlpha(150),
-                                    fontSize: 12,
+                                // Version info
+                                const SizedBox(height: 16),
+                                Center(
+                                  child: Text(
+                                    'Vouse v1.0.0',
+                                    style: TextStyle(
+                                      color: vBodyGrey.withAlpha(150),
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
-                              ),
 
-                              // Bottom padding for safe area
-                              const SizedBox(height: 40),
-                            ],
+                                // Bottom padding for safe area
+                                const SizedBox(height: 40),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }

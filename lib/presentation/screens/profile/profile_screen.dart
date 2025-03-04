@@ -330,18 +330,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     return Scaffold(
       backgroundColor: vAppLayoutBackground,
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/background_image.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: isLoading
-            ? const FullScreenLoading(message: 'Loading profile...')
-            : RefreshIndicator(
-                onRefresh: _refreshUserProfile,
-                child: SafeArea(
+      body: isLoading
+          ? const FullScreenLoading(message: 'Loading profile...')
+          : RefreshIndicator(
+              onRefresh: _refreshUserProfile,
+              child: SafeArea(
+                child: Container(
+                  // Add background image like in home screen
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/vouse_bg.jpg'),
+                      fit: BoxFit.cover,
+                      opacity: 0.8,
+                    ),
+                  ),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: FadeTransition(
@@ -468,7 +470,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   ),
                 ),
               ),
-      ),
+            ),
     );
   }
 }

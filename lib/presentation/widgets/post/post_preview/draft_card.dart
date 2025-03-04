@@ -284,9 +284,39 @@ class DraftCard extends ConsumerWidget {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                File(post.localImagePaths[index]),
-                                fit: BoxFit.cover,
+                              child: Builder(
+                                builder: (context) {
+                                  try {
+                                    final file =
+                                        File(post.localImagePaths[index]);
+                                    if (file.existsSync()) {
+                                      return Image.file(
+                                        file,
+                                        fit: BoxFit.cover,
+                                      );
+                                    } else {
+                                      // Return a placeholder if file doesn't exist
+                                      return Container(
+                                        color: Colors.grey.withAlpha(30),
+                                        child: Icon(
+                                          Icons.image_not_supported,
+                                          color: Colors.grey,
+                                          size: 30,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    // Return error placeholder
+                                    return Container(
+                                      color: Colors.grey.withAlpha(30),
+                                      child: Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 30,
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
                             ),
                           );

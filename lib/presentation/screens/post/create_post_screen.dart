@@ -335,7 +335,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     setState(() => _isProcessing = true);
 
     try {
-      // Move images to permanent folder
+      // Move ALL images to permanent folder, including existing ones
       final images = ref.read(postImagesProvider);
       final localPaths = await ImageUtils.moveImagesToPermanentFolder(images);
 
@@ -364,6 +364,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         scheduledAt: null,
         visibility: _editingDraft?.visibility,
         localImagePaths: localPaths,
+        // Use the newly moved image paths
         cloudImageUrls: _editingDraft?.cloudImageUrls ?? [],
         locationLat: lat,
         locationLng: lng,

@@ -85,7 +85,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   void initState() {
     super.initState();
     _initializeScreen();
-    _loadDraftIfEditing();
 
     // Set up animation controller for smooth transitions
     _animationController = AnimationController(
@@ -103,6 +102,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     // Store initial values for change detection
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Load draft data AFTER the widget tree is built
+      _loadDraftIfEditing();
       _captureInitialValues();
     });
   }

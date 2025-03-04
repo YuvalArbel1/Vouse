@@ -11,6 +11,8 @@ import '../post/post_refresh_provider.dart';
 
 /// Returns all "draft" posts for the current user.
 /// A "draft" post is one with [scheduledAt] == null && [updatedAt] == null.
+/// Returns all "draft" posts for the current user, sorted by updatedAt time (newest first).
+/// A "draft" post is one with [scheduledAt] == null && [postIdX] == null.
 final draftPostsProvider =
     FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
@@ -25,9 +27,16 @@ final draftPostsProvider =
 
   if (result is DataSuccess<List<PostEntity>>) {
     // New definition: A draft has no scheduled date and no postIdX (not posted)
-    return result.data!
+    final drafts = result.data!
         .where((post) => post.scheduledAt == null && post.postIdX == null)
         .toList();
+
+    // Sort drafts by updatedAt time, newest first
+    // If updatedAt is null, fall back to createdAt
+    drafts.sort((a, b) =>
+        (b.updatedAt ?? b.createdAt).compareTo(a.updatedAt ?? a.createdAt));
+
+    return drafts;
   }
 
   return [];

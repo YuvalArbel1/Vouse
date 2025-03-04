@@ -209,18 +209,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         );
   }
 
-  void _showFeatureComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        backgroundColor: vAccentColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
+  void _navigateToPublisedPosts() {
+    ref.read(navigationServiceProvider).navigateToPublishedPosts(context);
   }
+
+  // void _showFeatureComingSoon(String feature) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text('$feature coming soon!'),
+  //       backgroundColor: vAccentColor,
+  //       behavior: SnackBarBehavior.floating,
+  //       shape: RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.circular(10),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -278,8 +282,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             child: QuickActionsPanel(
                               onNewPost: _navigateToCreatePost,
                               onSchedule: _navigateToScheduledPosts,
-                              onAnalytics: () =>
-                                  _showFeatureComingSoon('Analytics'),
+                              onPublishhed: _navigateToPublisedPosts,
                               onSettings: _navigateToSettings,
                             ),
                           ),

@@ -297,7 +297,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       child: QuickActionsPanel(
                         onNewPost: _navigateToCreatePost,
                         onSchedule: _navigateToScheduledPosts,
-                        onAnalytics: () => _showFeatureComingSoon('Analytics'),
+                        onPublishhed: () => _showFeatureComingSoon('Analytics'),
                         onSettings: _navigateToSettings,
                       ),
                     ),

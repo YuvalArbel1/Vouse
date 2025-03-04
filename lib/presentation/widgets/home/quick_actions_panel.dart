@@ -19,7 +19,7 @@ class QuickActionsPanel extends StatelessWidget {
   final VoidCallback onSchedule;
 
   /// Callback for the analytics action
-  final VoidCallback onAnalytics;
+  final VoidCallback onPublishhed;
 
   /// Callback for the settings action
   final VoidCallback onSettings;
@@ -29,7 +29,7 @@ class QuickActionsPanel extends StatelessWidget {
     super.key,
     required this.onNewPost,
     required this.onSchedule,
-    required this.onAnalytics,
+    required this.onPublishhed,
     required this.onSettings,
   });
 
@@ -78,14 +78,14 @@ class QuickActionsPanel extends StatelessWidget {
                 onTap: onSchedule,
               ),
               ActionButton(
-                label: 'Analytics',
-                icon: Icons.bar_chart,
+                label: 'Published',
+                icon: Icons.history,
                 color: Colors.orange,
-                onTap: onAnalytics,
+                onTap: onPublishhed,
               ),
               ActionButton(
-                label: 'Settings',
-                icon: Icons.settings,
+                label: 'Profile',
+                icon: Icons.person,
                 color: vBodyGrey,
                 onTap: onSettings,
               ),

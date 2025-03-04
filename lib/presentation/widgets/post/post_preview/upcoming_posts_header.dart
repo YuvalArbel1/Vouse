@@ -1,7 +1,9 @@
 // lib/presentation/widgets/post/post_preview/upcoming_posts_header.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
+import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.dart';
 
 /// A comprehensive, dynamic header for upcoming posts screen
 ///
@@ -10,7 +12,7 @@ import 'package:vouse_flutter/core/util/colors.dart';
 /// - Performance and progress indicators
 /// - Responsive and adaptive design
 /// - Visual representation of content scheduling journey
-class UpcomingPostsHeader extends StatelessWidget {
+class UpcomingPostsHeader extends ConsumerWidget {
   /// Total number of scheduled posts
   final int scheduledPostCount;
 
@@ -36,17 +38,12 @@ class UpcomingPostsHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
-      // Remove the top margin to make it edge-to-edge
-      // margin: const EdgeInsets.only(top: 10), // REMOVED
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            vAccentColor,
-            vAccentColor.withAlpha(200)
-          ],
+          colors: [vAccentColor, vAccentColor.withAlpha(200)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -59,7 +56,7 @@ class UpcomingPostsHeader extends StatelessWidget {
         children: [
           _buildContentSection(),
           const SizedBox(height: 16),
-          _buildStatisticsSection(),
+          _buildStatisticsSection(ref),
         ],
       ),
     );
@@ -104,27 +101,67 @@ class UpcomingPostsHeader extends StatelessWidget {
   }
 
   /// Build statistics and progress section
-  Widget _buildStatisticsSection() {
+  Widget _buildStatisticsSection(WidgetRef ref) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _buildStatChip('🗓️ Scheduled', scheduledPostCount.toString()),
-        _buildStatChip('⏰ Next in', _calculateNextPostTime()),
-        _buildStatChip('📅 Coverage', '${_calculateScheduleCoverage()}d'),
+        _buildStatChip('⏰ Next in', _calculateNextPostTime(ref)),
       ],
     );
   }
 
-  /// Calculate time to next scheduled post (mock implementation)
-  String _calculateNextPostTime() {
-    // This would ideally come from actual scheduled post data
-    return scheduledPostCount > 0 ? '3d 12h' : 'N/A';
-  }
+  /// Calculate time to nearest scheduled post
+  String _calculateNextPostTime(WidgetRef ref) {
+    if (scheduledPostCount <= 0) {
+      return 'N/A';
+    }
 
-  /// Calculate scheduling coverage (mock implementation)
-  String _calculateScheduleCoverage() {
-    // Mocked calculation of scheduling coverage
-    return (scheduledPostCount * 2).toString();
+    // Get all scheduled posts
+    final scheduledPostsAsync = ref.watch(scheduledPostsProvider);
+
+    return scheduledPostsAsync.when(
+      data: (posts) {
+        if (posts.isEmpty) {
+          return 'N/A';
+        }
+
+        // Sort posts by scheduledAt time (ensure not null and closest first)
+        final sortedPosts = [...posts]
+          ..removeWhere((post) => post.scheduledAt == null)
+          ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+
+        if (sortedPosts.isEmpty) {
+          return 'N/A';
+        }
+
+        // Get the closest scheduled post
+        final now = DateTime.now();
+        final nextPost = sortedPosts.first;
+        final nextDateTime = nextPost.scheduledAt!;
+
+        // If post is in the past, return "Now"
+        if (nextDateTime.isBefore(now)) {
+          return 'Now';
+        }
+
+        // Calculate difference
+        final difference = nextDateTime.difference(now);
+
+        // Format the time difference
+        if (difference.inDays > 0) {
+          return '${difference.inDays}d ${(difference.inHours % 24)}h';
+        } else if (difference.inHours > 0) {
+          return '${difference.inHours}h ${(difference.inMinutes % 60)}m';
+        } else if (difference.inMinutes > 0) {
+          return '${difference.inMinutes}m';
+        } else {
+          return 'Now';
+        }
+      },
+      loading: () => '...',
+      error: (_, __) => 'Error',
+    );
   }
 
   /// Create a styled statistic chip

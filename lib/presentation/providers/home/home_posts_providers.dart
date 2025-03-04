@@ -11,7 +11,8 @@ import '../post/post_refresh_provider.dart';
 
 /// Returns all "draft" posts for the current user.
 /// A "draft" post is one with [scheduledAt] == null && [updatedAt] == null.
-final draftPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) async {
+final draftPostsProvider =
+    FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
   ref.watch(draftRefreshProvider);
 
@@ -19,12 +20,14 @@ final draftPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) as
   if (user == null) return [];
 
   final getPostsUseCase = ref.watch(getPostsByUserUseCaseProvider);
-  final result = await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
+  final result =
+      await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
 
   if (result is DataSuccess<List<PostEntity>>) {
-    return result.data!.where((post) =>
-    post.scheduledAt == null && post.updatedAt == null
-    ).toList();
+    // New definition: A draft has no scheduled date and no postIdX (not posted)
+    return result.data!
+        .where((post) => post.scheduledAt == null && post.postIdX == null)
+        .toList();
   }
 
   return [];
@@ -32,7 +35,8 @@ final draftPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) as
 
 /// Returns all "scheduled" posts for the current user.
 /// A "scheduled" post is one with [scheduledAt] != null.
-final scheduledPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) async {
+final scheduledPostsProvider =
+    FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
   ref.watch(scheduledRefreshProvider);
 
@@ -41,7 +45,7 @@ final scheduledPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref
 
   final getPostsUseCase = ref.watch(getPostsByUserUseCaseProvider);
   final result =
-  await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
+      await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
 
   if (result is DataSuccess<List<PostEntity>>) {
     return result.data!.where((post) => post.scheduledAt != null).toList();
@@ -52,7 +56,8 @@ final scheduledPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref
 
 /// Returns all "posted" posts for the current user.
 /// A "posted" post is one with [updatedAt] != null.
-final postedPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) async {
+final postedPostsProvider =
+    FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
   ref.watch(postedRefreshProvider);
 
@@ -61,10 +66,11 @@ final postedPostsProvider = FutureProvider.autoDispose<List<PostEntity>>((ref) a
 
   final getPostsUseCase = ref.watch(getPostsByUserUseCaseProvider);
   final result =
-  await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
+      await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
 
   if (result is DataSuccess<List<PostEntity>>) {
-    return result.data!.where((post) => post.updatedAt != null).toList();
+    // A post is "posted" if it has updatedAt AND doesn't have scheduledAt
+    return result.data!.where((post) => post.postIdX != null).toList();
   }
 
   return [];

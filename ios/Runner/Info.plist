@@ -7,6 +7,10 @@
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>This app requires access to your location to show a map and let you pick places.</string>
 
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>https</string>
+</array>
 
 		<!-- Inside ios/Runner/Info.plist (not GoogleService-Info.plist) -->
 		<key>CFBundleURLTypes</key>

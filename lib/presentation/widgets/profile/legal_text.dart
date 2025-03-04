@@ -1,11 +1,11 @@
-// lib/presentation/widgets/profile/legal_text_provider.dart
+// lib/presentation/widgets/profile/legal_text.dart
 
 /// A utility class that provides legal text content for the app.
 ///
 /// This class contains static methods that return formatted strings for:
 /// - Terms of Service
 /// - Privacy Policy
-class LegalTextProvider {
+class LegalText {
   /// Returns the terms of service text
   static String getTermsOfService() {
     return '''

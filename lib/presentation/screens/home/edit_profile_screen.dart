@@ -476,7 +476,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         },
                         size: 110,
                         useHero: true,
-                        heroTag: 'profile-avatar',
+                        heroTag: 'profile-avatar-edit',
                       ),
                     ),
                   ],

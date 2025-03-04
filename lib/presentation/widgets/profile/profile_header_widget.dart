@@ -77,7 +77,8 @@ class ProfileHeaderWidget extends StatelessWidget {
           GestureDetector(
             onTap: onAvatarTap,
             child: Hero(
-              tag: 'profile-avatar',
+              tag:
+                  'profile-avatar-${isXConnected ? 'connected' : 'disconnected'}',
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -99,9 +100,9 @@ class ProfileHeaderWidget extends StatelessWidget {
                       ],
                       image: user?.avatarPath != null
                           ? DecorationImage(
-                        image: FileImage(File(user!.avatarPath!)),
-                        fit: BoxFit.cover,
-                      )
+                              image: FileImage(File(user!.avatarPath!)),
+                              fit: BoxFit.cover,
+                            )
                           : null,
                     ),
                     child: user?.avatarPath == null

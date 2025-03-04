@@ -369,6 +369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   size: 60,
                   showEditStyle: true,
                   useHero: true,
+                  uniqueId: 'home-screen',
                   heroTag: 'profile-avatar',
                   onTap: _navigateToEditProfile,
                 ),

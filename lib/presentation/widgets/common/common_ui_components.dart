@@ -18,6 +18,9 @@ class ProfileAvatarDisplay extends StatelessWidget {
   /// Size of the avatar
   final double size;
 
+  // Add a unique identifier property
+  final String uniqueId;
+
   /// Whether to show edit border styling
   final bool showEditStyle;
 
@@ -39,6 +42,7 @@ class ProfileAvatarDisplay extends StatelessWidget {
     this.onTap,
     this.useHero = false,
     this.heroTag = 'profile-avatar',
+    this.uniqueId = '',
   });
 
   @override
@@ -83,8 +87,11 @@ class ProfileAvatarDisplay extends StatelessWidget {
     );
 
     if (useHero) {
+      // Use a combination of the base heroTag and uniqueId to make it unique
+      final uniqueTag = uniqueId.isEmpty ? heroTag : '$heroTag-$uniqueId';
+
       return Hero(
-        tag: heroTag,
+        tag: uniqueTag,
         child: avatarContainer,
       );
     }

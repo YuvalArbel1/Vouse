@@ -300,6 +300,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     }
   }
 
+  /// Helper method to clear all post-related providers
+  void _clearAllProviders() {
+    ref.read(postTextProvider.notifier).state = '';
+    ref.read(postImagesProvider.notifier).clearAll();
+    ref.read(postLocationProvider.notifier).state = null;
+  }
+
   /// Handles saving the current post as a draft.
   ///
   /// The flow:
@@ -393,10 +400,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
         if (!mounted) return;
 
-        // Clear everything
-        ref.read(postTextProvider.notifier).state = '';
-        ref.read(postImagesProvider.notifier).clearAll();
-        ref.read(postLocationProvider.notifier).state = null;
+        // Clear providers using the helper method
+        _clearAllProviders();
 
         setState(() {
           _isEditing = false;
@@ -428,8 +433,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           ),
         );
 
-        // Go back to previous screen
-        ref.read(navigationServiceProvider).navigateBack(currentContext);
+        // Use the new navigateAfterPostSave method instead of navigateBack
+        ref.read(navigationServiceProvider).navigateAfterPostSave(
+              currentContext,
+              _isEditing,
+            );
       } else if (result is DataFailed) {
         toast("Error saving draft: ${result.error?.error}");
       }

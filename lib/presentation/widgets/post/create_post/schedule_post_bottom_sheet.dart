@@ -218,6 +218,13 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     }
   }
 
+  /// Helper method to clear all post-related providers
+  void _clearAllProviders() {
+    ref.read(postTextProvider.notifier).state = '';
+    ref.read(postImagesProvider.notifier).clearAll();
+    ref.read(postLocationProvider.notifier).state = null;
+  }
+
   /// Handles scheduling the post.
   Future<void> _onSchedulePressed() async {
     if (_isScheduling) return;
@@ -301,6 +308,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
 
         // Explicitly refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -320,10 +328,14 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
           ),
         );
 
-        ref.read(postTextProvider.notifier).state = '';
-        ref.read(postImagesProvider.notifier).clearAll();
-        ref.read(postLocationProvider.notifier).state = null;
-        if (mounted) ref.read(navigationServiceProvider).navigateBack(context);
+        _clearAllProviders();
+
+        if (mounted) {
+          ref.read(navigationServiceProvider).navigateAfterPostSave(
+                context,
+                widget.editingDraft != null,
+              );
+        }
       } else if (result is DataFailed) {
         toast("Error saving scheduled post: ${result.error?.error}");
       }

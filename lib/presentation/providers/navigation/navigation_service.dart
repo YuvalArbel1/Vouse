@@ -105,6 +105,20 @@ class NavigationService {
     Navigator.of(context).pop(result);
   }
 
+  /// Navigate back after scheduling or saving a draft post
+  void navigateAfterPostSave(BuildContext context, bool wasDraftEdit) {
+    // If this was a draft edit, we need to pop twice to get back to the drafts list
+    if (wasDraftEdit) {
+      // First pop closes the current screen
+      navigateBack(context);
+      // Second pop returns to the screen before the edit screen (likely the draft list)
+      navigateBack(context);
+    } else {
+      // For new drafts/posts, just pop once
+      navigateBack(context);
+    }
+  }
+
   /// Helper method to show confirmation dialog
   /// Returns true if confirmed, false otherwise
   Future<bool> showConfirmationDialog(

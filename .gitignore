@@ -1,55 +1,79 @@
-# =========================
-# Flutter (vouse_flutter) Specific
-# =========================
-
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related (Android Studio)
-*.iml
-*.ipr
-*.iws
+vouse_flutter/.idea
+vouse_flutter/.dart_tool
+vouse_flutter/windows
+vouse_flutter/test
+vouse_flutter/macos
+vouse_flutter/linux
+vouse_flutter/web
+vouse_flutter/build
+vouse_flutter/.flutter-plugins
+vouse_flutter/.flutter-plugins-dependencies
+vouse_flutter/vouse_flutter.iml
+vouse_flutter/firebase.json
+vouse_flutter/devtools_options.yaml
+vouse_flutter/lib/core/config/app_secrets.dart
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+vouse_flutter/android/.kotlin
+vouse_flutter/android/gradle-wrapper.jar
+vouse_flutter/android/app/.cxx
+vouse_flutter/android/app/google-services.json
+vouse_flutter/android/.gradle
+vouse_flutter/android/captures/
+vouse_flutter/android/gradlew
+vouse_flutter/android/gradlew.bat
+vouse_flutter/android/local.properties
+vouse_flutter/android/GeneratedPluginRegistrant.java
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
 
-# Symbolication related
-app.*.symbols
 
-# Obfuscation related
-app.*.map.json
+# Ignore patterns
+vouse_flutter/ios/**/dgph
+vouse_flutter/ios/*.mode1v3
+vouse_flutter/ios/*.mode2v3
+vouse_flutter/ios/*.moved-aside
+vouse_flutter/ios/*.pbxuser
+vouse_flutter/ios/*.perspectivev3
+vouse_flutter/ios/**/*sync/
+vouse_flutter/ios/.sconsign.dblite
+vouse_flutter/ios/.tags*
+vouse_flutter/ios/**/.vagrant/
+vouse_flutter/ios/**/DerivedData/
+vouse_flutter/ios/Icon?
+vouse_flutter/ios/**/Pods/
+vouse_flutter/ios/**/.symlinks/
+vouse_flutter/ios/Runner/Info.plist
+vouse_flutter/ios/Runner/GoogleService-Info.plist
+vouse_flutter/ios/profile
+vouse_flutter/ios/xcuserdata
+vouse_flutter/ios/**/.generated/
+vouse_flutter/ios/Flutter/App.framework
+vouse_flutter/ios/Flutter/Flutter.framework
+vouse_flutter/ios/Flutter/Flutter.podspec
+vouse_flutter/ios/Flutter/Generated.xcconfig
+vouse_flutter/ios/Flutter/ephemeral/
+vouse_flutter/ios/Flutter/app.flx
+vouse_flutter/ios/Flutter/app.zip
+vouse_flutter/ios/Flutter/flutter_assets/
+vouse_flutter/ios/Flutter/flutter_export_environment.sh
+vouse_flutter/ios/ServiceDefinitions.json
+vouse_flutter/ios/Runner/GeneratedPluginRegistrant.*
 
-# Android Studio build artifacts
-vouse_flutter/android/app/debug
-vouse_flutter/android/app/profile
-vouse_flutter/android/app/release
+# Exceptions to above rules.
+vouse_flutter/ios/!default.mode1v3
+vouse_flutter/ios/!default.mode2v3
+vouse_flutter/ios/!default.pbxuser
+vouse_flutter/ios/!default.perspectivev3
 
-# Secrets
-vouse_flutter/lib/core/config/app_secrets.dart
+
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
+
+
 
 
 # =========================

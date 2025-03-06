@@ -83,6 +83,7 @@ key.properties
 # Compiled output
 vouse_server/dist
 vouse_server/node_modules
+vouse_server/.idea
 vouse_server/build
 
 # Logs

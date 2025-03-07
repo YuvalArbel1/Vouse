@@ -22,20 +22,20 @@ export class User {
   /**
    * Encrypted Twitter OAuth access token
    */
-  @Column({ nullable: true })
-  accessToken: string;
+  @Column({ nullable: true, type: 'varchar' })
+  accessToken: string | null;
 
   /**
    * Encrypted Twitter OAuth refresh token
    */
-  @Column({ nullable: true })
-  refreshToken: string;
+  @Column({ nullable: true, type: 'varchar' })
+  refreshToken: string | null;
 
   /**
    * Timestamp when the access token expires
    */
-  @Column({ nullable: true })
-  tokenExpiresAt: Date;
+  @Column({ nullable: true, type: 'timestamp' })
+  tokenExpiresAt: Date | null;
 
   /**
    * Flag indicating if the user has connected their Twitter account

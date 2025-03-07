@@ -24,7 +24,7 @@ export class TokenEncryption {
   /**
    * Encrypt a token string
    */
-  encrypt(token: string): string {
+  encrypt(token: string): string | null {
     if (!token) return null;
 
     // Generate a random initialization vector
@@ -47,7 +47,7 @@ export class TokenEncryption {
   /**
    * Decrypt an encrypted token string
    */
-  decrypt(encryptedToken: string): string {
+  decrypt(encryptedToken: string): string | null {
     if (!encryptedToken) return null;
 
     // Split the encrypted token into its components

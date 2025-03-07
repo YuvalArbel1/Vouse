@@ -85,6 +85,7 @@ export class UserService {
   async disconnectTwitter(userId: string): Promise<User> {
     const user = await this.findOneOrFail(userId);
 
+    // Use null instead of undefined
     user.accessToken = null;
     user.refreshToken = null;
     user.isConnected = false;

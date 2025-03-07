@@ -9,7 +9,7 @@ export class CreateUserDto {
    * User ID from Firebase Authentication
    */
   @IsString()
-  userId: string;
+  userId!: string;
 }
 
 /**
@@ -20,13 +20,13 @@ export class ConnectTwitterDto {
    * Twitter OAuth access token
    */
   @IsString()
-  accessToken: string;
+  accessToken!: string;
 
   /**
    * Twitter OAuth refresh token
    */
   @IsString()
-  refreshToken: string;
+  refreshToken!: string;
 
   /**
    * Expiration timestamp for the access token
@@ -44,5 +44,5 @@ export class UpdateConnectionStatusDto {
    * Whether the user is connected to Twitter
    */
   @IsBoolean()
-  isConnected: boolean;
+  isConnected!: boolean;
 }

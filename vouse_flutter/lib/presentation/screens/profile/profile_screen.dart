@@ -18,6 +18,14 @@ import 'package:vouse_flutter/presentation/widgets/profile/settings_section_widg
 import 'package:vouse_flutter/presentation/widgets/profile/about_dialog_content.dart';
 import 'package:vouse_flutter/presentation/widgets/profile/legal_text.dart';
 
+/// A screen that displays the user's profile and provides access to account settings.
+///
+/// Features:
+/// - User avatar and profile information display
+/// - Account settings (edit profile, connect/disconnect X)
+/// - App information (about, terms, privacy policy)
+/// - Logout functionality
+/// - Real-time X connection status updates via provider
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -27,10 +35,16 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
+  /// Whether the profile is currently loading
   bool _isLoading = false;
-  bool _isXConnected = false;
+
+  /// Whether connecting to X is in progress
   bool _isConnectingX = false;
+
+  /// Animation controller for fade-in effects
   late AnimationController _animationController;
+
+  /// Fade animation for smooth UI appearance
   late Animation<double> _fadeAnimation;
 
   @override
@@ -51,7 +65,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     // Load profile data after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUserProfile();
-      _checkXConnection();
     });
   }
 
@@ -62,13 +75,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   /// Refreshes the user profile data safely
+  ///
+  /// Loads the user profile from the provider and refreshes X connection status.
+  /// Also starts the fade-in animation after data is loaded.
   Future<void> _refreshUserProfile() async {
     try {
       setState(() => _isLoading = true);
 
       // Direct call to load profile
       await ref.read(userProfileProvider.notifier).loadUserProfile();
-      await _checkXConnection();
+
+      // Also refresh the provider's connection status
+      ref.read(xConnectionStatusProvider.notifier).checkConnection();
 
       // Start animations after data is loaded
       _animationController.forward();
@@ -81,21 +99,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     }
   }
 
-  /// Check if X (Twitter) is connected
-  Future<void> _checkXConnection() async {
-    // Use the connection status directly from the provider
-    final isConnected = ref.read(xConnectionStatusProvider);
-    if (mounted) {
-      setState(() {
-        _isXConnected = isConnected;
-      });
-    }
-
-    // Also refresh the provider's connection status (optional)
-    ref.read(xConnectionStatusProvider.notifier).checkConnection();
-  }
-
   /// Connect to X (Twitter)
+  ///
+  /// Initiates the X OAuth flow and updates the connection status provider
+  /// when successful. Uses [TwitterXAuthUtil] to handle the connection logic.
   Future<void> _connectToX() async {
     setState(() => _isConnectingX = true);
 
@@ -108,54 +115,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     if (mounted) {
       setState(() {
         _isConnectingX = false;
-        if (success) {
-          _isXConnected = true;
-        }
       });
     }
   }
 
   /// Disconnect from X (Twitter)
+  ///
+  /// Disconnects the user's X account by clearing stored tokens.
+  /// The connection status is updated in the provider automatically.
   Future<void> _disconnectFromX() async {
-    final success = await TwitterXAuthUtil.disconnectFromX(
+    await TwitterXAuthUtil.disconnectFromX(
       context,
       ref,
       setLoadingState: (loading) => setState(() => _isLoading = loading),
       mounted: mounted,
     );
-
-    if (success && mounted) {
-      setState(() {
-        _isXConnected = false;
-      });
-    }
   }
 
   /// Handles user logout
+  ///
+  /// Shows a confirmation dialog and signs out the user if confirmed.
+  /// Navigates to the sign-in screen on successful logout.
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Log Out',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text('Are you sure you want to log out?'),
-            actions: [
-              TextButton(
-                onPressed: () => ref
-                    .read(navigationServiceProvider)
-                    .navigateBack(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => ref
-                    .read(navigationServiceProvider)
-                    .navigateBack(context, true),
-                child:
-                    const Text('Log Out', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => ref
+                .read(navigationServiceProvider)
+                .navigateBack(context, false),
+            child: const Text('Cancel'),
           ),
-        ) ??
+          TextButton(
+            onPressed: () => ref
+                .read(navigationServiceProvider)
+                .navigateBack(context, true),
+            child:
+            const Text('Log Out', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!shouldLogout) return;
@@ -185,12 +189,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     }
   }
 
+  /// Navigates to the edit profile screen
   void _navigateToEditProfile() {
     ref
         .read(navigationServiceProvider)
         .navigateToEditProfile(context, isEditProfile: true, clearStack: false);
   }
 
+  /// Shows the about Vouse dialog
   void _showAboutVouse() {
     showDialog(
       context: context,
@@ -208,6 +214,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  /// Shows the terms of service dialog
   void _showTermsOfService() {
     showDialog(
       context: context,
@@ -227,6 +234,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  /// Shows the privacy policy dialog
   void _showPrivacyPolicy() {
     showDialog(
       context: context,
@@ -248,9 +256,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Get user profile from provider
     final userProfileState = ref.watch(userProfileProvider);
     final user = userProfileState.user;
 
+    // Watch X connection status directly from provider
+    // This ensures real-time updates when connecting or disconnecting
+    final isXConnected = ref.watch(xConnectionStatusProvider);
+
+    // Determine if loading is in progress
     final isLoading = _isLoading ||
         userProfileState.loadingState == UserProfileLoadingState.loading ||
         userProfileState.loadingState == UserProfileLoadingState.initial;
@@ -260,144 +274,144 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       body: isLoading
           ? const FullScreenLoading(message: 'Loading profile...')
           : RefreshIndicator(
-              onRefresh: _refreshUserProfile,
-              child: SafeArea(
-                child: Container(
-                  // Add background image like in home screen
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/images/vouse_bg.jpg'),
-                      fit: BoxFit.cover,
-                      opacity: 0.8,
+        onRefresh: _refreshUserProfile,
+        child: SafeArea(
+          child: Container(
+            // Add background image like in home screen
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/vouse_bg.jpg'),
+                fit: BoxFit.cover,
+                opacity: 0.8,
+              ),
+            ),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  children: [
+                    // Profile Header with Avatar and Logout
+                    ProfileHeaderWidget(
+                      user: user,
+                      isXConnected: isXConnected, // Use provider value
+                      onSettingsTap: _navigateToEditProfile,
+                      onAvatarTap: _navigateToEditProfile,
                     ),
-                  ),
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
+
+                    // Main Content
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Profile Header with Avatar and Logout
-                          ProfileHeaderWidget(
-                            user: user,
-                            isXConnected: _isXConnected,
-                            onSettingsTap: _navigateToEditProfile,
-                            onAvatarTap: _navigateToEditProfile,
+                          const SizedBox(height: 20),
+
+                          // Account Settings Section
+                          SettingsSectionWidget(
+                            title: 'Account Settings',
+                            children: [
+                              SettingsTileWidget(
+                                title: 'Edit Profile',
+                                icon: Icons.person_outline,
+                                iconColor: vPrimaryColor,
+                                onTap: _navigateToEditProfile,
+                              ),
+                              SettingsTileWidget(
+                                title: isXConnected
+                                    ? 'Disconnect X Account'
+                                    : 'Connect X Account',
+                                icon: Icons.link,
+                                iconColor: isXConnected
+                                    ? Colors.red
+                                    : vPrimaryColor,
+                                onTap: isXConnected
+                                    ? _disconnectFromX
+                                    : _connectToX,
+                                isLoading: _isConnectingX,
+                                isDestructive: isXConnected,
+                              ),
+                            ],
                           ),
 
-                          // Main Content
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 20),
+                          const SizedBox(height: 24),
 
-                                // Account Settings Section
-                                SettingsSectionWidget(
-                                  title: 'Account Settings',
-                                  children: [
-                                    SettingsTileWidget(
-                                      title: 'Edit Profile',
-                                      icon: Icons.person_outline,
-                                      iconColor: vPrimaryColor,
-                                      onTap: _navigateToEditProfile,
-                                    ),
-                                    SettingsTileWidget(
-                                      title: _isXConnected
-                                          ? 'Disconnect X Account'
-                                          : 'Connect X Account',
-                                      icon: Icons.link,
-                                      iconColor: _isXConnected
-                                          ? Colors.red
-                                          : vPrimaryColor,
-                                      onTap: _isXConnected
-                                          ? _disconnectFromX
-                                          : _connectToX,
-                                      isLoading: _isConnectingX,
-                                      isDestructive: _isXConnected,
-                                    ),
-                                  ],
-                                ),
+                          // App Information Section
+                          SettingsSectionWidget(
+                            title: 'App Information',
+                            children: [
+                              SettingsTileWidget(
+                                title: 'About Vouse',
+                                icon: Icons.info_outline,
+                                iconColor: vPrimaryColor,
+                                onTap: _showAboutVouse,
+                              ),
+                              SettingsTileWidget(
+                                title: 'Terms of Service',
+                                icon: Icons.description_outlined,
+                                iconColor: vPrimaryColor,
+                                onTap: _showTermsOfService,
+                              ),
+                              SettingsTileWidget(
+                                title: 'Privacy Policy',
+                                icon: Icons.privacy_tip_outlined,
+                                iconColor: vPrimaryColor,
+                                onTap: _showPrivacyPolicy,
+                              ),
+                            ],
+                          ),
 
-                                const SizedBox(height: 24),
+                          const SizedBox(height: 40),
 
-                                // App Information Section
-                                SettingsSectionWidget(
-                                  title: 'App Information',
-                                  children: [
-                                    SettingsTileWidget(
-                                      title: 'About Vouse',
-                                      icon: Icons.info_outline,
-                                      iconColor: vPrimaryColor,
-                                      onTap: _showAboutVouse,
-                                    ),
-                                    SettingsTileWidget(
-                                      title: 'Terms of Service',
-                                      icon: Icons.description_outlined,
-                                      iconColor: vPrimaryColor,
-                                      onTap: _showTermsOfService,
-                                    ),
-                                    SettingsTileWidget(
-                                      title: 'Privacy Policy',
-                                      icon: Icons.privacy_tip_outlined,
-                                      iconColor: vPrimaryColor,
-                                      onTap: _showPrivacyPolicy,
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 40),
-
-                                // Logout Button
-                                Center(
-                                  child: SizedBox(
-                                    width:
-                                        MediaQuery.of(context).size.width * 0.7,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _handleLogout,
-                                      icon: const Icon(Icons.logout,
-                                          color: Colors.white),
-                                      label: const Text('Logout',
-                                          style:
-                                              TextStyle(color: Colors.white)),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red.shade400,
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    ),
+                          // Logout Button
+                          Center(
+                            child: SizedBox(
+                              width:
+                              MediaQuery.of(context).size.width * 0.7,
+                              child: ElevatedButton.icon(
+                                onPressed: _handleLogout,
+                                icon: const Icon(Icons.logout,
+                                    color: Colors.white),
+                                label: const Text('Logout',
+                                    style:
+                                    TextStyle(color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade400,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(12),
                                   ),
                                 ),
-
-                                // Version info
-                                const SizedBox(height: 16),
-                                Center(
-                                  child: Text(
-                                    'Vouse v1.0.0',
-                                    style: TextStyle(
-                                      color: vBodyGrey.withAlpha(150),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-
-                                // Bottom padding for safe area
-                                const SizedBox(height: 40),
-                              ],
+                              ),
                             ),
                           ),
+
+                          // Version info
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Text(
+                              'Vouse v1.0.0',
+                              style: TextStyle(
+                                color: vBodyGrey.withAlpha(150),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+
+                          // Bottom padding for safe area
+                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
+      ),
     );
   }
 }

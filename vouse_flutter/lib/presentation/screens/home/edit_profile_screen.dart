@@ -121,7 +121,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() {
       _isXConnected = isConnected;
       connectXController.text =
-          isConnected ? 'X account connected' : 'Tap to connect your X account';
+      isConnected ? 'Disconnect X Account' : 'Tap to connect your X account';
     });
   }
 
@@ -166,7 +166,24 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (success && mounted) {
       setState(() {
         _isXConnected = true;
-        connectXController.text = 'X account connected';
+        connectXController.text = 'Disconnect X Account';
+      });
+    }
+  }
+
+  /// Disconnects from X (Twitter) by clearing stored tokens
+  Future<void> _disconnectFromX() async {
+    final success = await TwitterXAuthUtil.disconnectFromX(
+      context,
+      ref,
+      setLoadingState: (loading) => setState(() => _isProcessing = loading),
+      mounted: mounted,
+    );
+
+    if (success && mounted) {
+      setState(() {
+        _isXConnected = false;
+        connectXController.text = 'Tap to connect your X account';
       });
     }
   }
@@ -308,7 +325,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       // Full Name
                                       Text('Full Name',
@@ -369,7 +386,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                           prefixIcon: Icons.transgender,
                                         ),
                                         items:
-                                            genderOptions.map((String value) {
+                                        genderOptions.map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
                                             child: Text(value,
@@ -389,34 +406,40 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       ),
                                       const SizedBox(height: 16),
 
-                                      // Connect X
+                                      // Connect/Disconnect X
                                       Text('Connect to X (Twitter)',
                                           style: boldTextStyle(size: 14)),
                                       const SizedBox(height: 8),
                                       Builder(
                                         builder: (ctx) {
                                           final baseDecoration =
-                                              waInputDecoration(
+                                          waInputDecoration(
                                             hint:
-                                                'Tap to connect your X account',
+                                            'Tap to connect your X account',
                                           );
 
                                           final updatedDecoration =
-                                              baseDecoration.copyWith(
+                                          baseDecoration.copyWith(
                                             filled: true,
-                                            fillColor: vAccentColor.withAlpha(
-                                                (0.06 * 255).toInt()),
+                                            fillColor: _isXConnected
+                                                ? Colors.red.withAlpha(20)
+                                                : vAccentColor.withAlpha((0.06 * 255).toInt()),
                                             prefixIcon: Icon(
                                               _isXConnected
                                                   ? Icons.link
                                                   : Icons.link_off,
-                                              color: vAccentColor,
+                                              color: _isXConnected
+                                                  ? Colors.red
+                                                  : vAccentColor,
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                               borderSide: BorderSide(
-                                                  color: vAccentColor),
+                                                color: _isXConnected
+                                                    ? Colors.red
+                                                    : vAccentColor,
+                                              ),
                                             ),
                                           );
 
@@ -427,11 +450,11 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                             focus: connectXFocusNode,
                                             keyboardType: TextInputType.text,
                                             decoration: updatedDecoration,
-                                            onTap: _connectToX,
+                                            onTap: _isXConnected
+                                                ? _disconnectFromX
+                                                : _connectToX,
                                             validator: (value) {
-                                              if (!_isXConnected) {
-                                                return 'Please connect your X account';
-                                              }
+                                              // Make X connection optional
                                               return null;
                                             },
                                           );
@@ -446,9 +469,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left:
-                                        MediaQuery.of(context).size.width * 0.1,
+                                    MediaQuery.of(context).size.width * 0.1,
                                     right:
-                                        MediaQuery.of(context).size.width * 0.1,
+                                    MediaQuery.of(context).size.width * 0.1,
                                   ),
                                   child: AppButton(
                                     color: vPrimaryColor,
@@ -456,7 +479,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     onTap: _handleContinue,
                                     child: Text('Continue',
                                         style:
-                                            boldTextStyle(color: Colors.white)),
+                                        boldTextStyle(color: Colors.white)),
                                   ),
                                 ),
                               ],

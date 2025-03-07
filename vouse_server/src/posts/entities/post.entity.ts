@@ -41,7 +41,7 @@ export class Post {
   /**
    * Twitter post ID, null until published
    */
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   postIdX: string | null;
 
   /**

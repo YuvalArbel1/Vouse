@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { XModule } from './x/x.module';
+import { PostsModule } from './posts/posts.module';
 import { typeOrmConfig } from './config/typeorm.config';
 import { redisConfig } from './config/redis.config';
 
@@ -23,8 +25,10 @@ import { redisConfig } from './config/redis.config';
     }),
 
     // Feature modules
-    AuthModule,
-    UsersModule,
+    AuthModule, // Firebase authentication
+    UsersModule, // User management
+    XModule, // Twitter API v2 integration
+    PostsModule, // Post scheduling and metrics
   ],
   controllers: [],
   providers: [],

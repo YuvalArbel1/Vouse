@@ -2,6 +2,7 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
+import axios from 'axios';
 
 import { PostService } from '../services/post.service';
 import { EngagementService } from '../services/engagement.service';
@@ -19,6 +20,33 @@ export class PostPublishProcessor {
     private readonly xClientService: XClientService,
     private readonly xAuthService: XAuthService,
   ) {}
+
+  /**
+   * Downloads an image from a Firebase Storage URL
+   * @param url Firebase Storage URL
+   * @returns Base64 encoded image and MIME type
+   */
+  private async downloadImageFromUrl(
+    url: string,
+  ): Promise<{ base64Image: string; contentType: string }> {
+    try {
+      this.logger.log(`Downloading image from ${url}`);
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+      // Get content type from response headers
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+
+      // Convert array buffer to base64
+      const base64Image = Buffer.from(response.data).toString('base64');
+
+      return { base64Image, contentType };
+    } catch (error) {
+      this.logger.error(
+        `Failed to download image from ${url}: ${error.message}`,
+      );
+      throw new Error(`Failed to download image: ${error.message}`);
+    }
+  }
 
   @Process('publish')
   async handlePublish(job: Job<{ postId: string; userId: string }>) {
@@ -44,23 +72,28 @@ export class PostPublishProcessor {
       const mediaIds = [];
       if (post.cloudImageUrls && post.cloudImageUrls.length > 0) {
         for (const imageUrl of post.cloudImageUrls) {
-          // In a real implementation, you would download the image from the URL
-          // and then upload it to Twitter. This is simplified for clarity.
-          const response = await fetch(imageUrl);
-          const imageBuffer = await response.arrayBuffer();
-          const base64Image = Buffer.from(imageBuffer).toString('base64');
+          try {
+            // Download the image from Firebase Storage URL
+            const { base64Image, contentType } =
+              await this.downloadImageFromUrl(imageUrl);
 
-          // Get MIME type from URL or content-type
-          const contentType =
-            response.headers.get('content-type') || 'image/jpeg';
+            // Upload to Twitter
+            const mediaId = await this.xClientService.uploadMedia(
+              tokens.accessToken,
+              base64Image,
+              contentType,
+            );
 
-          // Upload to Twitter
-          const mediaId = await this.xClientService.uploadMedia(
-            tokens.accessToken,
-            base64Image,
-            contentType,
-          );
-          mediaIds.push(mediaId);
+            if (mediaId) {
+              mediaIds.push(mediaId);
+              this.logger.log(`Successfully uploaded media: ${mediaId}`);
+            }
+          } catch (error) {
+            this.logger.error(
+              `Error processing image ${imageUrl}: ${error.message}`,
+            );
+            // Continue with other images if one fails
+          }
         }
       }
 

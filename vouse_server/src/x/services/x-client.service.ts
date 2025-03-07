@@ -2,6 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import * as dotenv from 'dotenv';
+import * as FormData from 'form-data';
 
 dotenv.config();
 
@@ -21,12 +22,15 @@ export class XClientService {
   private client: AxiosInstance;
   // Twitter API v2 base URL
   private readonly apiBaseUrl = 'https://api.twitter.com/2';
+  // Twitter media upload URL (still v1.1)
+  private readonly mediaUploadUrl =
+    'https://upload.twitter.com/1.1/media/upload.json';
 
   constructor() {
     // Create a pre-configured axios instance for API calls
     this.client = axios.create({
       baseURL: this.apiBaseUrl,
-      timeout: 10000, // 10 seconds timeout
+      timeout: 30000, // 30 seconds timeout (increased for media uploads)
       headers: {
         'Content-Type': 'application/json',
       },
@@ -69,10 +73,12 @@ export class XClientService {
     endpoint: string,
     data?: any,
     params?: any,
+    baseUrl?: string,
   ): Promise<any> {
     const config: AxiosRequestConfig = {
       method,
       url: endpoint,
+      baseURL: baseUrl || this.apiBaseUrl,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -81,7 +87,7 @@ export class XClientService {
     };
 
     try {
-      const response = await this.client.request(config);
+      const response = await axios.request(config);
       return response.data;
     } catch (error) {
       // If the error is due to an expired token, we should handle it at a higher level
@@ -163,8 +169,6 @@ export class XClientService {
    *
    * Reference: https://developer.twitter.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
    *
-   * This is a simplified version - media upload requires a chunked approach for larger files
-   *
    * @param accessToken User's OAuth access token
    * @param mediaData Base64 encoded media data
    * @param mediaType MIME type of the media
@@ -175,22 +179,28 @@ export class XClientService {
     mediaData: string,
     mediaType: string,
   ): Promise<string> {
-    // Twitter's media upload is special - it uses v1.1 API and has a different endpoint
-    const uploadUrl = 'https://upload.twitter.com/1.1/media/upload.json';
-
-    // This is a simplified implementation - for larger files, you should use chunked upload
     try {
+      this.logger.log(`Uploading media of type ${mediaType}`);
+
+      // Create form data
       const formData = new FormData();
       formData.append('media_data', mediaData);
 
-      // Using axios directly since it's a different endpoint
-      const response = await axios.post(uploadUrl, formData, {
+      // Use axios directly for the multipart/form-data request
+      const response = await axios.post(this.mediaUploadUrl, formData, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'multipart/form-data',
+          ...formData.getHeaders(),
         },
       });
 
+      if (!response.data || !response.data.media_id_string) {
+        throw new Error('Failed to get media ID from Twitter response');
+      }
+
+      this.logger.log(
+        `Successfully uploaded media ID: ${response.data.media_id_string}`,
+      );
       return response.data.media_id_string;
     } catch (error) {
       this.logger.error(`Failed to upload media: ${error.message}`);

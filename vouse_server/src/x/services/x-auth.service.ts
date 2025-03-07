@@ -5,9 +5,9 @@ import { XClientService } from './x-client.service';
 import { TokenEncryption } from '../../common/utils/token_encryption.util';
 
 interface TwitterAuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  tokenExpiresAt?: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  tokenExpiresAt?: string | null;
 }
 
 /**
@@ -37,6 +37,10 @@ export class XAuthService {
     tokens: TwitterAuthTokens,
   ): Promise<any> {
     try {
+      if (!tokens.accessToken || !tokens.refreshToken) {
+        throw new Error('Access token and refresh token are required');
+      }
+
       // Encrypt tokens before storage
       const encryptedAccessToken = this.tokenEncryption.encrypt(
         tokens.accessToken,
@@ -98,11 +102,20 @@ export class XAuthService {
       return null;
     }
 
-    return {
-      accessToken: this.tokenEncryption.decrypt(user.accessToken),
-      refreshToken: this.tokenEncryption.decrypt(user.refreshToken),
-      tokenExpiresAt: user.tokenExpiresAt?.toISOString(),
-    };
+    try {
+      return {
+        accessToken: this.tokenEncryption.decrypt(user.accessToken),
+        refreshToken: this.tokenEncryption.decrypt(user.refreshToken),
+        tokenExpiresAt: user.tokenExpiresAt?.toISOString() || null,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to decrypt tokens for user ${userId}: ${error.message}`,
+      );
+      // If decryption fails, update connection status to false
+      await this.updateConnectionStatus(userId, false);
+      return null;
+    }
   }
 
   /**

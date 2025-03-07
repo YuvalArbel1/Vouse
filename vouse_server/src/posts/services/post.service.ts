@@ -30,6 +30,10 @@ export class PostService {
       status: createPostDto.scheduledAt
         ? PostStatus.SCHEDULED
         : PostStatus.DRAFT,
+      // Convert scheduledAt string to Date if provided
+      scheduledAt: createPostDto.scheduledAt
+        ? new Date(createPostDto.scheduledAt)
+        : null,
       // Parse arrays from strings if needed
       localImagePaths: Array.isArray(createPostDto.localImagePaths)
         ? createPostDto.localImagePaths
@@ -59,7 +63,11 @@ export class PostService {
    */
   private async schedulePost(post: Post): Promise<void> {
     const now = new Date();
-    const scheduledTime = new Date(post.scheduledAt);
+    // Make sure scheduledAt is a Date
+    const scheduledTime =
+      post.scheduledAt instanceof Date
+        ? post.scheduledAt
+        : new Date(post.scheduledAt);
 
     // Calculate delay in milliseconds
     const delayMs = Math.max(0, scheduledTime.getTime() - now.getTime());
@@ -157,8 +165,14 @@ export class PostService {
       throw new Error('Cannot update already published posts');
     }
 
-    // Prepare update data
-    const updateData: Partial<Post> = { ...updatePostDto };
+    // Prepare update data with proper type conversions
+    const updateData: Partial<Post> = {
+      ...updatePostDto,
+      // Convert scheduledAt string to Date if provided
+      scheduledAt: updatePostDto.scheduledAt
+        ? new Date(updatePostDto.scheduledAt)
+        : undefined,
+    };
 
     // Handle JSON fields
     if (updatePostDto.localImagePaths) {
@@ -247,15 +261,15 @@ export class PostService {
    */
   async updateAfterPublishing(
     id: string,
-    postIdX: string,
+    postIdX: string | null,
     status: PostStatus,
     failureReason?: string,
   ): Promise<Post> {
     const updateData: Partial<Post> = {
       status,
       postIdX,
-      publishedAt: status === PostStatus.PUBLISHED ? new Date() : undefined,
-      failureReason,
+      publishedAt: status === PostStatus.PUBLISHED ? new Date() : null,
+      failureReason: failureReason || null,
     };
 
     await this.postRepository.update(id, updateData);

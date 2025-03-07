@@ -42,7 +42,7 @@ export class Post {
    * Twitter post ID, null until published
    */
   @Column({ nullable: true })
-  postIdX: string;
+  postIdX: string | null;
 
   /**
    * Foreign key to the user who created this post
@@ -67,19 +67,19 @@ export class Post {
    * A title for organizing posts in the app (not published to Twitter)
    */
   @Column({ nullable: true })
-  title: string;
+  title: string | null;
 
   /**
    * When the post should be published
    */
   @Column({ type: 'timestamp', nullable: true })
-  scheduledAt: Date;
+  scheduledAt: Date | null;
 
   /**
    * When the post was actually published
    */
   @Column({ type: 'timestamp', nullable: true })
-  publishedAt: Date;
+  publishedAt: Date | null;
 
   /**
    * Current status of the post
@@ -95,13 +95,13 @@ export class Post {
    * If the post failed to publish, store the reason
    */
   @Column({ type: 'text', nullable: true })
-  failureReason: string;
+  failureReason: string | null;
 
   /**
    * Visibility setting (for Twitter's reply control)
    */
   @Column({ nullable: true })
-  visibility: string;
+  visibility: string | null;
 
   /**
    * Paths to images stored locally in the Flutter app
@@ -119,19 +119,19 @@ export class Post {
    * Latitude for location-based posts
    */
   @Column({ type: 'float', nullable: true })
-  locationLat: number;
+  locationLat: number | null;
 
   /**
    * Longitude for location-based posts
    */
   @Column({ type: 'float', nullable: true })
-  locationLng: number;
+  locationLng: number | null;
 
   /**
    * Human-readable location address
    */
   @Column({ nullable: true })
-  locationAddress: string;
+  locationAddress: string | null;
 
   /**
    * When the post record was created

@@ -67,13 +67,15 @@ export class UserService {
   ): Promise<User> {
     const user = await this.findOneOrFail(userId);
 
-    // In a real implementation, we would encrypt these tokens before storage
+    // Set token values
     user.accessToken = connectTwitterDto.accessToken;
     user.refreshToken = connectTwitterDto.refreshToken;
     user.isConnected = true;
 
     if (connectTwitterDto.tokenExpiresAt) {
       user.tokenExpiresAt = new Date(connectTwitterDto.tokenExpiresAt);
+    } else {
+      user.tokenExpiresAt = null;
     }
 
     return this.userRepository.save(user);
@@ -85,7 +87,7 @@ export class UserService {
   async disconnectTwitter(userId: string): Promise<User> {
     const user = await this.findOneOrFail(userId);
 
-    // Use null instead of undefined
+    // Clear token values
     user.accessToken = null;
     user.refreshToken = null;
     user.isConnected = false;
@@ -104,6 +106,13 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
 
     user.isConnected = updateConnectionStatusDto.isConnected;
+
+    // If connection status is set to false, also clear tokens
+    if (!updateConnectionStatusDto.isConnected) {
+      user.accessToken = null;
+      user.refreshToken = null;
+      user.tokenExpiresAt = null;
+    }
 
     return this.userRepository.save(user);
   }

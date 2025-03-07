@@ -32,7 +32,7 @@ class AiTextState {
     return AiTextState(
       partialText: partialText ?? this.partialText,
       isGenerating: isGenerating ?? this.isGenerating,
-      error: error,
+      error: error != null ? error : this.error,
     );
   }
 }
@@ -49,11 +49,15 @@ class AiTextNotifier extends StateNotifier<AiTextState> {
   ///
   /// Cancels any existing subscription first, then sets [isGenerating] = true.
   /// On completion or error, updates [state] accordingly.
+  ///
+  /// [category] parameter is used to optimize token-to-character ratio
+  /// for different types of content.
   Future<void> generateText(
-    String prompt, {
-    int desiredChars = 150,
-    double temperature = 0.5,
-  }) async {
+      String prompt, {
+        int desiredChars = 150,
+        double temperature = 0.5,
+        String category = 'General',
+      }) async {
     await _sub?.cancel();
     state = AiTextState(partialText: '', isGenerating: true);
 
@@ -63,11 +67,12 @@ class AiTextNotifier extends StateNotifier<AiTextState> {
           prompt,
           desiredChars: desiredChars,
           temperature: temperature,
+          category: category, // Pass category to use case
         ),
       );
 
       _sub = stream.listen(
-        (updated) {
+            (updated) {
           state = state.copyWith(partialText: updated, isGenerating: true);
         },
         onDone: () {
@@ -105,7 +110,7 @@ class AiTextNotifier extends StateNotifier<AiTextState> {
 
 /// Provides a singleton [AiTextNotifier] linked to the [GenerateTextUseCase].
 final aiTextNotifierProvider =
-    StateNotifierProvider<AiTextNotifier, AiTextState>((ref) {
+StateNotifierProvider<AiTextNotifier, AiTextState>((ref) {
   final useCase = ref.watch(generateTextUseCaseProvider);
   return AiTextNotifier(useCase);
 });

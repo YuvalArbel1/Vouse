@@ -11,14 +11,22 @@ class FirebaseVertexAiClient {
   late final dynamic _model;
 
   /// Creates a client that uses [modelId] and [systemInstruction] for Vertex AI.
-  /// Defaults to model 'gemini-2.0-flash'.
+  /// Defaults to model 'gemini-2.0-flash' with improved system instructions
+  /// for social media post generation.
   FirebaseVertexAiClient({
     this.modelId = 'gemini-2.0-flash',
-    required this.systemInstruction,
-  }) {
+    Content? systemInstruction,
+  }) : systemInstruction = systemInstruction ?? Content.system(
+      "You are an AI that writes concise, engaging social media posts. "
+          "Adapt your tone to match the category (professional for Business, "
+          "casual for Personal, etc). Strictly respect character limits. "
+          "Return only the post text without explanations or disclaimers. "
+          "For best engagement, include emotion, clarity, and where appropriate, "
+          "a subtle call to action."
+  ) {
     _model = FirebaseVertexAI.instance.generativeModel(
       model: modelId,
-      systemInstruction: systemInstruction,
+      systemInstruction: this.systemInstruction,
     );
   }
 
@@ -39,6 +47,11 @@ class FirebaseVertexAiClient {
 Write a social media post between $minTokens and $maxTokens tokens (~${minTokens * 4} to ${maxTokens * 4} chars).
 IMPORTANT: Your response MUST be under 280 characters (Twitter limit).
 Only final text, no disclaimers.
+
+Here are examples of good posts in different styles:
+- Business: "Just launched our new productivity suite with advanced AI features. Save 3 hours daily on routine tasks. Early adopters get 20% off. #ProductivityRevolution"
+- Personal: "Hiked Mt. Rainier today! The view from the summit was absolutely breathtaking. Nothing beats that feeling of accomplishment mixed with nature's beauty. #MountainLife"
+- Question: "What's one productivity hack that completely changed your workflow? Mine is time-blocking my calendar the night before. Game changer!"
 
 $prompt
 """;

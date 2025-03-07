@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'dart:math' as math;
 
 import '../../../../core/util/colors.dart';
 import '../../../providers/ai/ai_text_notifier.dart';
@@ -13,8 +14,9 @@ import '../../../providers/navigation/navigation_service.dart';
 ///
 /// This dialog allows the user to:
 /// 1. Enter a prompt describing the desired post content.
-/// 2. Adjust creativity and length parameters.
-/// 3. Generate AI text and optionally insert it into the current post.
+/// 2. Select a content category to adapt the generation style.
+/// 3. Adjust creativity and length parameters with enhanced controls.
+/// 4. Generate AI text and optionally insert it into the current post.
 ///
 /// The AI text is provided by [AiTextNotifier]. The generated text is stored in
 /// [partialText], which is mirrored into [_promptController].
@@ -48,10 +50,13 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
   /// Desired maximum length of the AI output, in characters (20..280).
   int _lengthInt = 150;
 
+  /// The raw slider value for non-linear length mapping
+  double _lengthSliderValue = 150;
+
   /// Tracks whether the user has already generated text. Used to show "Regenerate" vs "Generate."
   bool _hasGenerated = false;
 
-  /// Selected prompt category (helps show examples)
+  /// Selected prompt category (helps show examples and tailor generation)
   String _selectedCategory = 'General';
 
   /// List of prompt categories
@@ -91,9 +96,37 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
     super.dispose();
   }
 
+  /// Converts slider value to character count using a non-linear mapping
+  /// to provide better precision for shorter posts.
+  ///
+  /// Ensures the full slider range (20-280) is utilized properly, with:
+  /// - Minimum slider position (20) = 20 characters
+  /// - Maximum slider position (280) = 280 characters
+  /// - Values in between follow a non-linear curve for better control
+  int _sliderValueToCharCount(double value) {
+    // Define the slider and output ranges
+    const double minSlider = 20.0;
+    const double maxSlider = 280.0;
+    const double minChars = 20.0;
+    const double maxChars = 280.0;
+
+    // Normalize value to 0-1 range
+    final normalizedValue = (value - minSlider) / (maxSlider - minSlider);
+
+    // Apply non-linear transformation (power curve)
+    // Using power of 2 gives more precision for shorter text
+    final curve = math.pow(normalizedValue, 2.0);
+
+    // Convert back to character range
+    final result = minChars + (curve * (maxChars - minChars));
+
+    return result.round().clamp(minChars.toInt(), maxChars.toInt());
+  }
+
   /// Hides the keyboard, validates the prompt, and triggers AI text generation via [AiTextNotifier].
   ///
   /// Also sets [_hasGenerated] to `true` to switch the UI to "Regenerate & Insert."
+  /// Uses the selected category to tailor the generation.
   void _onGeneratePressed() {
     // Hide the keyboard.
     FocusScope.of(context).unfocus();
@@ -104,14 +137,8 @@ class _AiTextGenerationDialogState extends ConsumerState<AiTextGenerationDialog>
       return;
     }
 
-    // Add category context to the prompt
-    final enhancedPrompt = """
-Category: $_selectedCategory
-
-Write a ${_selectedCategory.toLowerCase()} social media post that is under $_lengthInt characters (max 280).
-
-User request: $prompt
-""";
+    // Create an enhanced prompt with category-specific guidance
+    final enhancedPrompt = _getEnhancedPromptForCategory(_selectedCategory, prompt, _lengthInt);
 
     setState(() => _hasGenerated = true);
 
@@ -119,8 +146,74 @@ User request: $prompt
     final desiredChars = _lengthInt;
 
     // Generate AI text via the notifier with the enhanced prompt
-    ref.read(aiTextNotifierProvider.notifier).generateText(enhancedPrompt,
-        desiredChars: desiredChars, temperature: temperature);
+    ref.read(aiTextNotifierProvider.notifier).generateText(
+      enhancedPrompt,
+      desiredChars: desiredChars,
+      temperature: temperature,
+      category: _selectedCategory, // Pass category for optimization
+    );
+  }
+
+  /// Creates a category-specific enhanced prompt with tailored instructions
+  /// to guide the AI in generating appropriate content for each category.
+  String _getEnhancedPromptForCategory(String category, String prompt, int length) {
+    switch (category) {
+      case 'Business':
+        return """
+Category: Business
+Write a professional business update under $length characters.
+Use formal language, focus on value proposition, include a clear call-to-action.
+Avoid hyperbole and maintain a professional tone.
+
+User request: $prompt
+""";
+      case 'Personal':
+        return """
+Category: Personal
+Write a conversational personal post under $length characters.
+Use first-person perspective, show personality, be authentic and relatable.
+Include personal insights or feelings.
+
+User request: $prompt
+""";
+      case 'Promotional':
+        return """
+Category: Promotional
+Write a persuasive promotional post under $length characters.
+Highlight benefits, create urgency, include a compelling call-to-action.
+Use powerful, engaging language that inspires action.
+
+User request: $prompt
+""";
+      case 'Announcement':
+        return """
+Category: Announcement
+Write a clear announcement post under $length characters.
+Include key details (what, when, where if applicable).
+Be concise but informative, maintain appropriate tone for the announcement type.
+
+User request: $prompt
+""";
+      case 'Question':
+        return """
+Category: Question
+Write an engaging question post under $length characters.
+Make it thought-provoking, designed to encourage responses.
+Keep it open-ended where appropriate to maximize engagement.
+
+User request: $prompt
+""";
+      case 'General':
+      default:
+        return """
+Category: General
+Write an engaging social media post under $length characters.
+Balance information and engagement, use conversational tone.
+Include appropriate hashtags or emojis if they enhance the message.
+
+User request: $prompt
+""";
+    }
   }
 
   /// Resets the state to allow a new AI text generation.
@@ -368,7 +461,7 @@ User request: $prompt
             ),
             const SizedBox(height: 8),
 
-            // Length slider
+            // Length slider with non-linear mapping
             Row(
               children: [
                 Icon(
@@ -384,17 +477,31 @@ User request: $prompt
               ],
             ),
             Slider(
-              value: _lengthInt.toDouble(),
+              value: _lengthSliderValue,
               min: 20,
               max: 280,
               divisions: 26,
               activeColor: vPrimaryColor,
               label: "$_lengthInt",
               onChanged: (val) {
+                final charCount = _sliderValueToCharCount(val);
                 setState(() {
-                  _lengthInt = val.toInt();
+                  _lengthSliderValue = val;
+                  _lengthInt = charCount;
                 });
               },
+            ),
+            // Show character count visually
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: LinearProgressIndicator(
+                value: _lengthInt / 280,
+                backgroundColor: Colors.grey.withAlpha(30),
+                color: _lengthInt > 240 ? Colors.orange : vPrimaryColor,
+                minHeight: 3,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Text(
               "Twitter max length is 280 characters. Aim for 70-140 for best engagement.",
@@ -471,7 +578,7 @@ User request: $prompt
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "AI is creating your post...",
+                      "AI is creating your ${_selectedCategory.toLowerCase()} post...",
                       style: primaryTextStyle(color: vPrimaryColor),
                     ),
                   ],

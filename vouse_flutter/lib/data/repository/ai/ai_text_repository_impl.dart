@@ -6,7 +6,8 @@ import 'package:vouse_flutter/domain/repository/ai/ai_text_repository.dart';
 
 /// Implements [AiTextRepository] by calling a [FirebaseVertexAiClient].
 ///
-/// Converts [desiredChars] to approximate token bounds for the AI generation.
+/// Converts [desiredChars] to approximate token bounds for the AI generation,
+/// with category-aware adjustments for better output quality.
 class AiTextRepositoryImpl implements AiTextRepository {
   final FirebaseVertexAiClient _client;
 
@@ -18,6 +19,7 @@ class AiTextRepositoryImpl implements AiTextRepository {
     required String prompt,
     required int desiredChars,
     required double temperature,
+    String category = 'General', // New parameter with default value
   }) {
     // Set max chars to 280 for Twitter limit
     final maxChars = 280;
@@ -25,17 +27,19 @@ class AiTextRepositoryImpl implements AiTextRepository {
     // If desired chars is more than Twitter limit, cap it
     final targetChars = desiredChars > maxChars ? maxChars : desiredChars;
 
-    // Approximate tokens from desired character count (~4 chars per token)
-    final approxTokens = (targetChars / 4).round();
+    // Category-aware token ratio
+    final tokenRatio = _getTokenRatio(category);
 
-    // Provide some leeway but ensure we don't exceed Twitter's character limit
-    final minTokens = (approxTokens * 0.8).round();
-    // For max tokens, use a smaller safe factor to prevent overflow
-    final maxTokens = (approxTokens * 1.0).round();
+    // Approximate tokens with category-specific ratio
+    final approxTokens = (targetChars / tokenRatio).round();
 
-    // Ensure tokens are at least 1 and at most 70 (approximately 280 chars)
-    final finalMin = minTokens.clamp(1, 70);
-    final finalMax = maxTokens.clamp(1, 70);
+    // Provide more flexibility with wider token range
+    final minTokens = (approxTokens * 0.7).round();
+    final maxTokens = (approxTokens * 1.3).round();
+
+    // Ensure tokens are reasonable (1-100)
+    final finalMin = minTokens.clamp(1, 100);
+    final finalMax = maxTokens.clamp(1, 100);
 
     // Call the client stream method with the computed bounds
     return _client.generateTextStream(
@@ -44,5 +48,27 @@ class AiTextRepositoryImpl implements AiTextRepository {
       maxTokens: finalMax,
       temperature: temperature,
     );
+  }
+
+  /// Returns a token-to-character ratio specific to the content category.
+  ///
+  /// Different content types typically have different word lengths and
+  /// vocabulary distributions, affecting the average characters per token.
+  ///
+  /// - Business text: Longer words, more formal vocabulary (4.5 chars/token)
+  /// - Promotional: Marketing terms, calls to action (4.2 chars/token)
+  /// - Questions: Shorter words, interrogatives (3.5 chars/token)
+  /// - Others: Standard conversational text (4.0 chars/token)
+  double _getTokenRatio(String category) {
+    switch (category) {
+      case 'Business':
+        return 4.5; // Business text often has longer words
+      case 'Promotional':
+        return 4.2; // Promotional content has medium-length specialized terms
+      case 'Question':
+        return 3.5; // Questions tend to have shorter words
+      default:
+        return 4.0; // Default ratio for general content
+    }
   }
 }

@@ -13,9 +13,12 @@ final vertexAiClientProvider = Provider<FirebaseVertexAiClient>((ref) {
   return FirebaseVertexAiClient(
     modelId: 'gemini-2.0-flash',
     systemInstruction: Content.system(
-      "You are an AI that writes short social media posts. "
-          "Avoid chain-of-thought. If the user sets length constraints, follow them.",
-    ),
+        "You are an AI that writes short social media posts. "
+        "Adapt your tone to match the category (professional for Business, "
+        "casual for Personal, etc). Strictly respect character limits. "
+        "Return only the post text without explanations or disclaimers. "
+        "For best engagement, include emotion, clarity, and where appropriate, "
+        "a subtle call to action."),
   );
 });
 

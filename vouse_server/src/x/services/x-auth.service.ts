@@ -54,12 +54,14 @@ export class XAuthService {
 
       // Store the encrypted tokens in the database
       return this.userService.connectTwitter(userId, {
-        accessToken: encryptedAccessToken,
-        refreshToken: encryptedRefreshToken,
+        accessToken: encryptedAccessToken || '',
+        refreshToken: encryptedRefreshToken || '',
         tokenExpiresAt: tokens.tokenExpiresAt,
       });
     } catch (error) {
-      this.logger.error(`Error connecting Twitter account: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error connecting Twitter account: ${errorMessage}`);
       throw error;
     }
   }
@@ -74,7 +76,9 @@ export class XAuthService {
     try {
       return await this.xClientService.verifyCredentials(accessToken);
     } catch (error) {
-      this.logger.error(`Token verification failed: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Token verification failed: ${errorMessage}`);
       throw new Error('Invalid Twitter tokens');
     }
   }
@@ -103,14 +107,19 @@ export class XAuthService {
     }
 
     try {
+      const accessToken = this.tokenEncryption.decrypt(user.accessToken);
+      const refreshToken = this.tokenEncryption.decrypt(user.refreshToken);
+
       return {
-        accessToken: this.tokenEncryption.decrypt(user.accessToken),
-        refreshToken: this.tokenEncryption.decrypt(user.refreshToken),
+        accessToken: accessToken,
+        refreshToken: refreshToken,
         tokenExpiresAt: user.tokenExpiresAt?.toISOString() || null,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to decrypt tokens for user ${userId}: ${error.message}`,
+        `Failed to decrypt tokens for user ${userId}: ${errorMessage}`,
       );
       // If decryption fails, update connection status to false
       await this.updateConnectionStatus(userId, false);

@@ -11,7 +11,7 @@ import {
   NotFoundException,
   HttpException,
   HttpStatus,
-  Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PostService } from '../services/post.service';
 import { CreatePostDto, UpdatePostDto } from '../dto/post.dto';
@@ -19,6 +19,7 @@ import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
 import { CurrentUser } from '../../auth/decorators/current-user';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { XAuthService } from '../../x/services/x-auth.service';
+import { PostStatus } from '../entities/post.entity';
 
 @Controller('posts')
 export class PostController {
@@ -52,12 +53,19 @@ export class PostController {
         data: post,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const status =
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.BAD_REQUEST;
+
       throw new HttpException(
         {
           success: false,
-          message: error.message || 'Failed to create post',
+          message: errorMessage || 'Failed to create post',
         },
-        error.status || HttpStatus.BAD_REQUEST,
+        status,
       );
     }
   }
@@ -97,12 +105,16 @@ export class PostController {
           HttpStatus.NOT_FOUND,
         );
       }
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new HttpException(
         {
           success: false,
-          message: error.message || 'Failed to get post',
+          message: errorMessage || 'Failed to get post',
         },
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -135,18 +147,22 @@ export class PostController {
           HttpStatus.NOT_FOUND,
         );
       }
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new HttpException(
         {
           success: false,
-          message: error.message || 'Failed to get post',
+          message: errorMessage || 'Failed to get post',
         },
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   /**
-   * Update a post
+   * Update a post - Only allows updating posts that are not yet published
    */
   @Patch(':id')
   @UseGuards(FirebaseAuthGuard)
@@ -156,10 +172,22 @@ export class PostController {
     @CurrentUser() user: DecodedIdToken,
   ) {
     try {
-      const post = await this.postService.update(id, user.uid, updatePostDto);
+      // First check if the post exists
+      const post = await this.postService.findOne(id, user.uid);
+
+      // Prevent editing published posts
+      if (post.status === PostStatus.PUBLISHED) {
+        throw new ForbiddenException('Cannot update already published posts');
+      }
+
+      const updatedPost = await this.postService.update(
+        id,
+        user.uid,
+        updatePostDto,
+      );
       return {
         success: true,
-        data: post,
+        data: updatedPost,
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -171,23 +199,44 @@ export class PostController {
           HttpStatus.NOT_FOUND,
         );
       }
+      if (error instanceof ForbiddenException) {
+        throw new HttpException(
+          {
+            success: false,
+            message: error.message,
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new HttpException(
         {
           success: false,
-          message: error.message || 'Failed to update post',
+          message: errorMessage || 'Failed to update post',
         },
-        error.status || HttpStatus.BAD_REQUEST,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.BAD_REQUEST,
       );
     }
   }
 
   /**
-   * Delete a post
+   * Delete a post - Only allows deleting posts that are not yet published
    */
   @Delete(':id')
   @UseGuards(FirebaseAuthGuard)
   async remove(@Param('id') id: string, @CurrentUser() user: DecodedIdToken) {
     try {
+      // First check if the post exists
+      const post = await this.postService.findOne(id, user.uid);
+
+      // Prevent deleting published posts
+      if (post.status === PostStatus.PUBLISHED) {
+        throw new ForbiddenException('Cannot delete already published posts');
+      }
+
       await this.postService.remove(id, user.uid);
       return {
         success: true,
@@ -203,12 +252,25 @@ export class PostController {
           HttpStatus.NOT_FOUND,
         );
       }
+      if (error instanceof ForbiddenException) {
+        throw new HttpException(
+          {
+            success: false,
+            message: error.message,
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new HttpException(
         {
           success: false,
-          message: error.message || 'Failed to delete post',
+          message: errorMessage || 'Failed to delete post',
         },
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

@@ -1,5 +1,10 @@
 // src/posts/services/post.service.ts
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThan } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
@@ -67,7 +72,7 @@ export class PostService {
     const scheduledTime =
       post.scheduledAt instanceof Date
         ? post.scheduledAt
-        : new Date(post.scheduledAt);
+        : new Date(post.scheduledAt as unknown as string);
 
     // Calculate delay in milliseconds
     const delayMs = Math.max(0, scheduledTime.getTime() - now.getTime());
@@ -95,14 +100,16 @@ export class PostService {
         `Post ${post.id} scheduled for publishing at ${scheduledTime.toISOString()}`,
       );
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to schedule post ${post.id}: ${error.message}`,
-        error.stack,
+        `Failed to schedule post ${post.id}: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
       // Update post status to reflect scheduling failure
       await this.postRepository.update(post.id, {
         status: PostStatus.FAILED,
-        failureReason: `Failed to schedule: ${error.message}`,
+        failureReason: `Failed to schedule: ${errorMessage}`,
       });
     }
   }
@@ -162,7 +169,7 @@ export class PostService {
 
     // Cannot update already published posts
     if (post.status === PostStatus.PUBLISHED) {
-      throw new Error('Cannot update already published posts');
+      throw new BadRequestException('Cannot update already published posts');
     }
 
     // Prepare update data with proper type conversions
@@ -192,7 +199,9 @@ export class PostService {
       updatePostDto.scheduledAt &&
       (!post.scheduledAt ||
         new Date(updatePostDto.scheduledAt).getTime() !==
-          post.scheduledAt.getTime())
+          (post.scheduledAt instanceof Date
+            ? post.scheduledAt.getTime()
+            : new Date(post.scheduledAt as unknown as string).getTime()))
     ) {
       // Update status to SCHEDULED if it was a draft
       if (post.status === PostStatus.DRAFT) {
@@ -237,6 +246,11 @@ export class PostService {
     // First check if post exists and belongs to user
     const post = await this.findOne(id, userId);
 
+    // Only allow deleting posts that are not yet published
+    if (post.status === PostStatus.PUBLISHED) {
+      throw new BadRequestException('Cannot delete already published posts');
+    }
+
     // If scheduled, remove from queue first
     if (post.status === PostStatus.SCHEDULED) {
       const existingJobs = await this.postPublishQueue.getJobs([
@@ -274,7 +288,12 @@ export class PostService {
 
     await this.postRepository.update(id, updateData);
 
-    return this.postRepository.findOne({ where: { id } });
+    const post = await this.postRepository.findOne({ where: { id } });
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${id} not found`);
+    }
+
+    return post;
   }
 
   /**

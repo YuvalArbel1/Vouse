@@ -48,7 +48,9 @@ export class TokenEncryption {
         iv.toString('hex') + ':' + encrypted + ':' + authTag.toString('hex')
       );
     } catch (error) {
-      this.logger.error(`Encryption error: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Encryption error: ${errorMessage}`);
       return null;
     }
   }
@@ -80,7 +82,9 @@ export class TokenEncryption {
 
       return decrypted;
     } catch (error) {
-      this.logger.error(`Decryption error: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Decryption error: ${errorMessage}`);
       return null;
     }
   }

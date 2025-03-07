@@ -69,7 +69,7 @@ export class PostPublishProcessor {
       }
 
       // Handle media uploads if present
-      const mediaIds = [];
+      const mediaIds: string[] = [];
       if (post.cloudImageUrls && post.cloudImageUrls.length > 0) {
         for (const imageUrl of post.cloudImageUrls) {
           try {
@@ -89,8 +89,10 @@ export class PostPublishProcessor {
               this.logger.log(`Successfully uploaded media: ${mediaId}`);
             }
           } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
             this.logger.error(
-              `Error processing image ${imageUrl}: ${error.message}`,
+              `Error processing image ${imageUrl}: ${errorMessage}`,
             );
             // Continue with other images if one fails
           }
@@ -105,7 +107,10 @@ export class PostPublishProcessor {
       );
 
       // Get the tweet ID from the response
-      const tweetId = result.data.id;
+      const tweetId = result.data?.id || null;
+      if (!tweetId) {
+        throw new Error('Failed to get tweet ID from Twitter response');
+      }
 
       // Update post status to PUBLISHED
       const updatedPost = await this.postService.updateAfterPublishing(
@@ -126,9 +131,11 @@ export class PostPublishProcessor {
       );
       return updatedPost;
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to publish post ${postId}: ${error.message}`,
-        error.stack,
+        `Failed to publish post ${postId}: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
 
       // Update post status to FAILED
@@ -136,7 +143,7 @@ export class PostPublishProcessor {
         postId,
         null,
         PostStatus.FAILED,
-        error.message,
+        errorMessage,
       );
 
       // Rethrow to trigger retry mechanism if needed

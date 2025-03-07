@@ -1,13 +1,13 @@
 // src/auth/guards/firebase-auth.guard.ts
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
-  UnauthorizedException,
+  Injectable,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { FirebaseAdminService } from '../services/firebase-admin.service';
+import { FirebaseAdminService } from '../services/firebase-admin';
 
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
@@ -32,10 +32,8 @@ export class FirebaseAuthGuard implements CanActivate {
 
     try {
       // Verify the Firebase ID token
-      const decodedToken = await this.firebaseAdminService.verifyIdToken(token);
-
       // Attach the user to the request for later use
-      request.user = decodedToken;
+      request.user = await this.firebaseAdminService.verifyIdToken(token);
 
       return true;
     } catch (error) {

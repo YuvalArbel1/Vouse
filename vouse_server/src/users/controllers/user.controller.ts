@@ -12,9 +12,9 @@ import {
 import { UserService } from '../services/user.service';
 import { User } from '../entities/user.entity';
 import { ConnectTwitterDto, UpdateConnectionStatusDto } from '../dto/user.dto';
-import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth.guard';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { DecodedIdToken } from 'firebase-admin/auth';
+import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
+import { CurrentUser } from '../../auth/decorators/current-user';
 
 /**
  * Controller for user-related endpoints

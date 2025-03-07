@@ -32,6 +32,8 @@ export class XAuthService {
    * @param tokens Twitter OAuth tokens
    * @returns Updated user record
    */
+  // src/x/services/x-auth.service.ts
+
   async connectAccount(
     userId: string,
     tokens: TwitterAuthTokens,
@@ -52,11 +54,15 @@ export class XAuthService {
       // Verify the tokens by making a test API call
       await this.verifyTokens(tokens.accessToken);
 
-      // Store the encrypted tokens in the database
+      // Store the encrypted tokens in the database - FIX HERE:
+      // Using explicit null checks instead of the logical OR operator
       return this.userService.connectTwitter(userId, {
-        accessToken: encryptedAccessToken || '',
-        refreshToken: encryptedRefreshToken || '',
-        tokenExpiresAt: tokens.tokenExpiresAt,
+        accessToken: encryptedAccessToken !== null ? encryptedAccessToken : '',
+        refreshToken:
+          encryptedRefreshToken !== null ? encryptedRefreshToken : '',
+        // Convert null to undefined for tokenExpiresAt
+        tokenExpiresAt:
+          tokens.tokenExpiresAt === null ? undefined : tokens.tokenExpiresAt,
       });
     } catch (error) {
       const errorMessage =

@@ -1,9 +1,6 @@
 // lib/data/models/server/response_wrapper.dart
 
 /// Generic wrapper for server API responses.
-///
-/// Our server API always returns a standard format with success/message/data fields.
-/// This class provides a type-safe way to parse those responses.
 class ResponseWrapper<T> {
   final bool success;
   final String? message;
@@ -16,22 +13,17 @@ class ResponseWrapper<T> {
   });
 
   factory ResponseWrapper.fromJson(
-    Map<String, dynamic> json,
-    T Function(dynamic json) fromJsonT,
-  ) {
-    // Special handling for Map
-    if (T.toString().contains('Map<String, dynamic>')) {
-      return ResponseWrapper<T>(
-        success: json['success'] as bool,
-        message: json['message'] as String?,
-        data: json['data'] != null ? json['data'] as T : null,
-      );
-    }
-
+      Map<String, dynamic> json,
+      T Function(dynamic json) fromJsonT,
+      ) {
     return ResponseWrapper<T>(
       success: json['success'] as bool,
       message: json['message'] as String?,
-      data: json['data'] != null ? fromJsonT(json['data']) : null,
+      data: json['data'] != null ?
+      T.toString().contains('Map<String, dynamic>') ?
+      json['data'] as T :
+      fromJsonT(json['data']) :
+      null,
     );
   }
 

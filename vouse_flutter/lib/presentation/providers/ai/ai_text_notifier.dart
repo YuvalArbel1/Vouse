@@ -32,7 +32,7 @@ class AiTextState {
     return AiTextState(
       partialText: partialText ?? this.partialText,
       isGenerating: isGenerating ?? this.isGenerating,
-      error: error != null ? error : this.error,
+      error: error ?? this.error,
     );
   }
 }

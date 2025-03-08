@@ -14,26 +14,24 @@ export class TokenEncryption {
   private readonly logger = new Logger(TokenEncryption.name);
 
   constructor() {
-    // The encryption key should be a 32-byte (256-bit) key stored in environment variables
-    let encryptionKey = process.env.ENCRYPTION_KEY || '';
+    // Get the encryption key from environment variables
+    const encryptionKey = process.env.ENCRYPTION_KEY || '';
 
-    // Remove any quotes that might be included in the .env file
-    encryptionKey = encryptionKey.replace(/['"]/g, '');
+    // Log the key length to verify it's correct
+    this.logger.debug(`Encryption key length: ${encryptionKey.length}`);
 
-    this.logger.log(`Encryption key length: ${encryptionKey.length}`);
-
-    // If key isn't exactly 32 characters, hash it to create a consistent 32-byte key
     if (encryptionKey.length !== 32) {
       this.logger.warn(
-        'Encryption key is not 32 characters. Creating a derived key.',
+        'Encryption key is not 32 characters - using SHA-256 hash instead',
       );
-      // Create a SHA-256 hash of the provided key, which will always be 32 bytes
+      // Create a SHA-256 hash for consistent key length
       const hash = crypto.createHash('sha256');
-      hash.update(encryptionKey || 'vouse-default-encryption-key');
-      encryptionKey = hash.digest('hex').substring(0, 32);
+      hash.update(encryptionKey || 'default-encryption-key');
+      const derivedKey = hash.digest('hex').substring(0, 32);
+      this.key = Buffer.from(derivedKey, 'utf8');
+    } else {
+      this.key = Buffer.from(encryptionKey, 'utf8');
     }
-
-    this.key = Buffer.from(encryptionKey, 'utf8');
   }
 
   /**

@@ -21,8 +21,10 @@ import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart'
 import 'package:vouse_flutter/domain/usecases/server/verify_twitter_tokens_usecase.dart';
 
 /// Expose server URL as a provider so it can be accessed from other files
-final serverUrlProvider =
-    Provider<String>((ref) => 'http://192.168.1.107:3000');
+// In lib/presentation/providers/server/server_providers.dart
+final serverUrlProvider = Provider<String>((ref) {
+  return 'https://0972-2a0d-6fc0-ecf-bb00-51db-58ed-a1f-a47e.ngrok-free.app';
+});
 
 /// Dio provider for server API client with auth token interceptor
 final dioProvider = Provider<Dio>((ref) {

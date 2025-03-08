@@ -11,7 +11,7 @@ import { XClientService } from '../../x/services/x-client.service';
 
 @Injectable()
 export class EngagementService {
-  private readonly logger = new Logger(EngagementService.name);
+  public readonly logger = new Logger(EngagementService.name);
 
   constructor(
     @InjectRepository(PostEngagement)

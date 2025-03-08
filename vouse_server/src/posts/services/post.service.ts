@@ -70,7 +70,16 @@ export class PostService {
         : new Date(post.scheduledAt as unknown as string);
 
     // Calculate delay in milliseconds
-    const delayMs = Math.max(0, scheduledTime.getTime() - now.getTime());
+    let delayMs = Math.max(0, scheduledTime.getTime() - now.getTime());
+
+    // If scheduledTime is in the past or very close to now (within 3 seconds),
+    // set a minimal delay to ensure immediate processing
+    if (delayMs <= 3000) {
+      this.logger.log(
+        `Post ${post.id} scheduled for immediate publication (within 3 seconds)`,
+      );
+      delayMs = 0;
+    }
 
     try {
       // Add job to the queue with the calculated delay
@@ -92,7 +101,7 @@ export class PostService {
       );
 
       this.logger.log(
-        `Post ${post.id} scheduled for publishing at ${scheduledTime.toISOString()}`,
+        `Post ${post.id} scheduled for publishing at ${scheduledTime.toISOString()} (delay: ${delayMs}ms)`,
       );
     } catch (error) {
       const errorMessage =

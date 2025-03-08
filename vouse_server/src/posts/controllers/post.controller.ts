@@ -30,6 +30,9 @@ export class PostController {
 
   /**
    * Create a new post
+   *
+   * Note: This endpoint only handles scheduled posts (including immediate posts).
+   * Draft posts are managed locally in the Flutter app and not sent to the server.
    */
   @Post()
   @UseGuards(FirebaseAuthGuard)

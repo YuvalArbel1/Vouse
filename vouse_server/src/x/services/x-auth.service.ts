@@ -27,13 +27,12 @@ export class XAuthService {
 
   /**
    * Connect a Twitter account by storing encrypted tokens
+   * Creates the user if they don't exist
    *
    * @param userId Firebase user ID
    * @param tokens Twitter OAuth tokens
    * @returns Updated user record
    */
-  // src/x/services/x-auth.service.ts
-
   async connectAccount(
     userId: string,
     tokens: TwitterAuthTokens,
@@ -54,8 +53,12 @@ export class XAuthService {
       // Verify the tokens by making a test API call
       await this.verifyTokens(tokens.accessToken);
 
-      // Store the encrypted tokens in the database - FIX HERE:
-      // Using explicit null checks instead of the logical OR operator
+      // IMPORTANT FIX: Find or create the user before connecting
+      // This ensures the user exists in our database
+      const user = await this.userService.findOrCreate(userId);
+      this.logger.log(`User found or created: ${user.userId}`);
+
+      // Store the encrypted tokens in the database
       return this.userService.connectTwitter(userId, {
         accessToken: encryptedAccessToken !== null ? encryptedAccessToken : '',
         refreshToken:

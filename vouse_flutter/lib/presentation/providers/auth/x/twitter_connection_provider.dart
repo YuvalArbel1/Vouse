@@ -1,5 +1,6 @@
 // lib/presentation/providers/auth/x/twitter_connection_provider.dart
 
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,6 +61,7 @@ class TwitterConnectionNotifier
   final ConnectTwitterUseCase _connectTwitterUseCase;
   final DisconnectTwitterUseCase _disconnectTwitterUseCase;
   final VerifyTwitterTokensUseCase _verifyTwitterTokensUseCase;
+  final Ref _ref;
 
   TwitterConnectionNotifier({
     required GetXTokensUseCase getXTokensUseCase,
@@ -69,6 +71,7 @@ class TwitterConnectionNotifier
     required ConnectTwitterUseCase connectTwitterUseCase,
     required DisconnectTwitterUseCase disconnectTwitterUseCase,
     required VerifyTwitterTokensUseCase verifyTwitterTokensUseCase,
+    required Ref ref,
   })  : _getXTokensUseCase = getXTokensUseCase,
         _saveXTokensUseCase = saveXTokensUseCase,
         _clearXTokensUseCase = clearXTokensUseCase,
@@ -76,6 +79,7 @@ class TwitterConnectionNotifier
         _connectTwitterUseCase = connectTwitterUseCase,
         _disconnectTwitterUseCase = disconnectTwitterUseCase,
         _verifyTwitterTokensUseCase = verifyTwitterTokensUseCase,
+        _ref = ref,
         super(TwitterConnectionProviderState());
 
   /// Check connection status with server
@@ -139,14 +143,12 @@ class TwitterConnectionNotifier
   /// Connect Twitter account
   Future<bool> connectTwitter(XAuthTokens tokens) async {
     try {
-      state =
-          state.copyWith(connectionState: TwitterConnectionState.connecting);
+      state = state.copyWith(connectionState: TwitterConnectionState.connecting);
 
       // First save locally
       final saveResult = await _saveXTokensUseCase.call(params: tokens);
       if (saveResult is DataFailed) {
-        throw Exception(
-            saveResult.error?.error ?? 'Failed to save tokens locally');
+        throw Exception(saveResult.error?.error ?? 'Failed to save tokens locally');
       }
 
       // Then connect to server
@@ -155,9 +157,11 @@ class TwitterConnectionNotifier
         throw Exception('No user logged in');
       }
 
-      // Debug log to see tokens
-      debugPrint(
-          'Connecting to Twitter with access token: ${tokens.accessToken?.substring(0, 10)}...');
+      // Debug log to see tokens and connection details
+      final serverUrl = _ref.read(serverUrlProvider);
+      debugPrint('Attempting to connect to server at $serverUrl');
+      debugPrint('User ID: ${currentUser.uid}');
+      debugPrint('Access token (first 10 chars): ${tokens.accessToken?.substring(0, 10)}...');
 
       final serverResult = await _connectTwitterUseCase.call(
         params: ConnectTwitterParams(
@@ -167,9 +171,18 @@ class TwitterConnectionNotifier
       );
 
       if (serverResult is DataFailed) {
-        debugPrint('Server connection failed: ${serverResult.error?.error}');
-        throw Exception(
-            serverResult.error?.error ?? 'Failed to connect Twitter on server');
+        final errorDetails = serverResult.error?.toString() ?? 'No error details';
+        debugPrint('Server connection failed: $errorDetails');
+
+        // Log the complete error for diagnosis
+        if (serverResult.error is DioException) {
+          final dioError = serverResult.error as DioException;
+          debugPrint('Dio error type: ${dioError.type}');
+          debugPrint('Dio error message: ${dioError.message}');
+          debugPrint('Dio error response: ${dioError.response?.data}');
+        }
+
+        throw Exception(serverResult.error?.error ?? 'Failed to connect Twitter on server');
       }
 
       // Verify tokens to get username
@@ -203,14 +216,12 @@ class TwitterConnectionNotifier
   /// Disconnect Twitter account
   Future<bool> disconnectTwitter() async {
     try {
-      state =
-          state.copyWith(connectionState: TwitterConnectionState.disconnecting);
+      state = state.copyWith(connectionState: TwitterConnectionState.disconnecting);
 
       // First clear locally
       final clearResult = await _clearXTokensUseCase.call();
       if (clearResult is DataFailed) {
-        throw Exception(
-            clearResult.error?.error ?? 'Failed to clear tokens locally');
+        throw Exception(clearResult.error?.error ?? 'Failed to clear tokens locally');
       }
 
       // Then disconnect from server
@@ -224,8 +235,7 @@ class TwitterConnectionNotifier
       );
 
       if (serverResult is DataFailed) {
-        throw Exception(serverResult.error?.error ??
-            'Failed to disconnect Twitter on server');
+        throw Exception(serverResult.error?.error ?? 'Failed to disconnect Twitter on server');
       }
 
       state = state.copyWith(
@@ -285,8 +295,7 @@ class TwitterConnectionNotifier
 }
 
 /// Provider for Twitter connection
-final twitterConnectionProvider = StateNotifierProvider<
-    TwitterConnectionNotifier, TwitterConnectionProviderState>((ref) {
+final twitterConnectionProvider = StateNotifierProvider<TwitterConnectionNotifier, TwitterConnectionProviderState>((ref) {
   return TwitterConnectionNotifier(
     getXTokensUseCase: ref.watch(getXTokensUseCaseProvider),
     saveXTokensUseCase: ref.watch(saveXTokensUseCaseProvider),
@@ -295,5 +304,6 @@ final twitterConnectionProvider = StateNotifierProvider<
     connectTwitterUseCase: ref.watch(connectTwitterUseCaseProvider),
     disconnectTwitterUseCase: ref.watch(disconnectTwitterUseCaseProvider),
     verifyTwitterTokensUseCase: ref.watch(verifyTwitterTokensUseCaseProvider),
+    ref: ref,
   );
 });

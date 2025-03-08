@@ -20,14 +20,15 @@ import 'package:vouse_flutter/domain/usecases/server/refresh_post_engagement_use
 import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/server/verify_twitter_tokens_usecase.dart';
 
-/// Configure server API URL
-final _serverUrl = 'http://192.168.1.115:3000';
-
+/// Expose server URL as a provider so it can be accessed from other files
+final serverUrlProvider =
+    Provider<String>((ref) => 'http://192.168.1.107:3000');
 
 /// Dio provider for server API client with auth token interceptor
 final dioProvider = Provider<Dio>((ref) {
+  final serverUrl = ref.watch(serverUrlProvider);
   final dio = Dio(BaseOptions(
-    baseUrl: _serverUrl,
+    baseUrl: serverUrl,
     connectTimeout: const Duration(milliseconds: 15000),
     receiveTimeout: const Duration(milliseconds: 15000),
   ));
@@ -58,7 +59,8 @@ final dioProvider = Provider<Dio>((ref) {
 /// Server API client provider
 final serverApiClientProvider = Provider<ServerApiClient>((ref) {
   final dio = ref.watch(dioProvider);
-  return ServerApiClient(dio, baseUrl: _serverUrl);
+  final serverUrl = ref.watch(serverUrlProvider);
+  return ServerApiClient(dio, baseUrl: serverUrl);
 });
 
 /// Server repository provider
@@ -88,19 +90,22 @@ final connectTwitterUseCaseProvider = Provider<ConnectTwitterUseCase>((ref) {
 });
 
 /// Disconnect Twitter use case provider
-final disconnectTwitterUseCaseProvider = Provider<DisconnectTwitterUseCase>((ref) {
+final disconnectTwitterUseCaseProvider =
+    Provider<DisconnectTwitterUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return DisconnectTwitterUseCase(repository);
 });
 
 /// Check Twitter status use case provider
-final checkTwitterStatusUseCaseProvider = Provider<CheckTwitterStatusUseCase>((ref) {
+final checkTwitterStatusUseCaseProvider =
+    Provider<CheckTwitterStatusUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return CheckTwitterStatusUseCase(repository);
 });
 
 /// Verify Twitter tokens use case provider
-final verifyTwitterTokensUseCaseProvider = Provider<VerifyTwitterTokensUseCase>((ref) {
+final verifyTwitterTokensUseCaseProvider =
+    Provider<VerifyTwitterTokensUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return VerifyTwitterTokensUseCase(repository);
 });
@@ -108,37 +113,43 @@ final verifyTwitterTokensUseCaseProvider = Provider<VerifyTwitterTokensUseCase>(
 // Engagement providers (for later use)
 
 /// Get post engagements use case provider
-final getPostEngagementsUseCaseProvider = Provider<GetPostEngagementsUseCase>((ref) {
+final getPostEngagementsUseCaseProvider =
+    Provider<GetPostEngagementsUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return GetPostEngagementsUseCase(repository);
 });
 
 /// Get post engagement use case provider
-final getPostEngagementUseCaseProvider = Provider<GetPostEngagementUseCase>((ref) {
+final getPostEngagementUseCaseProvider =
+    Provider<GetPostEngagementUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return GetPostEngagementUseCase(repository);
 });
 
 /// Get post engagement by local ID use case provider
-final getPostEngagementByLocalIdUseCaseProvider = Provider<GetPostEngagementByLocalIdUseCase>((ref) {
+final getPostEngagementByLocalIdUseCaseProvider =
+    Provider<GetPostEngagementByLocalIdUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return GetPostEngagementByLocalIdUseCase(repository);
 });
 
 /// Refresh post engagement use case provider
-final refreshPostEngagementUseCaseProvider = Provider<RefreshPostEngagementUseCase>((ref) {
+final refreshPostEngagementUseCaseProvider =
+    Provider<RefreshPostEngagementUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return RefreshPostEngagementUseCase(repository);
 });
 
 /// Refresh post engagement by local ID use case provider
-final refreshPostEngagementByLocalIdUseCaseProvider = Provider<RefreshPostEngagementByLocalIdUseCase>((ref) {
+final refreshPostEngagementByLocalIdUseCaseProvider =
+    Provider<RefreshPostEngagementByLocalIdUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return RefreshPostEngagementByLocalIdUseCase(repository);
 });
 
 /// Refresh all engagements use case provider
-final refreshAllEngagementsUseCaseProvider = Provider<RefreshAllEngagementsUseCase>((ref) {
+final refreshAllEngagementsUseCaseProvider =
+    Provider<RefreshAllEngagementsUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return RefreshAllEngagementsUseCase(repository);
 });

@@ -21,7 +21,8 @@ import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart'
 import 'package:vouse_flutter/domain/usecases/server/verify_twitter_tokens_usecase.dart';
 
 /// Configure server API URL
-final _serverUrl = 'http://localhost:3000'; // Change this for production
+final _serverUrl = 'http://192.168.1.115:3000';
+
 
 /// Dio provider for server API client with auth token interceptor
 final dioProvider = Provider<Dio>((ref) {

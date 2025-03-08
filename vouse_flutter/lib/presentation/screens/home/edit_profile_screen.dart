@@ -10,9 +10,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
 import '../../../core/resources/data_state.dart';
-import '../../../core/util/twitter_x_auth_util.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
-import '../../providers/auth/x/x_connection_provider.dart';
+import '../../../domain/entities/secure_db/x_auth_tokens.dart';
+import '../../providers/auth/x/twitter_connection_provider.dart';
+import '../../providers/auth/x/x_auth_providers.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
@@ -116,12 +117,19 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   /// Check if X (Twitter) is already connected
   Future<void> _checkXConnection() async {
-    // Use the connection status from the provider
-    final isConnected = ref.read(xConnectionStatusProvider);
+    // Use the Twitter connection provider to check status
+    await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
+
+    // Get current state
+    final connectionState = ref.read(twitterConnectionProvider);
+    final isConnected =
+        connectionState.connectionState == TwitterConnectionState.connected;
+
     setState(() {
       _isXConnected = isConnected;
-      connectXController.text =
-      isConnected ? 'Disconnect X Account' : 'Tap to connect your X account';
+      connectXController.text = isConnected
+          ? 'Disconnect X Account'
+          : 'Tap to connect your X account';
     });
   }
 
@@ -157,34 +165,70 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
   /// If successful, updates UI state to reflect connected status.
   Future<void> _connectToX() async {
-    final success = await TwitterXAuthUtil.connectToX(
-      ref,
-      setLoadingState: (loading) => setState(() => _isProcessing = loading),
-      mounted: mounted,
-    );
+    setState(() => _isProcessing = true);
 
-    if (success && mounted) {
-      setState(() {
-        _isXConnected = true;
-        connectXController.text = 'Disconnect X Account';
-      });
+    try {
+      // Use the TwitterConnectionProvider to handle connection
+      final result = await ref.read(signInToXUseCaseProvider).call();
+
+      if (!mounted) return;
+
+      if (result is DataSuccess<XAuthTokens> && result.data != null) {
+        // Connect with the obtained tokens
+        final connectResult = await ref
+            .read(twitterConnectionProvider.notifier)
+            .connectTwitter(result.data!);
+
+        if (!mounted) return;
+
+        if (connectResult) {
+          setState(() {
+            _isXConnected = true;
+            connectXController.text = 'Disconnect X Account';
+          });
+          toast("X account connected successfully");
+        } else {
+          toast('Failed to connect Twitter account');
+        }
+      } else if (result is DataFailed) {
+        toast('Twitter authentication failed: ${result.error?.error}');
+      }
+    } catch (e) {
+      toast('Error connecting to X: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
   /// Disconnects from X (Twitter) by clearing stored tokens
   Future<void> _disconnectFromX() async {
-    final success = await TwitterXAuthUtil.disconnectFromX(
-      context,
-      ref,
-      setLoadingState: (loading) => setState(() => _isProcessing = loading),
-      mounted: mounted,
-    );
+    setState(() => _isProcessing = true);
 
-    if (success && mounted) {
-      setState(() {
-        _isXConnected = false;
-        connectXController.text = 'Tap to connect your X account';
-      });
+    try {
+      // Use the TwitterConnectionProvider to handle disconnection
+      final disconnectResult = await ref
+          .read(twitterConnectionProvider.notifier)
+          .disconnectTwitter();
+
+      if (!mounted) return;
+
+      if (disconnectResult) {
+        setState(() {
+          _isXConnected = false;
+          connectXController.text = 'Tap to connect your X account';
+        });
+        toast('X account disconnected successfully');
+      } else {
+        toast('Failed to disconnect Twitter account');
+      }
+    } catch (e) {
+      toast('Error disconnecting X: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -325,7 +369,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Full Name
                                       Text('Full Name',
@@ -386,7 +430,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                           prefixIcon: Icons.transgender,
                                         ),
                                         items:
-                                        genderOptions.map((String value) {
+                                            genderOptions.map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
                                             child: Text(value,
@@ -413,17 +457,18 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       Builder(
                                         builder: (ctx) {
                                           final baseDecoration =
-                                          waInputDecoration(
+                                              waInputDecoration(
                                             hint:
-                                            'Tap to connect your X account',
+                                                'Tap to connect your X account',
                                           );
 
                                           final updatedDecoration =
-                                          baseDecoration.copyWith(
+                                              baseDecoration.copyWith(
                                             filled: true,
                                             fillColor: _isXConnected
                                                 ? Colors.red.withAlpha(20)
-                                                : vAccentColor.withAlpha((0.06 * 255).toInt()),
+                                                : vAccentColor.withAlpha(
+                                                    (0.06 * 255).toInt()),
                                             prefixIcon: Icon(
                                               _isXConnected
                                                   ? Icons.link
@@ -434,7 +479,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius:
-                                              BorderRadius.circular(8),
+                                                  BorderRadius.circular(8),
                                               borderSide: BorderSide(
                                                 color: _isXConnected
                                                     ? Colors.red
@@ -469,9 +514,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 Padding(
                                   padding: EdgeInsets.only(
                                     left:
-                                    MediaQuery.of(context).size.width * 0.1,
+                                        MediaQuery.of(context).size.width * 0.1,
                                     right:
-                                    MediaQuery.of(context).size.width * 0.1,
+                                        MediaQuery.of(context).size.width * 0.1,
                                   ),
                                   child: AppButton(
                                     color: vPrimaryColor,
@@ -479,7 +524,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                     onTap: _handleContinue,
                                     child: Text('Continue',
                                         style:
-                                        boldTextStyle(color: Colors.white)),
+                                            boldTextStyle(color: Colors.white)),
                                   ),
                                 ),
                               ],

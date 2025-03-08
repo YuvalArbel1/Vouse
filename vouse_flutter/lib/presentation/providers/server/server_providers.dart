@@ -2,6 +2,7 @@
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/data/clients/server/server_api_client.dart';
 import 'package:vouse_flutter/data/repository/server/server_repository_impl.dart';
@@ -41,7 +42,9 @@ final dioProvider = Provider<Dio>((ref) {
             options.headers['Authorization'] = 'Bearer $idToken';
           }
         } catch (e) {
-          print('Error getting Firebase token: $e');
+          if (kDebugMode) {
+            print('Error getting Firebase token: $e');
+          }
         }
         return handler.next(options);
       },

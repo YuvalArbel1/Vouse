@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
-import 'package:vouse_flutter/presentation/providers/auth/x/x_connection_provider.dart';
+import 'package:vouse_flutter/presentation/providers/auth/x/twitter_connection_provider.dart';
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
+import 'package:vouse_flutter/presentation/screens/profile/profile_twitter_section.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
 import 'package:vouse_flutter/presentation/providers/navigation/navigation_service.dart';
-import 'package:vouse_flutter/core/util/twitter_x_auth_util.dart';
 
 // Import the widgets
 import 'package:vouse_flutter/presentation/widgets/profile/profile_header_widget.dart';
@@ -37,9 +37,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
   /// Whether the profile is currently loading
   bool _isLoading = false;
-
-  /// Whether connecting to X is in progress
-  bool _isConnectingX = false;
 
   /// Animation controller for fade-in effects
   late AnimationController _animationController;
@@ -85,8 +82,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       // Direct call to load profile
       await ref.read(userProfileProvider.notifier).loadUserProfile();
 
-      // Also refresh the provider's connection status
-      ref.read(xConnectionStatusProvider.notifier).checkConnection();
+      // Also refresh the Twitter connection status
+      await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
 
       // Start animations after data is loaded
       _animationController.forward();
@@ -97,39 +94,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  /// Connect to X (Twitter)
-  ///
-  /// Initiates the X OAuth flow and updates the connection status provider
-  /// when successful. Uses [TwitterXAuthUtil] to handle the connection logic.
-  Future<void> _connectToX() async {
-    setState(() => _isConnectingX = true);
-
-    final success = await TwitterXAuthUtil.connectToX(
-      ref,
-      setLoadingState: (loading) => setState(() => _isLoading = loading),
-      mounted: mounted,
-    );
-
-    if (mounted) {
-      setState(() {
-        _isConnectingX = false;
-      });
-    }
-  }
-
-  /// Disconnect from X (Twitter)
-  ///
-  /// Disconnects the user's X account by clearing stored tokens.
-  /// The connection status is updated in the provider automatically.
-  Future<void> _disconnectFromX() async {
-    await TwitterXAuthUtil.disconnectFromX(
-      context,
-      ref,
-      setLoadingState: (loading) => setState(() => _isLoading = loading),
-      mounted: mounted,
-    );
   }
 
   /// Handles user logout
@@ -262,7 +226,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     // Watch X connection status directly from provider
     // This ensures real-time updates when connecting or disconnecting
-    final isXConnected = ref.watch(xConnectionStatusProvider);
+    final twitterConnectionState = ref.watch(twitterConnectionProvider);
+    final isXConnected = twitterConnectionState.connectionState == TwitterConnectionState.connected;
 
     // Determine if loading is in progress
     final isLoading = _isLoading ||
@@ -317,22 +282,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                 iconColor: vPrimaryColor,
                                 onTap: _navigateToEditProfile,
                               ),
-                              SettingsTileWidget(
-                                title: isXConnected
-                                    ? 'Disconnect X Account'
-                                    : 'Connect X Account',
-                                icon: Icons.link,
-                                iconColor: isXConnected
-                                    ? Colors.red
-                                    : vPrimaryColor,
-                                onTap: isXConnected
-                                    ? _disconnectFromX
-                                    : _connectToX,
-                                isLoading: _isConnectingX,
-                                isDestructive: isXConnected,
-                              ),
                             ],
                           ),
+
+                          const SizedBox(height: 24),
+
+                          // Twitter Integration Section
+                          const ProfileTwitterSection(),
 
                           const SizedBox(height: 24),
 

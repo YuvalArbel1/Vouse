@@ -14,7 +14,7 @@ import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
 import '../../../core/util/twitter_x_auth_util.dart';
-import '../../providers/auth/x/x_connection_provider.dart';
+import '../../providers/auth/x/twitter_connection_provider.dart';
 import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
@@ -453,16 +453,21 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// First verifies the user is connected to X (Twitter),
   /// otherwise shows a dialog prompting them to connect.
   void _openShareBottomSheet() async {
-    final currentText = ref.read(postTextProvider).trim();
+    final currentText = ref.watch(postTextProvider).trim();
     if (currentText.isEmpty) {
       toast('Please enter some text first!');
       return;
     }
 
-    // Check if X is connected using the xConnectionStatusProvider
-    final isXConnected = ref.read(xConnectionStatusProvider);
+    // Refresh connection status before checking
+    await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
 
-    if (!isXConnected) {
+    // Then check the updated status
+    final connectionState = ref.read(twitterConnectionProvider);
+    final isConnected =
+        connectionState.connectionState == TwitterConnectionState.connected;
+
+    if (!isConnected) {
       if (!mounted) return;
 
       // Show dialog to prompt X connection
@@ -473,16 +478,17 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       await _connectToX();
 
       // Check if connection was successful - read the updated state
-      final nowConnected = ref.read(xConnectionStatusProvider);
+      final nowConnected =
+          ref.read(twitterConnectionProvider).connectionState ==
+              TwitterConnectionState.connected;
       if (!nowConnected || !mounted) return;
     }
 
     if (!mounted) return;
 
     // If we reach here, X is connected, open the share bottom sheet
-    final BuildContext currentContext = context;
     showModalBottomSheet(
-      context: currentContext,
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
@@ -588,12 +594,21 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   }
 
   /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
+  /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
   Future<void> _connectToX() async {
-    await TwitterXAuthUtil.connectToX(
-      ref,
-      setLoadingState: (loading) => setState(() => _isProcessing = loading),
-      mounted: mounted,
-    );
+    setState(() => _isProcessing = true);
+
+    try {
+      await TwitterXAuthUtil.connectToX(
+        ref,
+        setLoadingState: (loading) => setState(() => _isProcessing = loading),
+        mounted: mounted,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   /// Shows a dialog for confirming exit with unsaved changes.

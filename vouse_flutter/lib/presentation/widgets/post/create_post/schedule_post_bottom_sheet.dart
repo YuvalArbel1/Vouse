@@ -38,7 +38,8 @@ class SchedulePostBottomSheet extends ConsumerStatefulWidget {
       _SchedulePostBottomSheetState();
 }
 
-class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomSheet> {
+class _SchedulePostBottomSheetState
+    extends ConsumerState<SchedulePostBottomSheet> {
   /// Controller for the post title.
   final TextEditingController _titleController = TextEditingController();
 
@@ -84,12 +85,12 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
       builder: (ctx) {
         return AlertDialog(
           title:
-          Text('Post Content', style: boldTextStyle(color: vPrimaryColor)),
+              Text('Post Content', style: boldTextStyle(color: vPrimaryColor)),
           content: SingleChildScrollView(
             child: Text(fullText, style: primaryTextStyle()),
           ),
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           actions: [
             TextButton(
               onPressed: () =>
@@ -274,17 +275,19 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
       );
 
       // Use the scheduler provider to handle both server and local saving
-      final success = await ref.read(postSchedulerProvider.notifier).schedulePost(
-        post: postEntity,
-        userId: user.uid,
-      );
+      final success =
+          await ref.read(postSchedulerProvider.notifier).schedulePost(
+                post: postEntity,
+                userId: user.uid,
+              );
 
       if (!mounted) return;
 
       if (success) {
         // Show success message
         final schedulerState = ref.read(postSchedulerProvider);
-        String message = 'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}';
+        String message =
+            'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}';
 
         if (schedulerState.state == SchedulingState.localOnly) {
           message += ' (local only)';
@@ -314,13 +317,14 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
 
         if (mounted) {
           ref.read(navigationServiceProvider).navigateAfterPostSave(
-            context,
-            widget.editingDraft != null,
-          );
+                context,
+                widget.editingDraft != null,
+              );
         }
       } else {
         final schedulerState = ref.read(postSchedulerProvider);
-        toast("Error scheduling post: ${schedulerState.errorMessage ?? 'Unknown error'}");
+        toast(
+            "Error scheduling post: ${schedulerState.errorMessage ?? 'Unknown error'}");
       }
     } catch (e) {
       toast("Error scheduling post: $e");
@@ -338,9 +342,10 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
     final snippet = _truncateText(postText, 30);
     final images = ref.watch(postImagesProvider);
 
-    // Check Twitter connection status
+    // Check Twitter connection status using the TwitterConnectionProvider directly
     final twitterConnectionState = ref.watch(twitterConnectionProvider);
-    final isConnected = twitterConnectionState.connectionState == TwitterConnectionState.connected;
+    final isConnected = twitterConnectionState.connectionState ==
+        TwitterConnectionState.connected;
 
     // If not connected, show a message
     if (!isConnected) {
@@ -380,14 +385,17 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                 onPressed: () {
                   Navigator.pop(context);
                   // Navigate to profile screen to connect Twitter
-                  ref.read(navigationServiceProvider).navigateToProfile(context);
+                  ref
+                      .read(navigationServiceProvider)
+                      .navigateToProfile(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: vPrimaryColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 child: const Text('Go to Profile to Connect'),
               ),
@@ -441,7 +449,7 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                           Text(
                             "Schedule Your Post",
                             style:
-                            boldTextStyle(size: 20, color: vPrimaryColor),
+                                boldTextStyle(size: 20, color: vPrimaryColor),
                           ),
                         ],
                       ),
@@ -464,7 +472,7 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                             Text(
                               "Post Title",
                               style:
-                              boldTextStyle(size: 14, color: vPrimaryColor),
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             TextField(
@@ -514,7 +522,7 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                             Text(
                               "Post Content",
                               style:
-                              boldTextStyle(size: 14, color: vPrimaryColor),
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             GestureDetector(
@@ -594,7 +602,7 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                             Text(
                               "Who can reply?",
                               style:
-                              boldTextStyle(size: 14, color: vPrimaryColor),
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             Container(
@@ -671,7 +679,7 @@ class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomShee
                             Text(
                               "When to Post",
                               style:
-                              boldTextStyle(size: 14, color: vPrimaryColor),
+                                  boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 16),
 

@@ -141,6 +141,7 @@ class TwitterConnectionNotifier
   }
 
   /// Connect Twitter account
+  /// Connect Twitter account
   Future<bool> connectTwitter(XAuthTokens tokens) async {
     try {
       state = state.copyWith(connectionState: TwitterConnectionState.connecting);
@@ -202,6 +203,7 @@ class TwitterConnectionNotifier
         connectionState: TwitterConnectionState.connected,
         username: username,
       );
+
       return true;
     } catch (e) {
       debugPrint('Twitter connection error: $e');
@@ -242,6 +244,7 @@ class TwitterConnectionNotifier
         connectionState: TwitterConnectionState.disconnected,
         username: null,
       );
+
       return true;
     } catch (e) {
       state = state.copyWith(
@@ -292,6 +295,9 @@ class TwitterConnectionNotifier
       await disconnectTwitter();
     }
   }
+}
+
+mixin xConnectionStatusProvider {
 }
 
 /// Provider for Twitter connection

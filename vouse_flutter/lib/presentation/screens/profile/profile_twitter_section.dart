@@ -16,7 +16,8 @@ class ProfileTwitterSection extends ConsumerStatefulWidget {
   const ProfileTwitterSection({super.key});
 
   @override
-  ConsumerState<ProfileTwitterSection> createState() => _ProfileTwitterSectionState();
+  ConsumerState<ProfileTwitterSection> createState() =>
+      _ProfileTwitterSectionState();
 }
 
 class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
@@ -33,7 +34,11 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
   Future<void> _checkTwitterConnection() async {
     try {
       setState(() => _isLoading = true);
-      await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
+
+      // Check Twitter connection status
+      await ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -53,7 +58,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
 
       if (result is DataSuccess<XAuthTokens> && result.data != null) {
         // Connect with the obtained tokens
-        final connectResult = await ref.read(twitterConnectionProvider.notifier)
+        final connectResult = await ref
+            .read(twitterConnectionProvider.notifier)
             .connectTwitter(result.data!);
 
         if (!mounted) return;
@@ -70,7 +76,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
               ),
               backgroundColor: vAccentColor,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           );
         } else {
@@ -92,29 +99,33 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
   Future<void> _disconnectTwitter() async {
     // Show confirmation dialog
     final shouldDisconnect = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Disconnect X Account'),
-        content: const Text('Are you sure you want to disconnect your X account?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Disconnect X Account'),
+            content: const Text(
+                'Are you sure you want to disconnect your X account?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Disconnect',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Disconnect', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!shouldDisconnect) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final disconnectResult = await ref.read(twitterConnectionProvider.notifier)
+      final disconnectResult = await ref
+          .read(twitterConnectionProvider.notifier)
           .disconnectTwitter();
 
       if (!mounted) return;
@@ -125,7 +136,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             content: const Text('Twitter account disconnected successfully'),
             backgroundColor: vBodyGrey,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       } else {
@@ -144,7 +156,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
   Widget build(BuildContext context) {
     // Watch Twitter connection state
     final twitterConnection = ref.watch(twitterConnectionProvider);
-    final isConnected = twitterConnection.connectionState == TwitterConnectionState.connected;
+    final isConnected =
+        twitterConnection.connectionState == TwitterConnectionState.connected;
     final username = twitterConnection.username;
 
     return SettingsSectionWidget(
@@ -163,10 +176,10 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             ),
             child: Row(
               children: [
-                Image.asset(
-                  'assets/images/twitter_x_logo.png',
-                  width: 28,
-                  height: 28,
+                Icon(
+                  Icons.alternate_email,
+                  size: 28,
+                  color: Colors.black,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -186,7 +199,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vAccentColor,
                     borderRadius: BorderRadius.circular(12),

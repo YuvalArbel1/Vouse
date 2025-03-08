@@ -1,5 +1,6 @@
 // lib/presentation/screens/home/edit_profile_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -116,21 +117,34 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   /// Check if X (Twitter) is already connected
+// For the edit_profile_screen.dart, only the changed _checkXConnection method
+
+  /// Check if X (Twitter) is already connected
   Future<void> _checkXConnection() async {
-    // Use the Twitter connection provider to check status
-    await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
+    try {
+      // Use the TwitterConnectionProvider to check connection status
+      await ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus();
 
-    // Get current state
-    final connectionState = ref.read(twitterConnectionProvider);
-    final isConnected =
-        connectionState.connectionState == TwitterConnectionState.connected;
+      if (!mounted) return;
 
-    setState(() {
-      _isXConnected = isConnected;
-      connectXController.text = isConnected
-          ? 'Disconnect X Account'
-          : 'Tap to connect your X account';
-    });
+      // Get the updated connection state
+      final connectionState = ref.read(twitterConnectionProvider);
+      final isConnected =
+          connectionState.connectionState == TwitterConnectionState.connected;
+
+      setState(() {
+        _isXConnected = isConnected;
+        connectXController.text = isConnected
+            ? 'Disconnect X Account'
+            : 'Tap to connect your X account';
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking Twitter connection: $e');
+      }
+    }
   }
 
   @override
@@ -168,16 +182,18 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // Use the TwitterConnectionProvider to handle connection
+      // Start the sign-in flow
       final result = await ref.read(signInToXUseCaseProvider).call();
 
       if (!mounted) return;
 
       if (result is DataSuccess<XAuthTokens> && result.data != null) {
-        // Connect with the obtained tokens
+        final tokens = result.data!;
+
+        // Use the TwitterConnectionProvider to handle token storage and server connection
         final connectResult = await ref
             .read(twitterConnectionProvider.notifier)
-            .connectTwitter(result.data!);
+            .connectTwitter(tokens);
 
         if (!mounted) return;
 
@@ -190,8 +206,9 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         } else {
           toast('Failed to connect Twitter account');
         }
-      } else if (result is DataFailed) {
-        toast('Twitter authentication failed: ${result.error?.error}');
+      } else if (result is DataFailed<XAuthTokens>) {
+        final errorMsg = result.error?.error ?? 'Unknown error';
+        toast("Twitter Auth Error: $errorMsg");
       }
     } catch (e) {
       toast('Error connecting to X: $e');
@@ -204,10 +221,34 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   /// Disconnects from X (Twitter) by clearing stored tokens
   Future<void> _disconnectFromX() async {
+    // Show confirmation dialog
+    final shouldDisconnect = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Disconnect X Account'),
+            content: const Text(
+                'Are you sure you want to disconnect your X account?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Disconnect',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!shouldDisconnect) return;
+
     setState(() => _isProcessing = true);
 
     try {
-      // Use the TwitterConnectionProvider to handle disconnection
+      // Use the TwitterConnectionProvider to handle the disconnection
       final disconnectResult = await ref
           .read(twitterConnectionProvider.notifier)
           .disconnectTwitter();

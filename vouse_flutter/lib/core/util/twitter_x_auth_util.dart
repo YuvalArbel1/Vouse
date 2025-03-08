@@ -7,8 +7,7 @@ import 'package:nb_utils/nb_utils.dart';
 import '../../domain/entities/secure_db/x_auth_tokens.dart';
 
 import '../../presentation/providers/auth/x/x_auth_providers.dart';
-import '../../presentation/providers/auth/x/x_token_providers.dart';
-import '../../presentation/providers/auth/x/x_connection_provider.dart';
+import '../../presentation/providers/auth/x/twitter_connection_provider.dart';
 import '../../core/resources/data_state.dart';
 
 /// A utility class for handling Twitter/X authentication operations.
@@ -17,7 +16,7 @@ import '../../core/resources/data_state.dart';
 class TwitterXAuthUtil {
   /// Initiates Twitter OAuth sign-in flow, retrieves tokens, then stores them securely.
   ///
-  /// Uses the existing XConnectionStatusProvider to track connection status.
+  /// Uses the improved TwitterConnectionProvider to handle storage and server connection.
   /// Shows appropriate loading/success/error toasts and handles mounted state checking.
   /// Returns true if connection was successful, false otherwise.
   static Future<bool> connectToX(
@@ -34,24 +33,20 @@ class TwitterXAuthUtil {
 
       if (!mounted) return false;
 
-      if (result is DataSuccess<XAuthTokens>) {
+      if (result is DataSuccess<XAuthTokens> && result.data != null) {
         final tokens = result.data!;
-        final saveTokensUseCase = ref.read(saveXTokensUseCaseProvider);
-        final saveResult = await saveTokensUseCase.call(params: tokens);
+
+        // Use the TwitterConnectionProvider for consistent handling
+        final connectResult = await ref.read(twitterConnectionProvider.notifier).connectTwitter(tokens);
 
         if (!mounted) return false;
 
-        if (saveResult is DataSuccess<void>) {
+        if (connectResult) {
           // Show success toast
           toast("X account connected successfully");
-
-          // Update connection status in the provider
-          ref.read(xConnectionStatusProvider.notifier).setConnected(true);
-
           return true;
-        } else if (saveResult is DataFailed<void>) {
-          final err = saveResult.error?.error ?? 'Unknown error';
-          toast("Error storing tokens: $err");
+        } else {
+          toast("Failed to connect Twitter account");
           return false;
         }
       } else if (result is DataFailed<XAuthTokens>) {
@@ -69,9 +64,8 @@ class TwitterXAuthUtil {
     }
   }
 
-  /// Disconnects the X account by clearing stored tokens.
+  /// Disconnects the X account using the improved TwitterConnectionProvider.
   ///
-  /// Uses the existing XConnectionStatusProvider to track connection status.
   /// Shows a confirmation dialog before proceeding.
   /// Returns true if disconnect was successful, false otherwise.
   static Future<bool> disconnectFromX(
@@ -108,25 +102,21 @@ class TwitterXAuthUtil {
     setLoadingState(true);
 
     try {
-      final clearTokensUC = ref.read(clearXTokensUseCaseProvider);
-      final result = await clearTokensUC.call();
+      // Use the TwitterConnectionProvider for consistent handling
+      final disconnectResult = await ref.read(twitterConnectionProvider.notifier).disconnectTwitter();
 
       if (!mounted) return false;
 
-      if (result is DataSuccess) {
+      if (disconnectResult) {
         // Show success toast
         toast('X account disconnected successfully');
-
-        // Update connection status in the provider
-        ref.read(xConnectionStatusProvider.notifier).setConnected(false);
-
         return true;
-      } else if (result is DataFailed) {
-        final errorMsg = result.error?.error ?? 'Unknown error';
-        toast('Failed to disconnect: $errorMsg');
+      } else {
+        toast('Failed to disconnect Twitter account');
         return false;
       }
-
+    } catch (e) {
+      toast('Error disconnecting X: $e');
       return false;
     } finally {
       if (mounted) {

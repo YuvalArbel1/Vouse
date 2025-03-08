@@ -504,7 +504,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
                 ),
               ],
             ),
-            child: SharePostBottomSheet(
+            child: SchedulePostBottomSheet(
               editingDraft: _editingDraft,
             ),
           ),

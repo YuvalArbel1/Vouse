@@ -1,4 +1,4 @@
-// lib/presentation/widgets/post/create_post/schedule_post_bottom_sheet.dart
+// lib/presentation/widgets/post/create_post/updated_schedule_post_bottom_sheet.dart
 
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,53 +8,38 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/resources/data_state.dart';
 import '../../../../core/util/colors.dart';
 import '../../../../core/util/common.dart';
 import '../../../../core/util/image_utils.dart';
 import '../../../../domain/entities/local_db/post_entity.dart';
-import '../../../../domain/usecases/post/save_post_with_upload_usecase.dart';
-import '../../../providers/post/post_refresh_provider.dart';
+import '../../../providers/auth/x/twitter_connection_provider.dart';
+import '../../../providers/post/post_scheduler_provider.dart';
 import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
-import '../../../providers/post/save_post_with_upload_provider.dart';
-import '../../../providers/home/home_content_provider.dart';
 import '../../../providers/navigation/navigation_service.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
 
-/// A beautifully designed bottom sheet that allows the user to schedule a post for a future date/time,
-/// with options for AI suggestions or immediate posting.
-///
-/// Features:
-/// - A post title input field with elegant styling
-/// - A preview snippet of the main post text (with full text dialog)
-/// - An optional location tag display
-/// - A dropdown to select who can reply
-/// - Image previews for selected media
-/// - Multiple scheduling options:
-///   - "Now!" button for immediate scheduling
-///   - Manual date picker for custom scheduling
-///   - AI suggestion for optimal posting time
-/// - A clear, visually distinct "Schedule Post" button
-class SharePostBottomSheet extends ConsumerStatefulWidget {
+/// An updated bottom sheet that allows the user to schedule a post for a future date/time,
+/// using our new providers for server integration.
+class SchedulePostBottomSheet extends ConsumerStatefulWidget {
   /// The draft post being edited (if any)
   final PostEntity? editingDraft;
 
-  /// Creates a [SharePostBottomSheet].
-  const SharePostBottomSheet({
+  /// Creates a [SchedulePostBottomSheet].
+  const SchedulePostBottomSheet({
     super.key,
     this.editingDraft,
   });
 
   @override
-  ConsumerState<SharePostBottomSheet> createState() =>
-      _SharePostBottomSheetState();
+  ConsumerState<SchedulePostBottomSheet> createState() =>
+      _SchedulePostBottomSheetState();
 }
 
-class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
+class _SchedulePostBottomSheetState extends ConsumerState<SchedulePostBottomSheet> {
   /// Controller for the post title.
   final TextEditingController _titleController = TextEditingController();
 
@@ -100,12 +85,12 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
       builder: (ctx) {
         return AlertDialog(
           title:
-              Text('Post Content', style: boldTextStyle(color: vPrimaryColor)),
+          Text('Post Content', style: boldTextStyle(color: vPrimaryColor)),
           content: SingleChildScrollView(
             child: Text(fullText, style: primaryTextStyle()),
           ),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           actions: [
             TextButton(
               onPressed: () =>
@@ -225,7 +210,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     ref.read(postLocationProvider.notifier).state = null;
   }
 
-  /// Handles scheduling the post.
+  /// Handles scheduling the post using the new post scheduler provider.
   Future<void> _onSchedulePressed() async {
     if (_isScheduling) return;
 
@@ -289,26 +274,22 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
         locationAddress: addr,
       );
 
-      final localFiles = localPaths.map((p) => File(p)).toList();
-
-      final savePostWithUploadUC = ref.read(savePostWithUploadUseCaseProvider);
-      final result = await savePostWithUploadUC.call(
-        params: SavePostWithUploadParams(
-          userUid: user.uid,
-          postEntity: postEntity,
-          localImageFiles: localFiles,
-        ),
+      // Use the scheduler provider to handle both server and local saving
+      final success = await ref.read(postSchedulerProvider.notifier).schedulePost(
+        post: postEntity,
+        userId: user.uid,
       );
+
       if (!mounted) return;
 
-      if (result is DataSuccess) {
-        // Trigger refresh for all relevant providers
-        ref.read(postRefreshProvider.notifier).refreshScheduled();
-        ref.read(postRefreshProvider.notifier).refreshAll();
+      if (success) {
+        // Show success message
+        final schedulerState = ref.read(postSchedulerProvider);
+        String message = 'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}';
 
-        // Explicitly refresh home content
-        await ref.read(homeContentProvider.notifier).refreshHomeContent();
-        if (!mounted) return;
+        if (schedulerState.state == SchedulingState.localOnly) {
+          message += ' (local only)';
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -316,8 +297,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 12),
-                Text(
-                    'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}'),
+                Expanded(child: Text(message)),
               ],
             ),
             backgroundColor: vAccentColor,
@@ -330,15 +310,21 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
 
         _clearAllProviders();
 
+        // Reset the scheduler state
+        ref.read(postSchedulerProvider.notifier).reset();
+
         if (mounted) {
           ref.read(navigationServiceProvider).navigateAfterPostSave(
-                context,
-                widget.editingDraft != null,
-              );
+            context,
+            widget.editingDraft != null,
+          );
         }
-      } else if (result is DataFailed) {
-        toast("Error saving scheduled post: ${result.error?.error}");
+      } else {
+        final schedulerState = ref.read(postSchedulerProvider);
+        toast("Error scheduling post: ${schedulerState.errorMessage ?? 'Unknown error'}");
       }
+    } catch (e) {
+      toast("Error scheduling post: $e");
     } finally {
       if (mounted) {
         setState(() => _isScheduling = false);
@@ -352,6 +338,66 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
     final location = ref.watch(postLocationProvider);
     final snippet = _truncateText(postText, 30);
     final images = ref.watch(postImagesProvider);
+
+    // Check Twitter connection status
+    final twitterConnectionState = ref.watch(twitterConnectionProvider);
+    final isConnected = twitterConnectionState.connectionState == TwitterConnectionState.connected;
+
+    // If not connected, show a message
+    if (!isConnected) {
+      return SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.orange,
+                size: 48,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Twitter Account Not Connected',
+                style: boldTextStyle(size: 18),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'You need to connect your Twitter account before you can schedule posts.',
+                style: secondaryTextStyle(size: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Navigate to profile screen to connect Twitter
+                  ref.read(navigationServiceProvider).navigateToProfile(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: vPrimaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                child: const Text('Go to Profile to Connect'),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SafeArea(
       top: false,
@@ -396,7 +442,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                           Text(
                             "Schedule Your Post",
                             style:
-                                boldTextStyle(size: 20, color: vPrimaryColor),
+                            boldTextStyle(size: 20, color: vPrimaryColor),
                           ),
                         ],
                       ),
@@ -419,7 +465,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                             Text(
                               "Post Title",
                               style:
-                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                              boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             TextField(
@@ -469,7 +515,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                             Text(
                               "Post Content",
                               style:
-                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                              boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             GestureDetector(
@@ -549,7 +595,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                             Text(
                               "Who can reply?",
                               style:
-                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                              boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 8),
                             Container(
@@ -626,7 +672,7 @@ class _SharePostBottomSheetState extends ConsumerState<SharePostBottomSheet> {
                             Text(
                               "When to Post",
                               style:
-                                  boldTextStyle(size: 14, color: vPrimaryColor),
+                              boldTextStyle(size: 14, color: vPrimaryColor),
                             ),
                             const SizedBox(height: 16),
 

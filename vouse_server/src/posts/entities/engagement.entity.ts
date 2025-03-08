@@ -5,7 +5,7 @@ import {
   PrimaryColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToOne,
+  ManyToOne,
   JoinColumn,
 } from 'typeorm';
 import { Post } from './post.entity';
@@ -18,26 +18,27 @@ export class PostEngagement {
   /**
    * Twitter post ID as primary key
    */
-  @PrimaryColumn()
+  @PrimaryColumn({ type: 'varchar' })
   postIdX: string;
 
   /**
    * Reference to the local post ID
    */
-  @Column()
+  @Column({ type: 'varchar' })
   postIdLocal: string;
 
   /**
-   * One-to-one relationship with the Post entity
+   * Many-to-one relationship with the Post entity
+   * Changed from one-to-one to many-to-one to avoid unique constraint issues
    */
-  @OneToOne(() => Post)
+  @ManyToOne(() => Post)
   @JoinColumn({ name: 'postIdLocal', referencedColumnName: 'postIdLocal' })
   post: Post;
 
   /**
    * User who owns this post
    */
-  @Column()
+  @Column({ type: 'varchar' })
   userId: string;
 
   /**

@@ -4,9 +4,9 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
@@ -34,8 +34,10 @@ export class Post {
 
   /**
    * Local post ID from the Flutter app
+   * Adding a unique constraint to fix the foreign key issue
    */
-  @Column({ nullable: false })
+  @Column({ nullable: false, type: 'varchar', unique: true })
+  @Index('IDX_POST_ID_LOCAL', { unique: true })
   postIdLocal: string;
 
   /**
@@ -47,7 +49,7 @@ export class Post {
   /**
    * Foreign key to the user who created this post
    */
-  @Column()
+  @Column({ type: 'varchar' })
   userId: string;
 
   /**
@@ -66,7 +68,7 @@ export class Post {
   /**
    * A title for organizing posts in the app (not published to Twitter)
    */
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   title: string | null;
 
   /**
@@ -100,14 +102,8 @@ export class Post {
   /**
    * Visibility setting (for Twitter's reply control)
    */
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   visibility: string | null;
-
-  /**
-   * Paths to images stored locally in the Flutter app
-   */
-  @Column({ type: 'json', default: '[]' })
-  localImagePaths: string[];
 
   /**
    * URLs to images stored in cloud storage
@@ -130,7 +126,7 @@ export class Post {
   /**
    * Human-readable location address
    */
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'varchar' })
   locationAddress: string | null;
 
   /**
@@ -138,10 +134,4 @@ export class Post {
    */
   @CreateDateColumn()
   createdAt: Date;
-
-  /**
-   * When the post record was last updated
-   */
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

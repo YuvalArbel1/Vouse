@@ -1,9 +1,8 @@
-// src/auth/services/firebase-admin.service.ts
+// src/auth/services/firebase-admin.ts
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
@@ -16,28 +15,34 @@ export class FirebaseAdminService implements OnModuleInit {
     // Check if Firebase is already initialized to prevent multiple initializations
     if (!admin.apps.length) {
       try {
-        // Initialize the app with credentials from environment variables
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(
-          /\\n/g,
-          '\n',
+        // Path to the service account file at the project root
+        const serviceAccountPath = path.join(
+          process.cwd(),
+          'vouse-4d2c0-firebase-adminsdk-fbsvc-0ae3a7c438.json',
         );
 
-        if (!projectId || !clientEmail || !privateKey) {
+        this.logger.log(
+          `Loading Firebase credentials from: ${serviceAccountPath}`,
+        );
+
+        // Check if the file exists
+        if (!fs.existsSync(serviceAccountPath)) {
           this.logger.error(
-            'Missing Firebase credentials in environment variables',
+            `Service account file not found at: ${serviceAccountPath}`,
           );
-          throw new Error('Missing Firebase credentials');
+          throw new Error('Firebase service account file not found');
         }
 
+        // Load the service account file
+        const serviceAccount = JSON.parse(
+          fs.readFileSync(serviceAccountPath, 'utf8'),
+        );
+
+        // Initialize Firebase Admin with the service account
         admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId,
-            clientEmail,
-            privateKey,
-          }),
+          credential: admin.credential.cert(serviceAccount),
         });
+
         this.logger.log('Firebase Admin SDK initialized successfully');
       } catch (error) {
         this.logger.error(

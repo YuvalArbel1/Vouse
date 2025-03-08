@@ -15,9 +15,22 @@ export class TokenEncryption {
 
   constructor() {
     // The encryption key should be a 32-byte (256-bit) key stored in environment variables
-    const encryptionKey = process.env.ENCRYPTION_KEY;
-    if (!encryptionKey || encryptionKey.length !== 32) {
-      throw new Error('Invalid encryption key. Must be exactly 32 characters.');
+    let encryptionKey = process.env.ENCRYPTION_KEY || '';
+
+    // Remove any quotes that might be included in the .env file
+    encryptionKey = encryptionKey.replace(/['"]/g, '');
+
+    this.logger.log(`Encryption key length: ${encryptionKey.length}`);
+
+    // If key isn't exactly 32 characters, hash it to create a consistent 32-byte key
+    if (encryptionKey.length !== 32) {
+      this.logger.warn(
+        'Encryption key is not 32 characters. Creating a derived key.',
+      );
+      // Create a SHA-256 hash of the provided key, which will always be 32 bytes
+      const hash = crypto.createHash('sha256');
+      hash.update(encryptionKey || 'vouse-default-encryption-key');
+      encryptionKey = hash.digest('hex').substring(0, 32);
     }
 
     this.key = Buffer.from(encryptionKey, 'utf8');

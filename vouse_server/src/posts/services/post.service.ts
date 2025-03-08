@@ -40,11 +40,6 @@ export class PostService {
         ? new Date(createPostDto.scheduledAt)
         : null,
       // Parse arrays from strings if needed
-      localImagePaths: Array.isArray(createPostDto.localImagePaths)
-        ? createPostDto.localImagePaths
-        : createPostDto.localImagePaths
-          ? JSON.parse(createPostDto.localImagePaths as unknown as string)
-          : [],
       cloudImageUrls: Array.isArray(createPostDto.cloudImageUrls)
         ? createPostDto.cloudImageUrls
         : createPostDto.cloudImageUrls
@@ -182,12 +177,6 @@ export class PostService {
     };
 
     // Handle JSON fields
-    if (updatePostDto.localImagePaths) {
-      updateData.localImagePaths = Array.isArray(updatePostDto.localImagePaths)
-        ? updatePostDto.localImagePaths
-        : JSON.parse(updatePostDto.localImagePaths as unknown as string);
-    }
-
     if (updatePostDto.cloudImageUrls) {
       updateData.cloudImageUrls = Array.isArray(updatePostDto.cloudImageUrls)
         ? updatePostDto.cloudImageUrls

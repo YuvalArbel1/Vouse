@@ -50,14 +50,6 @@ export class CreatePostDto {
   visibility?: string;
 
   /**
-   * Local image paths in the Flutter app
-   */
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  localImagePaths?: string[];
-
-  /**
    * Cloud storage URLs for images
    */
   @IsArray()
@@ -120,14 +112,6 @@ export class UpdatePostDto {
   @IsString()
   @IsOptional()
   visibility?: string;
-
-  /**
-   * Local image paths
-   */
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  localImagePaths?: string[];
 
   /**
    * Cloud storage URLs for images

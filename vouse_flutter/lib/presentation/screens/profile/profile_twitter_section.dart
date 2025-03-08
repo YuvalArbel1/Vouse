@@ -1,11 +1,9 @@
 // lib/presentation/screens/profile/profile_twitter_section.dart
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
-import 'package:vouse_flutter/core/util/twitter_x_auth_util.dart';
 import 'package:vouse_flutter/domain/entities/secure_db/x_auth_tokens.dart';
 import 'package:vouse_flutter/presentation/providers/auth/x/twitter_connection_provider.dart';
 import 'package:vouse_flutter/presentation/providers/auth/x/x_auth_providers.dart';

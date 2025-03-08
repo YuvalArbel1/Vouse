@@ -16,9 +16,18 @@ class ResponseWrapper<T> {
   });
 
   factory ResponseWrapper.fromJson(
-      Map<String, dynamic> json,
-      T Function(dynamic json) fromJsonT,
-      ) {
+    Map<String, dynamic> json,
+    T Function(dynamic json) fromJsonT,
+  ) {
+    // Special handling for Map
+    if (T.toString().contains('Map<String, dynamic>')) {
+      return ResponseWrapper<T>(
+        success: json['success'] as bool,
+        message: json['message'] as String?,
+        data: json['data'] != null ? json['data'] as T : null,
+      );
+    }
+
     return ResponseWrapper<T>(
       success: json['success'] as bool,
       message: json['message'] as String?,

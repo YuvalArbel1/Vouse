@@ -6,6 +6,7 @@ import 'package:vouse_flutter/data/models/server/post_model.dart';
 import 'package:vouse_flutter/data/models/server/engagement_model.dart';
 import 'package:vouse_flutter/data/models/server/twitter_auth_model.dart';
 import 'package:vouse_flutter/data/models/server/response_wrapper.dart';
+import 'package:vouse_flutter/core/extensions/map_extensions.dart';
 
 part 'server_api_client.g.dart';
 

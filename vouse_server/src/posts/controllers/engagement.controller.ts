@@ -8,6 +8,7 @@ import {
   NotFoundException,
   HttpException,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { EngagementService } from '../services/engagement.service';
 import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
@@ -24,12 +25,17 @@ export class EngagementController {
 
   /**
    * Get all engagement metrics for the current user's posts
+   * @param limit Optional parameter to limit the number of results returned
    */
   @Get()
   @UseGuards(FirebaseAuthGuard)
-  async findAll(@CurrentUser() user: DecodedIdToken) {
+  async findAll(
+    @CurrentUser() user: DecodedIdToken,
+    @Query('limit') limit?: string,
+  ) {
     const engagements = await this.engagementService.getAllUserEngagements(
       user.uid,
+      limit ? parseInt(limit) : undefined,
     );
     return {
       success: true,
@@ -226,11 +232,12 @@ export class EngagementController {
   /**
    * Refresh all engagement metrics for the current user's posts
    */
-  // src/posts/controllers/engagement.controller.ts
-
   @Post('refresh/all')
   @UseGuards(FirebaseAuthGuard)
-  async refreshAllEngagements(@CurrentUser() user: DecodedIdToken) {
+  async refreshAllEngagements(
+    @CurrentUser() user: DecodedIdToken,
+    @Query('limit') limit?: string,
+  ) {
     try {
       // Get user's tokens
       const tokens = await this.xAuthService.getUserTokens(user.uid);
@@ -249,7 +256,7 @@ export class EngagementController {
       // Refresh metrics for each post (limit to avoid Twitter API rate limits)
       // Explicitly type the array to fix the TypeScript error
       const refreshResults: Array<any> = [];
-      const maxPostsToRefresh = 10; // Limit to avoid API rate limits
+      const maxPostsToRefresh = limit ? parseInt(limit) : 10; // Default limit to 10 to avoid API rate limits
 
       for (
         let i = 0;

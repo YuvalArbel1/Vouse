@@ -2,8 +2,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
 
 import { PostEngagement } from '../entities/engagement.entity';
 import { Post } from '../entities/post.entity';
@@ -18,8 +16,6 @@ export class EngagementService {
     private engagementRepository: Repository<PostEngagement>,
     @InjectRepository(Post)
     private postRepository: Repository<Post>,
-    @InjectQueue('metrics-collector')
-    private metricsQueue: Queue,
     private xClientService: XClientService,
   ) {}
 
@@ -47,43 +43,9 @@ export class EngagementService {
     // Save the record
     const savedEngagement = await this.engagementRepository.save(engagement);
 
-    // Schedule the first metrics collection
-    await this.scheduleMetricsCollection(postIdX, userId);
+    // No automatic scheduling of metrics collection
 
     return savedEngagement;
-  }
-
-  /**
-   * Schedule a metrics collection job
-   */
-  private async scheduleMetricsCollection(
-    postIdX: string,
-    userId: string,
-  ): Promise<void> {
-    try {
-      // Add job to the queue with 30 minute delay for first collection
-      await this.metricsQueue.add(
-        'collect',
-        {
-          postIdX,
-          userId,
-        },
-        {
-          delay: 30 * 60 * 1000, // 30 minutes
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 60000,
-          },
-          removeOnComplete: true,
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to schedule metrics collection for post ${postIdX}: ${error.message}`,
-        error.stack,
-      );
-    }
   }
 
   /**
@@ -129,11 +91,20 @@ export class EngagementService {
   /**
    * Get engagement metrics for all of a user's posts
    */
-  async getAllUserEngagements(userId: string): Promise<PostEngagement[]> {
-    return this.engagementRepository.find({
-      where: { userId },
-      order: { updatedAt: 'DESC' },
-    });
+  async getAllUserEngagements(
+    userId: string,
+    limit?: number,
+  ): Promise<PostEngagement[]> {
+    const query = this.engagementRepository
+      .createQueryBuilder('engagement')
+      .where('engagement.userId = :userId', { userId })
+      .orderBy('engagement.updatedAt', 'DESC');
+
+    if (limit) {
+      query.take(limit);
+    }
+
+    return query.getMany();
   }
 
   /**
@@ -192,7 +163,10 @@ export class EngagementService {
   ): Promise<PostEngagement> {
     try {
       // Fetch metrics from Twitter API
-      const tweetData = await this.xClientService.getTweetMetrics(postIdX);
+      const tweetData = await this.xClientService.getTweetMetrics(
+        postIdX,
+        accessToken,
+      );
 
       // Extract metrics from the response
       const publicMetrics = tweetData.data.public_metrics || {};

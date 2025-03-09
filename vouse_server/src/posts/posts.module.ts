@@ -10,7 +10,6 @@ import { EngagementService } from './services/engagement.service';
 import { PostController } from './controllers/post.controller';
 import { EngagementController } from './controllers/engagement.controller';
 import { PostPublishProcessor } from './processors/post-publish.processor';
-import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
 
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
@@ -22,9 +21,7 @@ import { XModule } from '../x/x.module';
     BullModule.registerQueue({
       name: 'post-publish',
     }),
-    BullModule.registerQueue({
-      name: 'metrics-collector',
-    }),
+    // Removed metrics-collector queue
     AuthModule,
     UsersModule,
     XModule,
@@ -33,7 +30,7 @@ import { XModule } from '../x/x.module';
     PostService,
     EngagementService,
     PostPublishProcessor,
-    MetricsCollectorProcessor,
+    // Removed MetricsCollectorProcessor
   ],
   controllers: [PostController, EngagementController],
   exports: [PostService, EngagementService],

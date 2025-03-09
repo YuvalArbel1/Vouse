@@ -62,15 +62,20 @@ export class PostService {
    * Schedule a post for publishing
    */
   private async schedulePost(post: Post): Promise<void> {
-    const now = new Date();
+    // Instead of using the current server time, use the post's creation time
+    const referenceTime = post.createdAt;
+
     // Make sure scheduledAt is a Date
     const scheduledTime =
       post.scheduledAt instanceof Date
         ? post.scheduledAt
         : new Date(post.scheduledAt as unknown as string);
 
-    // Calculate delay in milliseconds
-    let delayMs = Math.max(0, scheduledTime.getTime() - now.getTime());
+    // Calculate delay in milliseconds based on the client-provided creation time
+    let delayMs = Math.max(
+      0,
+      scheduledTime.getTime() - referenceTime.getTime(),
+    );
 
     // If scheduledTime is in the past or very close to now (within 3 seconds),
     // set a minimal delay to ensure immediate processing

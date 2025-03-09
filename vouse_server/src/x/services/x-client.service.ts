@@ -189,8 +189,15 @@ export class XClientService {
       const accessTokenKey = process.env.TWITTER_ACCESS_TOKEN;
       const accessTokenSecret = process.env.TWITTER_ACCESS_SECRET;
 
-      if (!consumerKey || !consumerSecret || !accessTokenKey || !accessTokenSecret) {
-        throw new Error('Twitter API credentials not configured for OAuth 1.0a');
+      if (
+        !consumerKey ||
+        !consumerSecret ||
+        !accessTokenKey ||
+        !accessTokenSecret
+      ) {
+        throw new Error(
+          'Twitter API credentials not configured for OAuth 1.0a',
+        );
       }
 
       // Create OAuth 1.0a instance using require to avoid import issues
@@ -239,7 +246,9 @@ export class XClientService {
     } catch (error) {
       this.logger.error(`Failed to upload media: ${error.message}`);
       if (error.response) {
-        this.logger.error(`Error details: ${JSON.stringify(error.response.data)}`);
+        this.logger.error(
+          `Error details: ${JSON.stringify(error.response.data)}`,
+        );
       }
       throw error;
     }
@@ -251,15 +260,28 @@ export class XClientService {
    * Reference: https://developer.twitter.com/en/docs/twitter-api/tweets/lookup/api-reference/get-tweets-id
    *
    * @param tweetId The ID of the tweet
+   * @param accessToken User's OAuth access token (optional, will use app token if not provided)
    * @returns Engagement metrics data including public_metrics, non_public_metrics, and organic_metrics
    */
-  async getTweetMetrics(tweetId: string): Promise<any> {
+  async getTweetMetrics(tweetId: string, accessToken?: string): Promise<any> {
     const endpoint = `/tweets/${tweetId}`;
     const params = {
       'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics',
     };
 
-    return this.makeAppAuthenticatedRequest('get', endpoint, null, params);
+    // If access token is provided, use it for user context
+    // Otherwise fall back to app-only auth for public metrics
+    if (accessToken) {
+      return this.makeAuthenticatedRequest(
+        accessToken,
+        'get',
+        endpoint,
+        null,
+        params,
+      );
+    } else {
+      return this.makeAppAuthenticatedRequest('get', endpoint, null, params);
+    }
   }
 
   /**

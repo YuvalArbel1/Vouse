@@ -12,11 +12,13 @@ import '../../../../core/util/common.dart';
 import '../../../../core/util/image_utils.dart';
 import '../../../../domain/entities/local_db/post_entity.dart';
 import '../../../providers/auth/x/twitter_connection_provider.dart';
+import '../../../providers/home/home_content_provider.dart';
 import '../../../providers/post/post_scheduler_provider.dart';
 import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
 import '../../../providers/post/post_location_provider.dart';
 import '../../../providers/navigation/navigation_service.dart';
+import '../../../providers/server/server_sync_provider.dart';
 import 'location_tag_widget.dart';
 import 'selected_images_preview.dart';
 import 'schedule_ai_dialog.dart';
@@ -115,9 +117,8 @@ class _SchedulePostBottomSheetState
   void _scheduleNow() {
     // Set to null for immediate posting
     setState(() {
-      _scheduledDateTime = null;
+      _scheduledDateTime = DateTime.now();
     });
-    toast('Post will be published immediately');
   }
 
   /// Lets the user pick a date/time within the next 7 days.
@@ -324,10 +325,16 @@ class _SchedulePostBottomSheetState
         // Reset the scheduler state
         ref.read(postSchedulerProvider.notifier).reset();
 
+        // First, synchronize posts with the server
+        await ref.read(serverSyncProvider.notifier).synchronizePosts();
+
+        // Refresh home content
+        await ref.read(homeContentProvider.notifier).refreshHomeContent();
+
         if (mounted) {
-          ref.read(navigationServiceProvider).navigateAfterPostSave(
+          ref.read(navigationServiceProvider).navigateToAppNavigator(
                 context,
-                widget.editingDraft != null,
+                clearStack: true,
               );
         }
       } else {

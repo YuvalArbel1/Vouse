@@ -7,6 +7,8 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/presentation/screens/post/full_screen_image_preview.dart';
 
+import '../../../../core/util/time_util.dart';
+
 /// A post card that:
 /// - If it's a draft, shows a "Draft" green button at the bottom.
 /// - If scheduled, shows a green button with the scheduled time.
@@ -75,10 +77,10 @@ class PostCard extends StatelessWidget {
             const Spacer(),
 
             // 5) Show bottom status based on post type:
-            if (post.scheduledAt != null)
-              _buildScheduledButton()
-            else if (post.updatedAt != null)
+            if (post.postIdX != null && post.updatedAt != null)
               _buildIconsRowPosted()
+            else if (post.scheduledAt != null)
+              _buildScheduledButton()
             else
               _buildDraftIndicator(),
           ],
@@ -269,7 +271,8 @@ class PostCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Posted at ${post.updatedAt!.toIso8601String().substring(0, 10)}",
+          // Use relative time description
+          "Posted ${relativeTimeDescription(post.updatedAt!)}",
           style: secondaryTextStyle(color: vAccentColor, size: 12),
         ),
         const SizedBox(height: 4),
@@ -281,8 +284,8 @@ class PostCard extends StatelessWidget {
   /// Builds a green button showing the scheduled date/time.
   Widget _buildScheduledButton() {
     final scheduledTime = post.scheduledAt!;
-    // Format: "2023-02-28 14:25"
-    final formattedTime = scheduledTime.toString().substring(0, 16);
+    // Use the new localizeDateTime function
+    final formattedTime = localizeDateTime(scheduledTime);
 
     return Container(
       width: double.infinity,

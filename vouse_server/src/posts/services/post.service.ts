@@ -71,17 +71,17 @@ export class PostService {
         ? post.scheduledAt
         : new Date(post.scheduledAt as unknown as string);
 
-    // Calculate delay in milliseconds based on the client-provided creation time
-    let delayMs = Math.max(
-      0,
-      scheduledTime.getTime() - referenceTime.getTime(),
-    );
+    // Calculate delay in milliseconds based on the client-provided times
+    const delayFromCreation = scheduledTime.getTime() - referenceTime.getTime();
 
-    // If scheduledTime is in the past or very close to now (within 3 seconds),
-    // set a minimal delay to ensure immediate processing
-    if (delayMs <= 3000) {
+    // If the scheduled time is before or very close to the creation time,
+    // it should be posted immediately
+    let delayMs = delayFromCreation <= 3000 ? 0 : delayFromCreation;
+
+    // For additional safety, check if the delay is negative
+    if (delayMs < 0) {
       this.logger.log(
-        `Post ${post.id} scheduled for immediate publication (within 3 seconds)`,
+        `Post ${post.id} had negative delay (${delayMs}ms), scheduling for immediate publication`,
       );
       delayMs = 0;
     }

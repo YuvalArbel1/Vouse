@@ -32,9 +32,7 @@ export class PostService {
     const post = this.postRepository.create({
       ...createPostDto,
       userId,
-      status: createPostDto.scheduledAt
-        ? PostStatus.SCHEDULED
-        : PostStatus.DRAFT,
+      status: PostStatus.SCHEDULED, // All posts start as scheduled
       // Convert scheduledAt string to Date if provided
       scheduledAt: createPostDto.scheduledAt
         ? new Date(createPostDto.scheduledAt)
@@ -51,7 +49,7 @@ export class PostService {
     const savedPost = await this.postRepository.save(post);
 
     // If post is scheduled, add it to the publishing queue
-    if (savedPost.status === PostStatus.SCHEDULED && savedPost.scheduledAt) {
+    if (savedPost.status === PostStatus.SCHEDULED) {
       await this.schedulePost(savedPost);
     }
 
@@ -72,31 +70,91 @@ export class PostService {
    * @returns Promise<void>
    */
   private async schedulePost(post: Post): Promise<void> {
-    // Convert times to UTC to ensure consistent comparison
-    const createdAtUTC = post.createdAt.toISOString();
-    const scheduledAtUTC =
-      post.scheduledAt instanceof Date
-        ? post.scheduledAt.toISOString()
-        : new Date(post.scheduledAt as unknown as string).toISOString();
+    // Get current time in UTC for consistent comparison
+    const now = new Date();
 
-    const createdAtTime = new Date(createdAtUTC).getTime();
-    const scheduledAtTime = new Date(scheduledAtUTC).getTime();
-
-    // Calculate delay in milliseconds based on UTC times
-    let delayMs = Math.max(0, scheduledAtTime - createdAtTime);
-
-    // If scheduled time is very close to created time, post immediately
-    if (Math.abs(scheduledAtTime - createdAtTime) < 60000) {
-      // Within 1 minute
+    // Check if scheduledAt is null, which means post immediately
+    if (!post.scheduledAt) {
       this.logger.log(
-        `Post ${post.id} set for immediate publishing (scheduled near creation time)`,
+        `Post ${post.id} set for immediate publishing (null scheduledAt)`,
       );
-      delayMs = 0;
+
+      try {
+        // Add job to queue with no delay
+        await this.postPublishQueue.add(
+          'publish',
+          {
+            postId: post.id,
+            userId: post.userId,
+          },
+          {
+            delay: 0,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 60000,
+            },
+            removeOnComplete: true,
+          },
+        );
+
+        this.logger.log(
+          `Post ${post.id} added to publishing queue for immediate publication`,
+        );
+      } catch (error) {
+        this.handleSchedulingError(post.id, error);
+      }
+
+      return;
+    }
+
+    // Convert to proper Date object if it's a string
+    const scheduledAt =
+      post.scheduledAt instanceof Date
+        ? post.scheduledAt
+        : new Date(post.scheduledAt as unknown as string);
+
+    // Calculate delay in milliseconds
+    const delayMs = Math.max(0, scheduledAt.getTime() - now.getTime());
+
+    // If scheduled time is in the past or very close (within 2 minutes), post immediately
+    if (delayMs < 120000) {
+      this.logger.log(
+        `Post ${post.id} set for immediate publishing (scheduled time is very soon)`,
+      );
+
+      try {
+        // Add job to queue with no delay
+        await this.postPublishQueue.add(
+          'publish',
+          {
+            postId: post.id,
+            userId: post.userId,
+          },
+          {
+            delay: 0,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 60000,
+            },
+            removeOnComplete: true,
+          },
+        );
+
+        this.logger.log(
+          `Post ${post.id} added to publishing queue for immediate publication`,
+        );
+      } catch (error) {
+        this.handleSchedulingError(post.id, error);
+      }
+
+      return;
     }
 
     // Log the actual times for debugging
     this.logger.log(
-      `Time debug - Created: ${createdAtUTC}, Scheduled: ${scheduledAtUTC}, Delay: ${delayMs}ms`,
+      `Time debug - Current: ${now.toISOString()}, Scheduled: ${scheduledAt.toISOString()}, Delay: ${delayMs}ms`,
     );
 
     try {
@@ -119,21 +177,31 @@ export class PostService {
       );
 
       this.logger.log(
-        `Post ${post.id} scheduled for publishing at ${scheduledAtUTC} (delay: ${delayMs}ms)`,
+        `Post ${post.id} scheduled for publishing at ${scheduledAt.toISOString()} (delay: ${delayMs}ms)`,
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Failed to schedule post ${post.id}: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      // Update post status to reflect scheduling failure
-      await this.postRepository.update(post.id, {
-        status: PostStatus.FAILED,
-        failureReason: `Failed to schedule: ${errorMessage}`,
-      });
+      this.handleSchedulingError(post.id, error);
     }
+  }
+
+  /**
+   * Helper method to handle scheduling errors
+   */
+  private async handleSchedulingError(
+    postId: string,
+    error: any,
+  ): Promise<void> {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    this.logger.error(
+      `Failed to schedule post ${postId}: ${errorMessage}`,
+      error instanceof Error ? error.stack : undefined,
+    );
+
+    // Update post status to reflect scheduling failure
+    await this.postRepository.update(postId, {
+      status: PostStatus.FAILED,
+      failureReason: `Failed to schedule: ${errorMessage}`,
+    });
   }
 
   /**
@@ -212,7 +280,7 @@ export class PostService {
 
     // If scheduling changed, handle queue updates
     if (
-      updatePostDto.scheduledAt &&
+      updatePostDto.scheduledAt !== undefined &&
       (!post.scheduledAt ||
         new Date(updatePostDto.scheduledAt).getTime() !==
           (post.scheduledAt instanceof Date
@@ -245,10 +313,7 @@ export class PostService {
     const updatedPost = await this.findOne(id, userId);
 
     // Reschedule if needed
-    if (
-      updatedPost.status === PostStatus.SCHEDULED &&
-      updatedPost.scheduledAt
-    ) {
+    if (updatedPost.status === PostStatus.SCHEDULED) {
       await this.schedulePost(updatedPost);
     }
 

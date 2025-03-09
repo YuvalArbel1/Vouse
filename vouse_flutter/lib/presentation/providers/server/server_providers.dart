@@ -20,6 +20,9 @@ import 'package:vouse_flutter/domain/usecases/server/refresh_post_engagement_use
 import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/server/verify_twitter_tokens_usecase.dart';
 
+import '../../../domain/usecases/server/delete_server_post_usecase.dart';
+import '../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
+
 /// Expose server URL as a provider so it can be accessed from other files
 // In lib/presentation/providers/server/server_providers.dart
 final serverUrlProvider = Provider<String>((ref) {
@@ -154,4 +157,16 @@ final refreshAllEngagementsUseCaseProvider =
     Provider<RefreshAllEngagementsUseCase>((ref) {
   final repository = ref.watch(serverRepositoryProvider);
   return RefreshAllEngagementsUseCase(repository);
+});
+
+/// Delete server post use case provider
+final deleteServerPostUseCaseProvider = Provider<DeleteServerPostUseCase>((ref) {
+  final repository = ref.watch(serverRepositoryProvider);
+  return DeleteServerPostUseCase(repository);
+});
+
+/// Provider for getting a server post by local ID
+final getServerPostByLocalIdUseCaseProvider = Provider<GetServerPostByLocalIdUseCase>((ref) {
+  final repository = ref.watch(serverRepositoryProvider);
+  return GetServerPostByLocalIdUseCase(repository);
 });

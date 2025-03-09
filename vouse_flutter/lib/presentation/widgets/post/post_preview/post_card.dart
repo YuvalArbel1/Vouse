@@ -1,13 +1,22 @@
 // lib/presentation/widgets/post/post_card.dart
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
-import 'package:vouse_flutter/presentation/screens/post/full_screen_image_preview.dart';
+import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
+import 'package:vouse_flutter/presentation/providers/local_db/local_post_providers.dart';
+import 'package:vouse_flutter/presentation/providers/navigation/navigation_service.dart';
+import 'package:vouse_flutter/core/resources/data_state.dart';
+import 'package:vouse_flutter/domain/usecases/post/delete_post_usecase.dart';
 
 import '../../../../core/util/time_util.dart';
+import '../../../../domain/usecases/server/delete_server_post_usecase.dart';
+import '../../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
+import '../../../providers/server/server_providers.dart';
 
 /// A post card that:
 /// - If it's a draft, shows a "Draft" green button at the bottom.
@@ -16,7 +25,7 @@ import '../../../../core/util/time_util.dart';
 ///
 /// Also displays a special UI for posts without images, showing a green-outlined
 /// icon with custom text centered between the content and bottom bar.
-class PostCard extends StatelessWidget {
+class PostCard extends ConsumerWidget {
   final PostEntity post;
 
   /// Standard dimensions for consistent card layout
@@ -24,69 +33,206 @@ class PostCard extends StatelessWidget {
   static const double cardHeight = 350;
 
   /// Creates a [PostCard] for displaying a [post].
-  PostCard({Key? key, required this.post})
-      : super(key: key ?? ValueKey('post-${post.postIdLocal}'));
+  const PostCard({super.key, required this.post});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isScheduled = post.scheduledAt != null && post.postIdX == null;
+    final navigationService = ref.watch(navigationServiceProvider);
+
     return SizedBox(
       width: cardWidth,
       height: cardHeight,
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: vPrimaryColor.withAlpha(40),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
+      child: Stack(
+        children: [
+          Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: vPrimaryColor.withAlpha(40),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 1) Title. If empty string, doesn't display.
-            if (post.title.isNotEmpty) _buildCenteredTitle(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 1) Title. If empty string, doesn't display.
+                if (post.title.isNotEmpty) _buildCenteredTitle(),
 
-            // 2) Post text, fixed height for up to 6 lines
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _buildFixedHeightText(context),
+                // 2) Post text, fixed height for up to 6 lines
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildFixedHeightText(context),
+                ),
+                const SizedBox(height: 4),
+
+                // 3) Location (if any)
+                if (post.locationAddress != null &&
+                    post.locationAddress!.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildLocationRow(),
+                  ),
+
+                // Add spacer to push content to the center
+                const Spacer(),
+
+                // 4) Images row or "No images" indicator - centered vertically
+                _buildImagesRow(context, navigationService),
+
+                // Add spacer to center the images section
+                const Spacer(),
+
+                // 5) Show bottom status based on post type:
+                if (post.postIdX != null && post.updatedAt != null)
+                  _buildIconsRowPosted()
+                else if (post.scheduledAt != null)
+                  _buildScheduledButton()
+                else
+                  _buildDraftIndicator(),
+              ],
             ),
-            const SizedBox(height: 4),
+          ),
 
-            // 3) Location (if any)
-            if (post.locationAddress != null &&
-                post.locationAddress!.isNotEmpty)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _buildLocationRow(),
+          // Add cancel button for scheduled posts only
+          if (isScheduled)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: InkWell(
+                onTap: () =>
+                    _showDeleteConfirmDialog(context, ref, navigationService),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.redAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
 
-            // Add spacer to push content to the center
-            const Spacer(),
+  /// Shows a confirmation dialog for deleting a scheduled post
+  Future<void> _showDeleteConfirmDialog(BuildContext context, WidgetRef ref,
+      NavigationService navigationService) async {
+    final result = await navigationService.showConfirmationDialog(
+      context,
+      'Cancel Scheduled Post',
+      'Are you sure you want to cancel this scheduled post? This action cannot be undone.',
+      cancelText: 'Keep',
+      confirmText: 'Delete',
+    );
 
-            // 4) Images row or "No images" indicator - centered vertically
-            _buildImagesRow(context),
+    if (result) {
+      // Use async/await properly with a function that returns Future
+      unawaited(_deleteScheduledPost(context, ref, navigationService));
+    }
+  }
 
-            // Add spacer to center the images section
-            const Spacer(),
-
-            // 5) Show bottom status based on post type:
-            if (post.postIdX != null && post.updatedAt != null)
-              _buildIconsRowPosted()
-            else if (post.scheduledAt != null)
-              _buildScheduledButton()
-            else
-              _buildDraftIndicator(),
-          ],
+  /// Deletes the scheduled post from both local DB and server
+  Future<void> _deleteScheduledPost(BuildContext context, WidgetRef ref,
+      NavigationService navigationService) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(vPrimaryColor),
         ),
       ),
     );
+
+    try {
+      // First get server post by local ID to get the server ID
+      final serverPostResult =
+          await ref.read(getServerPostByLocalIdUseCaseProvider).call(
+                params: GetServerPostByLocalIdParams(post.postIdLocal),
+              );
+
+      if (serverPostResult is DataSuccess<PostEntity?> &&
+          serverPostResult.data != null) {
+        // We found the post on the server, now delete it using the server ID
+        final serverPost = serverPostResult.data!;
+        final serverId = serverPost
+            .postIdLocal; // The server's internal ID, not the Twitter ID
+
+        final serverResult =
+            await ref.read(deleteServerPostUseCaseProvider).call(
+                  params: DeleteServerPostParams(serverId),
+                );
+
+        if (serverResult is DataFailed) {
+          // Just log error but continue with local deletion
+          debugPrint(
+              'Error deleting post from server: ${serverResult.error?.error}');
+        }
+      } else {
+        // If we couldn't find the post on server, just log it
+        debugPrint('Post not found on server or error getting server post');
+      }
+
+      // Then delete from local database
+      final localResult = await ref.read(deletePostUseCaseProvider).call(
+            params: DeletePostParams(post.postIdLocal),
+          );
+
+      // Hide loading dialog
+      if (context.mounted) {
+        navigationService.navigateBack(context);
+      }
+
+      if (localResult is DataSuccess) {
+        // Refresh post lists
+        ref.read(postRefreshProvider.notifier).refreshAll();
+
+        // Show success message if context is still mounted
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Scheduled post cancelled successfully'),
+              backgroundColor: vAccentColor,
+            ),
+          );
+        }
+      } else if (localResult is DataFailed && context.mounted) {
+        // Show error if context is still mounted
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${localResult.error?.error}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      // Hide loading dialog if there was an exception and context is still mounted
+      if (context.mounted) {
+        navigationService.navigateBack(context);
+
+        // Show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   //--------------------------------------------------------------------------
@@ -167,7 +313,8 @@ class PostCard extends StatelessWidget {
   /// Builds either:
   /// - A row of images if the post has images
   /// - A "No images" indicator with green outline if no images are present
-  Widget _buildImagesRow(BuildContext context) {
+  Widget _buildImagesRow(
+      BuildContext context, NavigationService navigationService) {
     final images = post.localImagePaths;
 
     // If there are no images, show a placeholder with appropriate text
@@ -221,8 +368,8 @@ class PostCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: images.map((path) {
             return GestureDetector(
-              onTap: () =>
-                  _openFullScreen(context, images, images.indexOf(path)),
+              onTap: () => _openFullScreen(
+                  context, images, images.indexOf(path), navigationService),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 width: 80,
@@ -248,17 +395,14 @@ class PostCard extends StatelessWidget {
 
   /// Opens a full-screen view of the selected images, starting at [index].
   /// This view is read-only (cannot delete images).
-  void _openFullScreen(BuildContext context, List<String> images, int index) {
-    Navigator.push(
+  void _openFullScreen(BuildContext context, List<String> images, int index,
+      NavigationService navigationService) {
+    // Using NavigationService instead of direct Navigator
+    navigationService.navigateToFullScreenImage(
       context,
-      MaterialPageRoute(
-        builder: (_) => FullScreenImagePreview(
-          initialIndex: index,
-          useDirectList: true,
-          directImages: images,
-          allowDeletion: false,
-        ),
-      ),
+      images,
+      index,
+      allowDeletion: false,
     );
   }
 

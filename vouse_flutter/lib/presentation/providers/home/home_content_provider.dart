@@ -189,6 +189,14 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
 
       // Reload all post data
       await _loadAllPostData();
+
+      // Force a rebuild of the home screen with new collections
+      state = state.copyWith(
+        isLoading: false,
+        recentPosts: List.from(state.recentPosts),
+        upcomingPosts: List.from(state.upcomingPosts),
+        draftPosts: List.from(state.draftPosts),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error refreshing home content: $e');

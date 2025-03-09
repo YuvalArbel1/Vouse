@@ -89,10 +89,13 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
   /// Synchronizes posts between server and local storage.
   ///
   /// This method:
-  /// 1. Fetches all posts from the server
-  /// 2. Updates local posts with server data (especially postIdX)
-  /// 3. Moves scheduled posts that have been published to "posted" status
-  /// 4. Updates engagement metrics for posted posts
+  /// 1. Checks if the user has any scheduled or published posts to avoid unnecessary API calls
+  /// 2. Fetches all posts from the server for users with relevant posts
+  /// 3. Updates local posts with server data (especially postIdX)
+  /// 4. Moves scheduled posts that have been published to "posted" status
+  /// 5. Updates engagement metrics for posted posts
+  ///
+  /// Returns true if synchronization was successful, false otherwise.
   Future<bool> synchronizePosts() async {
     // Guard against multiple simultaneous syncs
     if (_isSyncing) return false;
@@ -115,6 +118,40 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
         return false;
       }
 
+      // First check if the user has any scheduled or published posts to avoid unnecessary API calls
+      final getPostsUseCase = _ref.read(getPostsByUserUseCaseProvider);
+      final localPostsResult =
+          await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
+
+      List<PostEntity> localPosts = [];
+      bool hasScheduledPosts = false;
+      bool hasPublishedPosts = false;
+
+      if (localPostsResult is DataSuccess<List<PostEntity>>) {
+        localPosts = localPostsResult.data!;
+
+        // Check if user has any scheduled or published posts
+        hasScheduledPosts = localPosts.any((p) =>
+            p.scheduledAt != null && (p.postIdX == null || p.postIdX!.isEmpty));
+        hasPublishedPosts =
+            localPosts.any((p) => p.postIdX != null && p.postIdX!.isNotEmpty);
+
+        // If no relevant posts, skip API calls to avoid rate limiting
+        if (!hasScheduledPosts && !hasPublishedPosts) {
+          debugPrint(
+              'ServerSync: No scheduled or published posts found, skipping server sync');
+          state = state.copyWith(
+            state: SyncState.completed,
+            lastSyncTime: DateTime.now(),
+            postsUpdated: 0,
+            engagementsUpdated: 0,
+          );
+          return true;
+        }
+      }
+
+      // We have relevant posts, proceed with server sync
+
       // 1. Fetch all posts from server
       debugPrint('ServerSync: Fetching posts from server');
       final serverPostsResult = await _getServerPostsUseCase.call();
@@ -122,54 +159,44 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
       if (serverPostsResult is DataFailed) {
         state = state.copyWith(
           state: SyncState.error,
-          errorMessage: 'Failed to fetch server posts: ${serverPostsResult.error?.error}',
+          errorMessage:
+              'Failed to fetch server posts: ${serverPostsResult.error?.error}',
         );
         return false;
       }
 
-      // 2. Fetch engagement metrics
-      debugPrint('ServerSync: Fetching engagement metrics');
-      final engagementResult = await _getPostEngagementsUseCase.call();
+      // 2. Fetch engagement metrics only if user has published posts
+      Map<String, PostEngagement> engagementMap = {};
+      if (hasPublishedPosts) {
+        debugPrint('ServerSync: Fetching engagement metrics');
+        final engagementResult = await _getPostEngagementsUseCase.call();
 
-      final Map<String, PostEngagement> engagementMap = {};
-      if (engagementResult is DataSuccess<List<PostEngagement>>) {
-        // Create a map of postIdX -> engagement data for easy lookup
-        for (final engagement in engagementResult.data!) {
-          if (engagement.postIdX.isNotEmpty) {
-            engagementMap[engagement.postIdX] = engagement;
+        if (engagementResult is DataSuccess<List<PostEngagement>>) {
+          // Create a map of postIdX -> engagement data for easy lookup
+          for (final engagement in engagementResult.data!) {
+            if (engagement.postIdX.isNotEmpty) {
+              engagementMap[engagement.postIdX] = engagement;
+            }
+
+            // Also map by local ID for posts that don't have postIdX yet
+            if (engagement.postIdLocal.isNotEmpty) {
+              engagementMap[engagement.postIdLocal] = engagement;
+            }
           }
 
-          // Also map by local ID for posts that don't have postIdX yet
-          if (engagement.postIdLocal.isNotEmpty) {
-            engagementMap[engagement.postIdLocal] = engagement;
-          }
+          // Update the engagement provider with the new data
+          _ref
+              .read(postEngagementDataProvider.notifier)
+              .updateEngagementData(engagementResult.data!);
+
+          // Force refresh engagement metrics from Twitter API only if we have published posts
+          await _ref
+              .read(postEngagementDataProvider.notifier)
+              .refreshAllEngagements();
         }
-
-        // Update the engagement provider with the new data
-        _ref.read(postEngagementDataProvider.notifier).updateEngagementData(engagementResult.data!);
-
-        // Force refresh engagement metrics from Twitter API
-        await _ref.read(postEngagementDataProvider.notifier).refreshAllEngagements();
-      }
-
-      // 3. Get all local posts to check which ones should be updated
-      debugPrint('ServerSync: Fetching all local posts');
-      final getPostsUseCase = _ref.read(getPostsByUserUseCaseProvider);
-      final localPostsResult = await getPostsUseCase.call(
-          params: GetPostsByUserParams(user.uid)
-      );
-
-      if (localPostsResult is DataFailed) {
-        state = state.copyWith(
-          state: SyncState.error,
-          errorMessage: 'Failed to fetch local posts: ${localPostsResult.error?.error}',
-        );
-        return false;
-      }
-
-      List<PostEntity> localPosts = [];
-      if (localPostsResult is DataSuccess<List<PostEntity>>) {
-        localPosts = localPostsResult.data!;
+      } else {
+        debugPrint(
+            'ServerSync: No published posts, skipping engagement metrics fetch');
       }
 
       // Get the current time for comparing with scheduled posts
@@ -179,7 +206,7 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
       int updatedPostsCount = 0;
       int updatedEngagementsCount = 0;
 
-      // 4. Process server posts
+      // 3. Process server posts
       if (serverPostsResult is DataSuccess<List<PostEntity>>) {
         final serverPosts = serverPostsResult.data!;
         debugPrint('ServerSync: Processing ${serverPosts.length} server posts');
@@ -189,14 +216,13 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
           if (serverPost.postIdX != null && serverPost.postIdX!.isNotEmpty) {
             // Find matching local post by postIdLocal
             final matchingLocalPost = localPosts.firstWhere(
-                  (p) => p.postIdLocal == serverPost.postIdLocal,
+              (p) => p.postIdLocal == serverPost.postIdLocal,
               orElse: () => serverPost, // Use server post if no local match
             );
 
             // Check if this post needs to be updated
             if (matchingLocalPost.postIdX == null ||
                 matchingLocalPost.postIdX != serverPost.postIdX) {
-
               // This post was scheduled and now has a postIdX, it should be "posted"
               final updatedPost = matchingLocalPost.copyWith(
                 postIdX: serverPost.postIdX,
@@ -204,7 +230,8 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
                 // Keep other fields from the local post if available
               );
 
-              debugPrint('ServerSync: Updating post ${updatedPost.postIdLocal} with postIdX ${updatedPost.postIdX}');
+              debugPrint(
+                  'ServerSync: Updating post ${updatedPost.postIdLocal} with postIdX ${updatedPost.postIdX}');
 
               // Save the updated post
               await _savePostUseCase.call(
@@ -217,13 +244,12 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
         }
       }
 
-      // 5. Check for scheduled posts with past dates that should be considered published
+      // 4. Check for scheduled posts with past dates that should be considered published
       for (final localPost in localPosts) {
         // Check if this is a scheduled post whose time has passed but doesn't have a postIdX
         if (localPost.scheduledAt != null &&
             localPost.scheduledAt!.isBefore(now) &&
             (localPost.postIdX == null || localPost.postIdX!.isEmpty)) {
-
           // Find this post in engagement data by local ID
           final engagement = engagementMap[localPost.postIdLocal];
 
@@ -234,7 +260,8 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
               updatedAt: DateTime.now(),
             );
 
-            debugPrint('ServerSync: Updating past scheduled post ${updatedPost.postIdLocal} with postIdX ${updatedPost.postIdX}');
+            debugPrint(
+                'ServerSync: Updating past scheduled post ${updatedPost.postIdLocal} with postIdX ${updatedPost.postIdX}');
 
             // Save the updated post
             await _savePostUseCase.call(
@@ -247,8 +274,8 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
       }
 
       // Update engagement count
-      if (engagementResult is DataSuccess<List<PostEngagement>>) {
-        updatedEngagementsCount = engagementResult.data!.length;
+      if (hasPublishedPosts) {
+        updatedEngagementsCount = engagementMap.length;
       }
 
       // Refresh all posts in providers to get the updated data
@@ -262,7 +289,8 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
         engagementsUpdated: updatedEngagementsCount,
       );
 
-      debugPrint('ServerSync: Completed, updated $updatedPostsCount posts, $updatedEngagementsCount engagements');
+      debugPrint(
+          'ServerSync: Completed, updated $updatedPostsCount posts, $updatedEngagementsCount engagements');
       return true;
     } catch (e) {
       debugPrint('ServerSync: Error during sync: $e');
@@ -278,7 +306,8 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
 }
 
 /// Provider for server sync operations
-final serverSyncProvider = StateNotifierProvider<ServerSyncNotifier, ServerSyncState>((ref) {
+final serverSyncProvider =
+    StateNotifierProvider<ServerSyncNotifier, ServerSyncState>((ref) {
   return ServerSyncNotifier(
     getServerPostsUseCase: ref.watch(getServerPostsUseCaseProvider),
     getPostEngagementsUseCase: ref.watch(getPostEngagementsUseCaseProvider),

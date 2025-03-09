@@ -13,6 +13,7 @@ import '../../../../core/util/image_utils.dart';
 import '../../../../domain/entities/local_db/post_entity.dart';
 import '../../../providers/auth/x/twitter_connection_provider.dart';
 import '../../../providers/home/home_content_provider.dart';
+import '../../../providers/home/home_posts_providers.dart';
 import '../../../providers/post/post_scheduler_provider.dart';
 import '../../../providers/post/post_text_provider.dart';
 import '../../../providers/post/post_images_provider.dart';
@@ -331,6 +332,9 @@ class _SchedulePostBottomSheetState
         // Refresh home content
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
+        // Then invalidate these providers to force refresh
+        ref.invalidate(postedPostsProvider);
+
         if (mounted) {
           ref.read(navigationServiceProvider).navigateToAppNavigator(
                 context,
@@ -338,6 +342,8 @@ class _SchedulePostBottomSheetState
               );
         }
       } else {
+        // Small delay to ensure UI updates before navigation
+        await Future.delayed(const Duration(milliseconds: 100));
         final schedulerState = ref.read(postSchedulerProvider);
         toast(
             "Error scheduling post: ${schedulerState.errorMessage ?? 'Unknown error'}");

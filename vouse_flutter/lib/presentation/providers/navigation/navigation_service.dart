@@ -13,6 +13,7 @@ import 'package:vouse_flutter/presentation/screens/post/select_location_screen.d
 import 'package:vouse_flutter/presentation/navigation/app_navigator.dart';
 
 import '../../../domain/entities/local_db/post_entity.dart';
+import '../../screens/post/full_screen_image_preview.dart';
 
 /// The single source of truth for navigation in the app.
 ///
@@ -216,6 +217,24 @@ class NavigationService {
           );
         },
         transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
+  /// Navigate to full screen image preview
+  void navigateToFullScreenImage(
+    BuildContext context,
+    List<String> images,
+    int initialIndex, {
+    bool allowDeletion = false,
+  }) {
+    _navigate(
+      context,
+      FullScreenImagePreview(
+        initialIndex: initialIndex,
+        useDirectList: true,
+        directImages: images,
+        allowDeletion: allowDeletion,
       ),
     );
   }

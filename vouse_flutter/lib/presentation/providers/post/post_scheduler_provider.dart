@@ -13,6 +13,7 @@ import 'package:vouse_flutter/presentation/providers/local_db/local_post_provide
 import 'package:vouse_flutter/presentation/providers/home/home_content_provider.dart';
 import 'package:vouse_flutter/presentation/providers/post/save_post_with_upload_provider.dart';
 
+import '../home/home_posts_providers.dart';
 import '../server/server_providers.dart';
 
 /// State of the post scheduling process
@@ -64,6 +65,7 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
         _ref = ref,
         super(PostSchedulerState());
 
+  /// Schedule a post on the server and save it locally
   /// Schedule a post on the server and save it locally
   Future<bool> schedulePost({
     required PostEntity post,
@@ -122,6 +124,17 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
 
         // Refresh relevant providers
         _ref.read(postRefreshProvider.notifier).refreshAll();
+
+        // Explicitly refresh posted posts if this is an immediate post
+        if (post.scheduledAt == null || post.scheduledAt!.isBefore(DateTime.now())) {
+          _ref.read(postRefreshProvider.notifier).refreshPosted();
+
+          // Force invalidate the providers to ensure they reload data
+          _ref.invalidate(postedPostsProvider);
+        }
+
+        // Force refresh home content with more aggressiveness
+        _ref.invalidate(homeContentProvider);
         _ref.read(homeContentProvider.notifier).refreshHomeContent();
 
         return true;

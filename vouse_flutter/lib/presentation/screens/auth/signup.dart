@@ -152,7 +152,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   controller: emailController,
                                   focusNode: emailFocusNode,
                                   keyboardType: TextInputType.emailAddress,
-                                  decoration: waInputDecoration(
+                                  decoration: vInputDecoration(
                                     hint: 'Enter your email here',
                                     prefixIcon: Icons.email_outlined,
                                   ),
@@ -177,7 +177,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   controller: passwordController,
                                   focusNode: passWordFocusNode,
                                   obscureText: _obscurePassword,
-                                  decoration: waInputDecoration(
+                                  decoration: vInputDecoration(
                                     hint: 'Enter your password here',
                                     prefixIcon: Icons.lock_outline,
                                   ).copyWith(
@@ -220,7 +220,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   controller: confirmPasswordController,
                                   focusNode: confirmPassWordFocusNode,
                                   obscureText: _obscureConfirmPassword,
-                                  decoration: waInputDecoration(
+                                  decoration: vInputDecoration(
                                     hint: 'Re-type password',
                                     prefixIcon: Icons.lock_outline,
                                   ).copyWith(

@@ -112,7 +112,7 @@ class _ForgotPasswordDialogState extends ConsumerState<ForgotPasswordDialog> {
                 controller: emailController,
                 focusNode: emailFocusNode,
                 keyboardType: TextInputType.emailAddress,
-                decoration: waInputDecoration(
+                decoration: vInputDecoration(
                   hint: 'Your email address',
                   prefixIcon: Icons.email_outlined,
                 ),

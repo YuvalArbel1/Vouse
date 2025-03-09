@@ -441,7 +441,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       const SizedBox(height: 8),
                                       AppTextField(
                                         textFieldType: TextFieldType.NAME,
-                                        decoration: waInputDecoration(
+                                        decoration: vInputDecoration(
                                           hint: 'Enter your full name here',
                                           prefixIcon: Icons.person,
                                         ),
@@ -470,7 +470,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                         controller: dateOfBirthController,
                                         focus: dateOfBirthFocusNode,
                                         keyboardType: TextInputType.text,
-                                        decoration: waInputDecoration(
+                                        decoration: vInputDecoration(
                                           hint: 'Tap to pick your birth date',
                                           prefixIcon: Icons.calendar_today,
                                         ),
@@ -489,7 +489,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       const SizedBox(height: 8),
                                       DropdownButtonFormField<String>(
                                         isExpanded: true,
-                                        decoration: waInputDecoration(
+                                        decoration: vInputDecoration(
                                           hint: "Select your gender",
                                           prefixIcon: Icons.transgender,
                                         ),
@@ -521,7 +521,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       Builder(
                                         builder: (ctx) {
                                           final baseDecoration =
-                                              waInputDecoration(
+                                              vInputDecoration(
                                             hint:
                                                 'Tap to connect your X account',
                                           );

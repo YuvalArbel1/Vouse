@@ -222,7 +222,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   controller: emailController,
                                   focusNode: emailFocusNode,
                                   keyboardType: TextInputType.emailAddress,
-                                  decoration: waInputDecoration(
+                                  decoration: vInputDecoration(
                                     hint: 'Enter your email here',
                                     prefixIcon: Icons.email_outlined,
                                   ),
@@ -248,7 +248,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                   focusNode: passWordFocusNode,
                                   obscureText: _obscurePassword,
                                   keyboardType: TextInputType.text,
-                                  decoration: waInputDecoration(
+                                  decoration: vInputDecoration(
                                     hint: 'Enter your password here',
                                     prefixIcon: Icons.lock_outline,
                                   ).copyWith(

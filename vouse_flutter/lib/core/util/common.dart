@@ -24,7 +24,7 @@ class BlockingSpinnerOverlay extends StatelessWidget {
 }
 
 /// Provides consistent input styling.
-InputDecoration waInputDecoration({
+InputDecoration vInputDecoration({
   IconData? prefixIcon,
   String? hint,
   Color? bgColor,

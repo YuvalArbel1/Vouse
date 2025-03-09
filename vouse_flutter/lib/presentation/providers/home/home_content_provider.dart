@@ -10,6 +10,7 @@ import 'package:vouse_flutter/presentation/providers/home/home_posts_providers.d
 // Import refresh providers
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
 
+import '../server/server_sync_provider.dart';
 import '../user/user_profile_provider.dart';
 
 /// State for home screen content
@@ -166,6 +167,10 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
     _isRefreshing = true;
 
     try {
+      // First, synchronize with the server to update post statuses
+      await _ref.read(serverSyncProvider.notifier).synchronizePosts();
+
+      // Then load user profile if needed
       if (_ref.read(userProfileProvider).loadingState !=
           UserProfileLoadingState.loading) {
         await _ref.read(userProfileProvider.notifier).loadUserProfile();

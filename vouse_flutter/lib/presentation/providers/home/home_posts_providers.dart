@@ -43,7 +43,8 @@ final draftPostsProvider =
 });
 
 /// Returns all "scheduled" posts for the current user.
-/// A "scheduled" post is one with [scheduledAt] != null.
+/// A "scheduled" post is one with [scheduledAt] != null AND [postIdX] == null.
+/// This ensures posted posts don't appear in scheduled section.
 final scheduledPostsProvider =
     FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
@@ -57,14 +58,22 @@ final scheduledPostsProvider =
       await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
 
   if (result is DataSuccess<List<PostEntity>>) {
-    return result.data!.where((post) => post.scheduledAt != null).toList();
+    // Updated condition: scheduled AND not yet posted
+    final scheduled = result.data!
+        .where((post) => post.scheduledAt != null && post.postIdX == null)
+        .toList();
+
+    // Sort by scheduled time
+    scheduled.sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+
+    return scheduled;
   }
 
   return [];
 });
 
 /// Returns all "posted" posts for the current user.
-/// A "posted" post is one with [updatedAt] != null.
+/// A "posted" post is one with [postIdX] != null.
 final postedPostsProvider =
     FutureProvider.autoDispose<List<PostEntity>>((ref) async {
   // Watch the refresh trigger so this provider refreshes when triggered
@@ -78,8 +87,14 @@ final postedPostsProvider =
       await getPostsUseCase.call(params: GetPostsByUserParams(user.uid));
 
   if (result is DataSuccess<List<PostEntity>>) {
-    // A post is "posted" if it has updatedAt AND doesn't have scheduledAt
-    return result.data!.where((post) => post.postIdX != null).toList();
+    // A post is "posted" if it has a postIdX
+    final posted = result.data!.where((post) => post.postIdX != null).toList();
+
+    // Sort by updated time, newest first
+    posted.sort((a, b) =>
+        (b.updatedAt ?? b.createdAt).compareTo(a.updatedAt ?? a.createdAt));
+
+    return posted;
   }
 
   return [];

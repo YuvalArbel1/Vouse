@@ -12,6 +12,7 @@ import '../../providers/local_db/database_provider.dart';
 import '../../providers/navigation/navigation_service.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../providers/local_db/local_user_providers.dart';
+import '../../providers/server/server_sync_provider.dart'; // Add this import
 
 // Domain entities and use cases
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
@@ -33,6 +34,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   bool _isInitializingDatabase = true;
   bool _isAuthenticating = true;
   bool _isCheckingProfile = true;
+  bool _isSynchronizingServer = true; // Added flag for server sync
 
   @override
   void initState() {
@@ -73,6 +75,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           _isInitializingDatabase = false;
           _isAuthenticating = false;
           _isCheckingProfile = false;
+          _isSynchronizingServer = false;
         });
       }
     }
@@ -100,7 +103,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           await _handleAuthenticatedUser();
           break;
         case AuthState.initial:
-          // Unexpected state, default to sign-in
+        // Unexpected state, default to sign-in
           _navigateToSignIn();
           break;
       }
@@ -127,8 +130,26 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
       // Based on the result, determine if we need profile creation
       if (result is DataSuccess && result.data != null) {
-        // Profile exists, update the provider and go to main app
+        // Profile exists, update the provider and synchronize with server
         ref.read(userProfileProvider.notifier).loadUserProfile();
+
+        // Synchronize with server before navigating
+        setState(() {
+          _isSynchronizingServer = true;
+        });
+
+        try {
+          // Trigger synchronization with server
+          await ref.read(serverSyncProvider.notifier).synchronizePosts();
+        } catch (e) {
+          debugPrint('Server synchronization error: $e');
+          // Continue even if sync fails - don't block app startup
+        } finally {
+          setState(() {
+            _isSynchronizingServer = false;
+          });
+        }
+
         _navigateToMainApp();
       } else {
         // No profile exists, go to profile creation
@@ -145,6 +166,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
       if (mounted) {
         setState(() {
           _isCheckingProfile = false;
+          _isSynchronizingServer = false;
         });
       }
     }
@@ -182,10 +204,19 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   @override
   Widget build(BuildContext context) {
     // Show loading during critical initialization stages
-    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile) {
-      return const Scaffold(
+    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile || _isSynchronizingServer) {
+      // Custom loading message based on current step
+      String loadingMessage = "Preparing your Vouse experience...";
+
+      if (_isSynchronizingServer) {
+        loadingMessage = "Syncing your posted content...";
+      } else if (_isCheckingProfile) {
+        loadingMessage = "Loading your profile...";
+      }
+
+      return Scaffold(
         body: FullScreenLoading(
-          message: "Preparing your Vouse experience...",
+          message: loadingMessage,
         ),
       );
     }

@@ -15,6 +15,7 @@ import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_user_providers.dart';
 
 import '../../../core/resources/data_state.dart';
+import '../../providers/server/server_sync_provider.dart';
 import '../../widgets/post/post_preview/publish_posts_header.dart';
 
 /// A refined, analytics-driven screen showing published posts with:
@@ -107,10 +108,20 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
 
   /// Refresh data and reset animations
   Future<void> _refreshData() async {
-    ref.invalidate(filteredPostsProvider);
+    // First synchronize with server to update post statuses
+    await ref.read(serverSyncProvider.notifier).synchronizePosts();
+
+    // Reset animations for visual feedback
     _animationController.reset();
-    _animationController.forward();
+
+    // Invalidate the filtered posts provider to force refetching
+    ref.invalidate(filteredPostsProvider);
+
+    // Load user profile for personalized content
     await _loadUserProfile();
+
+    // Start animations after data is loaded
+    _animationController.forward();
   }
 
   @override

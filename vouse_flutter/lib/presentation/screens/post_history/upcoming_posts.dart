@@ -18,6 +18,7 @@ import 'package:vouse_flutter/presentation/widgets/post/timeline/timeline_item.d
 
 import '../../../core/resources/data_state.dart';
 import '../../providers/post/post_refresh_provider.dart';
+import '../../providers/server/server_sync_provider.dart';
 import '../../widgets/post/post_preview/upcoming_posts_header.dart';
 
 /// A comprehensive screen for managing upcoming and draft posts
@@ -121,11 +122,16 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
     setState(() => _isRefreshing = true);
 
     try {
-      // Use a single refresh call that handles all child providers
+      // First synchronize with server to ensure posts are up-to-date
+      await ref.read(serverSyncProvider.notifier).synchronizePosts();
+
+      // Then use the standard refresh method
       ref.read(postRefreshProvider.notifier).refreshAll();
 
       // Only load user profile if needed
       await _loadUserProfile();
+    } catch (e) {
+      debugPrint('Error refreshing posts: $e');
     } finally {
       if (mounted) {
         setState(() => _isRefreshing = false);

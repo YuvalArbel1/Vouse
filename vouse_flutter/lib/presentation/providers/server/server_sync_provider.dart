@@ -147,6 +147,9 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
 
         // Update the engagement provider with the new data
         _ref.read(postEngagementDataProvider.notifier).updateEngagementData(engagementResult.data!);
+
+        // Force refresh engagement metrics from Twitter API
+        await _ref.read(postEngagementDataProvider.notifier).refreshAllEngagements();
       }
 
       // 3. Get all local posts to check which ones should be updated

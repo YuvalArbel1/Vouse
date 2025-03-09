@@ -25,6 +25,7 @@ class XAuthRepositoryImpl implements XAuthRepository {
         'users.read',
         'tweet.write',
         'offline.access',
+        'like.read',
       ]);
 
       // If no access token is returned, treat it as an error

@@ -113,7 +113,7 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     await ref.read(serverSyncProvider.notifier).synchronizePosts();
 
     // Then fetch the latest engagement data
-    await ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+    await ref.read(postEngagementDataProvider.notifier).refreshAllEngagements();
 
     // Reset animations for visual feedback
     _animationController.reset();

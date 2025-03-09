@@ -123,7 +123,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
       // Get all post data from providers
       final postedPostsAsync = await _ref.read(postedPostsProvider.future);
       final scheduledPostsAsync =
-      await _ref.read(scheduledPostsProvider.future);
+          await _ref.read(scheduledPostsProvider.future);
       final draftPostsAsync = await _ref.read(draftPostsProvider.future);
 
       // Update post counts
@@ -171,8 +171,10 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
       // First, synchronize with the server to update post statuses
       await _ref.read(serverSyncProvider.notifier).synchronizePosts();
 
-      // Then refresh engagement data
-      await _ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+      // Then refresh engagement data directly from Twitter
+      await _ref
+          .read(postEngagementDataProvider.notifier)
+          .refreshAllEngagements();
 
       // Then load user profile if needed
       if (_ref.read(userProfileProvider).loadingState !=
@@ -199,7 +201,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
 
 /// Provider for the home content
 final homeContentProvider =
-StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
+    StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
   return HomeContentNotifier(ref);
 });
 

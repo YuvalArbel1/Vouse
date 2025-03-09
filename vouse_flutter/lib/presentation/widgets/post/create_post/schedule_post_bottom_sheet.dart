@@ -113,9 +113,9 @@ class _SchedulePostBottomSheetState
 
   /// Sets the scheduled time to right now (immediately)
   void _scheduleNow() {
-    final now = DateTime.now();
+    // Set to null for immediate posting
     setState(() {
-      _scheduledDateTime = now;
+      _scheduledDateTime = null;
     });
     toast('Post will be published immediately');
   }
@@ -237,13 +237,6 @@ class _SchedulePostBottomSheetState
         return;
       }
 
-      if (_scheduledDateTime == null) {
-        toast('Please pick a date & time first!');
-        return;
-      }
-
-      final scheduledDate = _scheduledDateTime!;
-
       final text = ref.read(postTextProvider).trim();
       if (text.isEmpty) {
         toast('Write some words first!');
@@ -265,6 +258,12 @@ class _SchedulePostBottomSheetState
         addr = loc.address;
       }
 
+      // Convert local time to UTC for server
+      DateTime? scheduledDateTime = _scheduledDateTime;
+      if (scheduledDateTime != null) {
+        scheduledDateTime = scheduledDateTime.toUtc();
+      }
+
       // Create post entity, using existing ID if editing
       final postEntity = PostEntity(
         postIdLocal: widget.editingDraft?.postIdLocal ?? const Uuid().v4(),
@@ -273,7 +272,8 @@ class _SchedulePostBottomSheetState
         title: title,
         createdAt: widget.editingDraft?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        scheduledAt: scheduledDate,
+        scheduledAt: scheduledDateTime,
+        // Can be null for immediate posting
         visibility: _selectedReplyOption,
         localImagePaths: localPaths,
         cloudImageUrls: widget.editingDraft?.cloudImageUrls ?? [],
@@ -294,8 +294,9 @@ class _SchedulePostBottomSheetState
       if (success) {
         // Show success message
         final schedulerState = ref.read(postSchedulerProvider);
-        String message =
-            'Post scheduled for ${DateFormat('MMM d, h:mm a').format(scheduledDate)}';
+        String message = _scheduledDateTime == null
+            ? 'Post will be published immediately'
+            : 'Post scheduled for ${DateFormat('MMM d, h:mm a').format(_scheduledDateTime!.toLocal())}';
 
         if (schedulerState.state == SchedulingState.localOnly) {
           message += ' (local only)';

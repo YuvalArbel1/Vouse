@@ -23,7 +23,7 @@ import 'package:vouse_flutter/domain/usecases/server/verify_twitter_tokens_useca
 /// Expose server URL as a provider so it can be accessed from other files
 // In lib/presentation/providers/server/server_providers.dart
 final serverUrlProvider = Provider<String>((ref) {
-  return 'https://0972-2a0d-6fc0-ecf-bb00-51db-58ed-a1f-a47e.ngrok-free.app';
+  return 'https://f3ed-2a0d-6fc0-ecf-bb00-8d68-fbef-73b6-5fe0.ngrok-free.app';
 });
 
 /// Dio provider for server API client with auth token interceptor

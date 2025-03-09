@@ -1,13 +1,17 @@
 // lib/presentation/providers/post/post_scheduler_provider.dart
 
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/domain/usecases/post/save_post_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/post/save_post_with_upload_usecase.dart';
+import 'package:vouse_flutter/domain/usecases/post/get_single_post_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart';
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_post_providers.dart';
 import 'package:vouse_flutter/presentation/providers/home/home_content_provider.dart';
+import 'package:vouse_flutter/presentation/providers/post/save_post_with_upload_provider.dart';
 
 import '../server/server_providers.dart';
 
@@ -69,16 +73,44 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
     try {
       state = state.copyWith(state: SchedulingState.scheduling);
 
-      // Always save locally first to ensure we don't lose the post
-      if (saveLocally) {
+      // Post with updated cloud URLs (if any)
+      PostEntity updatedPost = post;
+
+      // Check if there are local images that need uploading
+      if (post.localImagePaths.isNotEmpty) {
+        // Use the SavePostWithUploadUseCase to upload images first
+        final saveWithUploadUseCase = _ref.read(savePostWithUploadUseCaseProvider);
+
+        final params = SavePostWithUploadParams(
+          userUid: userId,
+          postEntity: post,
+          localImageFiles: post.localImagePaths.map((path) => File(path)).toList(),
+        );
+
+        final result = await saveWithUploadUseCase.call(params: params);
+
+        if (result is DataFailed) {
+          throw Exception(result.error?.error.toString() ?? 'Failed to upload images');
+        }
+
+        // Fetch the updated post with cloud URLs from the local DB
+        final getPostResult = await _ref.read(getSinglePostUseCaseProvider).call(
+          params: GetSinglePostParams(post.postIdLocal),
+        );
+
+        if (getPostResult is DataSuccess<PostEntity?> && getPostResult.data != null) {
+          updatedPost = getPostResult.data!;
+        }
+      } else if (saveLocally) {
+        // No images to upload, just save locally
         await _savePostUseCase.call(
           params: SavePostParams(post, userId),
         );
       }
 
-      // Then, send to server
+      // Then, send to server with updated post (containing cloud URLs)
       final serverResult = await _schedulePostUseCase.call(
-        params: SchedulePostParams(post),
+        params: SchedulePostParams(updatedPost),
       );
 
       if (serverResult is DataSuccess<String>) {

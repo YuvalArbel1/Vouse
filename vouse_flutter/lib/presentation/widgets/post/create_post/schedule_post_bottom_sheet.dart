@@ -58,12 +58,20 @@ class _SchedulePostBottomSheetState
   String _selectedReplyOption = 'Everyone';
 
   @override
+  @override
   void initState() {
     super.initState();
     // Initialize with existing draft title if available
     if (widget.editingDraft != null) {
       _titleController.text = widget.editingDraft!.title;
     }
+
+    // Force check Twitter connection status on sheet open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus(forceCheck: true);
+    });
   }
 
   @override
@@ -343,9 +351,15 @@ class _SchedulePostBottomSheetState
     final images = ref.watch(postImagesProvider);
 
     // Check Twitter connection status using the TwitterConnectionProvider directly
+    // Force fresh status check rather than relying on potentially stale state
     final twitterConnectionState = ref.watch(twitterConnectionProvider);
     final isConnected = twitterConnectionState.connectionState ==
         TwitterConnectionState.connected;
+
+    // Debug logging to help diagnose connection state
+    debugPrint(
+        "Schedule sheet - Twitter connection state: ${twitterConnectionState.connectionState}");
+    debugPrint("Schedule sheet - Is connected: $isConnected");
 
     // If not connected, show a message
     if (!isConnected) {

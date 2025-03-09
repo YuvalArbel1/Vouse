@@ -31,14 +31,20 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
   }
 
   /// Check Twitter connection status using the provider
-  Future<void> _checkTwitterConnection() async {
+  Future<void> _checkTwitterConnection({bool forceCheck = false}) async {
     try {
       setState(() => _isLoading = true);
 
-      // Check Twitter connection status
+      // Check Twitter connection status with force flag
       await ref
           .read(twitterConnectionProvider.notifier)
-          .checkConnectionStatus();
+          .checkConnectionStatus(forceCheck: forceCheck);
+
+      // Debug log the current state after check
+      final connectionState =
+          ref.read(twitterConnectionProvider).connectionState;
+      debugPrint(
+          "ProfileTwitterSection: Connection state after check: $connectionState");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -51,12 +57,16 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint("ProfileTwitterSection: Starting X connection process");
+
       // Start the OAuth flow to get tokens
       final result = await ref.read(signInToXUseCaseProvider).call();
 
       if (!mounted) return;
 
       if (result is DataSuccess<XAuthTokens> && result.data != null) {
+        debugPrint("ProfileTwitterSection: Got X tokens, connecting");
+
         // Connect with the obtained tokens
         final connectResult = await ref
             .read(twitterConnectionProvider.notifier)
@@ -65,6 +75,13 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
         if (!mounted) return;
 
         if (connectResult) {
+          // Force refresh the connection status to update UI consistently
+          await ref
+              .read(twitterConnectionProvider.notifier)
+              .checkConnectionStatus(forceCheck: true);
+
+          debugPrint("ProfileTwitterSection: X connection successful");
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -81,12 +98,16 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             ),
           );
         } else {
+          debugPrint("ProfileTwitterSection: X connection failed");
           toast('Failed to connect Twitter account');
         }
       } else if (result is DataFailed) {
+        debugPrint(
+            "ProfileTwitterSection: Twitter authentication failed: ${result.error?.error}");
         toast('Twitter authentication failed: ${result.error?.error}');
       }
     } catch (e) {
+      debugPrint("ProfileTwitterSection: Error connecting Twitter: $e");
       toast('Error connecting Twitter: $e');
     } finally {
       if (mounted) {
@@ -124,13 +145,22 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint("ProfileTwitterSection: Starting X disconnection process");
+
       final disconnectResult = await ref
           .read(twitterConnectionProvider.notifier)
           .disconnectTwitter();
 
       if (!mounted) return;
 
+      // Force refresh the connection status to update UI consistently
+      await ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus(forceCheck: true);
+
       if (disconnectResult) {
+        debugPrint("ProfileTwitterSection: X disconnection successful");
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Twitter account disconnected successfully'),
@@ -141,9 +171,11 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
           ),
         );
       } else {
+        debugPrint("ProfileTwitterSection: X disconnection failed");
         toast('Failed to disconnect Twitter account');
       }
     } catch (e) {
+      debugPrint("ProfileTwitterSection: Error disconnecting Twitter: $e");
       toast('Error disconnecting Twitter: $e');
     } finally {
       if (mounted) {

@@ -1,6 +1,5 @@
 // lib/presentation/screens/home/edit_profile_screen.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -122,10 +121,12 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   /// Check if X (Twitter) is already connected
   Future<void> _checkXConnection() async {
     try {
-      // Use the TwitterConnectionProvider to check connection status
+      debugPrint("EditProfileScreen: Checking Twitter connection status");
+
+      // Use the TwitterConnectionProvider to check connection status with force flag
       await ref
           .read(twitterConnectionProvider.notifier)
-          .checkConnectionStatus();
+          .checkConnectionStatus(forceCheck: true);
 
       if (!mounted) return;
 
@@ -134,6 +135,10 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final isConnected =
           connectionState.connectionState == TwitterConnectionState.connected;
 
+      debugPrint(
+          "EditProfileScreen: Connection state after check: ${connectionState.connectionState}");
+      debugPrint("EditProfileScreen: Is connected: $isConnected");
+
       setState(() {
         _isXConnected = isConnected;
         connectXController.text = isConnected
@@ -141,9 +146,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             : 'Tap to connect your X account';
       });
     } catch (e) {
-      if (kDebugMode) {
-        print('Error checking Twitter connection: $e');
-      }
+      debugPrint('EditProfileScreen: Error checking Twitter connection: $e');
     }
   }
 
@@ -182,6 +185,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isProcessing = true);
 
     try {
+      debugPrint("EditProfileScreen: Starting X connection process");
+
       // Start the sign-in flow
       final result = await ref.read(signInToXUseCaseProvider).call();
 
@@ -189,6 +194,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       if (result is DataSuccess<XAuthTokens> && result.data != null) {
         final tokens = result.data!;
+        debugPrint("EditProfileScreen: Got X tokens, connecting to server");
 
         // Use the TwitterConnectionProvider to handle token storage and server connection
         final connectResult = await ref
@@ -197,20 +203,29 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
         if (!mounted) return;
 
+        // Force refresh the connection status
+        await ref
+            .read(twitterConnectionProvider.notifier)
+            .checkConnectionStatus(forceCheck: true);
+
         if (connectResult) {
+          debugPrint("EditProfileScreen: X connection successful");
           setState(() {
             _isXConnected = true;
             connectXController.text = 'Disconnect X Account';
           });
           toast("X account connected successfully");
         } else {
+          debugPrint("EditProfileScreen: X connection failed");
           toast('Failed to connect Twitter account');
         }
       } else if (result is DataFailed<XAuthTokens>) {
         final errorMsg = result.error?.error ?? 'Unknown error';
+        debugPrint("EditProfileScreen: Twitter Auth Error: $errorMsg");
         toast("Twitter Auth Error: $errorMsg");
       }
     } catch (e) {
+      debugPrint("EditProfileScreen: Error connecting to X: $e");
       toast('Error connecting to X: $e');
     } finally {
       if (mounted) {
@@ -248,6 +263,8 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _isProcessing = true);
 
     try {
+      debugPrint("EditProfileScreen: Starting X disconnection process");
+
       // Use the TwitterConnectionProvider to handle the disconnection
       final disconnectResult = await ref
           .read(twitterConnectionProvider.notifier)
@@ -255,16 +272,24 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
       if (!mounted) return;
 
+      // Force refresh the connection status
+      await ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus(forceCheck: true);
+
       if (disconnectResult) {
+        debugPrint("EditProfileScreen: X disconnection successful");
         setState(() {
           _isXConnected = false;
           connectXController.text = 'Tap to connect your X account';
         });
         toast('X account disconnected successfully');
       } else {
+        debugPrint("EditProfileScreen: X disconnection failed");
         toast('Failed to disconnect Twitter account');
       }
     } catch (e) {
+      debugPrint("EditProfileScreen: Error disconnecting X: $e");
       toast('Error disconnecting X: $e');
     } finally {
       if (mounted) {

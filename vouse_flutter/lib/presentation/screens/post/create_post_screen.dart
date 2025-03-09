@@ -459,64 +459,71 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       return;
     }
 
-    // Refresh connection status before checking
-    await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus();
+    setState(() => _isProcessing = true);
+    try {
+      // Force refresh connection status before checking
+      final isConnected = await ref
+          .read(twitterConnectionProvider.notifier)
+          .checkConnectionStatus(forceCheck: true);
 
-    // Then check the updated status
-    final connectionState = ref.read(twitterConnectionProvider);
-    final isConnected =
-        connectionState.connectionState == TwitterConnectionState.connected;
+      setState(() => _isProcessing = false);
 
-    if (!isConnected) {
       if (!mounted) return;
 
-      // Show dialog to prompt X connection
-      final shouldConnect = await _showConnectXDialog();
-      if (!shouldConnect) return;
+      if (!isConnected) {
+        // Show dialog to prompt X connection
+        final shouldConnect = await _showConnectXDialog();
+        if (!shouldConnect) return;
 
-      // User wants to connect, initiate X connection
-      await _connectToX();
+        // User wants to connect, initiate X connection
+        await _connectToX();
 
-      // Check if connection was successful - read the updated state
-      final nowConnected =
-          ref.read(twitterConnectionProvider).connectionState ==
-              TwitterConnectionState.connected;
-      if (!nowConnected || !mounted) return;
+        // Force another fresh check if connection was successful
+        final nowConnected = await ref
+            .read(twitterConnectionProvider.notifier)
+            .checkConnectionStatus(forceCheck: true);
+
+        if (!nowConnected || !mounted) return;
+      }
+
+      if (!mounted) return;
+
+      // If we reach here, X is connected, open the share bottom sheet
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        useSafeArea: true,
+        enableDrag: true,
+        isDismissible: true,
+        builder: (ctx) {
+          return FractionallySizedBox(
+            heightFactor: 0.8,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(40),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SchedulePostBottomSheet(
+                editingDraft: _editingDraft,
+              ),
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted && _isProcessing) {
+        setState(() => _isProcessing = false);
+      }
     }
-
-    if (!mounted) return;
-
-    // If we reach here, X is connected, open the share bottom sheet
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      enableDrag: true,
-      isDismissible: true,
-      builder: (ctx) {
-        return FractionallySizedBox(
-          heightFactor: 0.8,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(40),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SchedulePostBottomSheet(
-              editingDraft: _editingDraft,
-            ),
-          ),
-        );
-      },
-    );
   }
 
   /// Shows a dialog prompting the user to connect their X account.

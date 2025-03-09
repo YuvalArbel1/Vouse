@@ -28,6 +28,8 @@ class TwitterXAuthUtil {
     setLoadingState(true);
 
     try {
+      debugPrint("TwitterXAuthUtil: Starting X connection process");
+
       // Start the sign-in flow
       final result = await ref.read(signInToXUseCaseProvider).call();
 
@@ -35,6 +37,7 @@ class TwitterXAuthUtil {
 
       if (result is DataSuccess<XAuthTokens> && result.data != null) {
         final tokens = result.data!;
+        debugPrint("TwitterXAuthUtil: Got X tokens, connecting to server");
 
         // Use the TwitterConnectionProvider for consistent handling
         final connectResult = await ref.read(twitterConnectionProvider.notifier).connectTwitter(tokens);
@@ -42,15 +45,20 @@ class TwitterXAuthUtil {
         if (!mounted) return false;
 
         if (connectResult) {
+          // Force a fresh status check to update the connection state everywhere
+          await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus(forceCheck: true);
+
           // Show success toast
           toast("X account connected successfully");
           return true;
         } else {
+          debugPrint("TwitterXAuthUtil: Failed to connect X account");
           toast("Failed to connect Twitter account");
           return false;
         }
       } else if (result is DataFailed<XAuthTokens>) {
         final errorMsg = result.error?.error ?? 'Unknown error';
+        debugPrint("TwitterXAuthUtil: Twitter Auth Error: $errorMsg");
         toast("Twitter Auth Error: $errorMsg");
         return false;
       }
@@ -102,20 +110,27 @@ class TwitterXAuthUtil {
     setLoadingState(true);
 
     try {
+      debugPrint("TwitterXAuthUtil: Starting X disconnection process");
+
       // Use the TwitterConnectionProvider for consistent handling
       final disconnectResult = await ref.read(twitterConnectionProvider.notifier).disconnectTwitter();
 
       if (!mounted) return false;
 
       if (disconnectResult) {
+        // Force a fresh status check to update the connection state everywhere
+        await ref.read(twitterConnectionProvider.notifier).checkConnectionStatus(forceCheck: true);
+
         // Show success toast
         toast('X account disconnected successfully');
         return true;
       } else {
+        debugPrint("TwitterXAuthUtil: Failed to disconnect X account");
         toast('Failed to disconnect Twitter account');
         return false;
       }
     } catch (e) {
+      debugPrint("TwitterXAuthUtil: Error disconnecting X: $e");
       toast('Error disconnecting X: $e');
       return false;
     } finally {

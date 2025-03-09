@@ -48,6 +48,24 @@ export class XAuthController {
         message: 'Twitter account connected successfully',
       };
     } catch (error) {
+      // Special handling for rate limit errors
+      if (error.isRateLimit) {
+        const waitTime = error.resetTime
+          ? new Date(parseInt(error.resetTime) * 1000)
+          : 'unknown time';
+
+        throw new HttpException(
+          {
+            success: false,
+            message: `Twitter API rate limit exceeded. Please try again after ${waitTime}`,
+            error: 'RATE_LIMIT_EXCEEDED',
+            resetTime: error.resetTime,
+            isRateLimit: true,
+          },
+          HttpStatus.TOO_MANY_REQUESTS, // 429
+        );
+      }
+
       throw new HttpException(
         {
           success: false,
@@ -140,24 +158,61 @@ export class XAuthController {
         );
       }
 
-      const userInfo = await this.xAuthService.verifyTokens(tokens.accessToken);
+      try {
+        const userInfo = await this.xAuthService.verifyTokens(
+          tokens.accessToken,
+        );
 
-      return {
-        success: true,
-        message: 'Twitter tokens are valid',
-        username: userInfo.data.username,
-      };
+        return {
+          success: true,
+          message: 'Twitter tokens are valid',
+          username: userInfo.data.username,
+        };
+      } catch (error) {
+        // Special handling for rate limit errors
+        if (error.isRateLimit) {
+          const waitTime = error.resetTime
+            ? new Date(parseInt(error.resetTime) * 1000)
+            : 'unknown time';
+
+          throw new HttpException(
+            {
+              success: false,
+              message: `Twitter API rate limit exceeded. Please try again after ${waitTime}`,
+              error: 'RATE_LIMIT_EXCEEDED',
+              resetTime: error.resetTime,
+              isRateLimit: true,
+            },
+            HttpStatus.TOO_MANY_REQUESTS, // 429
+          );
+        }
+
+        // For non-rate-limit errors, update connection status
+        await this.xAuthService.updateConnectionStatus(userId, false);
+
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Twitter tokens are invalid',
+            error: error.message,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     } catch (error) {
-      // Update connection status if tokens are invalid
-      await this.xAuthService.updateConnectionStatus(userId, false);
+      // If the error is already an HttpException (like from the nested try/catch),
+      // just rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
 
       throw new HttpException(
         {
           success: false,
-          message: 'Twitter tokens are invalid',
+          message: 'Failed to verify Twitter tokens',
           error: error.message,
         },
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

@@ -18,6 +18,18 @@ export class XAuthService {
   private readonly logger = new Logger(XAuthService.name);
   private readonly tokenEncryption: TokenEncryption;
 
+  // Add a cache for verified users to reduce API calls
+  private readonly verifiedTokensCache: Map<
+    string,
+    {
+      timestamp: number;
+      username: string;
+    }
+  > = new Map();
+
+  // Cache expiration time - 1 hour
+  private readonly CACHE_EXPIRATION_MS = 60 * 60 * 1000;
+
   constructor(
     private readonly userService: UserService,
     private readonly xClientService: XClientService,
@@ -50,8 +62,29 @@ export class XAuthService {
         tokens.refreshToken,
       );
 
-      // Verify the tokens by making a test API call
-      await this.verifyTokens(tokens.accessToken);
+      try {
+        // Verify the tokens by making a test API call
+        const verifyResult = await this.verifyTokens(tokens.accessToken);
+
+        // Add to verification cache
+        if (verifyResult?.data?.username) {
+          this.verifiedTokensCache.set(userId, {
+            timestamp: Date.now(),
+            username: verifyResult.data.username,
+          });
+        }
+      } catch (error) {
+        // If the error is due to rate limiting, still proceed with token storage
+        // but log the issue
+        if (error.isRateLimit) {
+          this.logger.warn(
+            `Rate limited during token verification. Proceeding with token storage anyway.`,
+          );
+        } else {
+          // For other errors, reject the connection
+          throw error;
+        }
+      }
 
       // IMPORTANT FIX: Find or create the user before connecting
       // This ensures the user exists in our database
@@ -83,11 +116,26 @@ export class XAuthService {
    */
   async verifyTokens(accessToken: string): Promise<any> {
     try {
-      return await this.xClientService.verifyCredentials(accessToken);
+      const credentials =
+        await this.xClientService.verifyCredentials(accessToken);
+      return {
+        success: true,
+        data: {
+          id: credentials.data.id,
+          name: credentials.data.name,
+          username: credentials.data.username,
+        },
+      };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Token verification failed: ${errorMessage}`);
+
+      // Pass through the error with rate limit info if present
+      if (error.isRateLimit) {
+        throw error;
+      }
+
       throw new Error('Invalid Twitter tokens');
     }
   }
@@ -99,6 +147,8 @@ export class XAuthService {
    * @returns Updated user record
    */
   async disconnectAccount(userId: string): Promise<any> {
+    // Remove from cache if present
+    this.verifiedTokensCache.delete(userId);
     return this.userService.disconnectTwitter(userId);
   }
 

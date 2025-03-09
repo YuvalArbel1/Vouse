@@ -162,24 +162,85 @@ export class EngagementService {
     accessToken: string,
   ): Promise<PostEngagement> {
     try {
+      this.logger.log(`Collecting fresh metrics for tweet ${postIdX}`);
+
       // Fetch metrics from Twitter API
-      const tweetData = await this.xClientService.getTweetMetrics(
+      const response = await this.xClientService.getTweetMetrics(
         postIdX,
         accessToken,
       );
 
-      // Extract metrics from the response
-      const publicMetrics = tweetData.data.public_metrics || {};
-      const nonPublicMetrics = tweetData.data.non_public_metrics || {};
+      // Log the full response for debugging
+      this.logger.log(`Full Twitter response: ${JSON.stringify(response)}`);
 
-      // Update engagement in database
-      return this.updateEngagement(postIdX, {
-        likes: publicMetrics.like_count || 0,
-        retweets: publicMetrics.retweet_count || 0,
-        quotes: publicMetrics.quote_count || 0,
-        replies: publicMetrics.reply_count || 0,
-        impressions: nonPublicMetrics.impression_count || 0,
+      // Check if we have data in the response
+      if (!response.data) {
+        throw new Error(`No data in Twitter response for tweet ${postIdX}`);
+      }
+
+      // Extract metrics from the response - handle all possible sources
+      let likes = 0,
+        retweets = 0,
+        quotes = 0,
+        replies = 0,
+        impressions = 0;
+
+      // Extract from public_metrics (always available)
+      if (response.data.public_metrics) {
+        const metrics = response.data.public_metrics;
+        this.logger.log(`Public metrics: ${JSON.stringify(metrics)}`);
+
+        likes = metrics.like_count || 0;
+        retweets = metrics.retweet_count || 0;
+        quotes = metrics.quote_count || 0;
+        replies = metrics.reply_count || 0;
+      }
+
+      // Try to get non-public metrics if available
+      if (response.data.non_public_metrics) {
+        const metrics = response.data.non_public_metrics;
+        this.logger.log(`Non-public metrics: ${JSON.stringify(metrics)}`);
+
+        impressions = metrics.impression_count || 0;
+      }
+
+      // Also try organic metrics
+      if (response.data.organic_metrics) {
+        const metrics = response.data.organic_metrics;
+        this.logger.log(`Organic metrics: ${JSON.stringify(metrics)}`);
+
+        // Only use these if we don't have values yet
+        if (likes === 0) likes = metrics.like_count || 0;
+        if (retweets === 0) retweets = metrics.retweet_count || 0;
+        if (quotes === 0) quotes = metrics.quote_count || 0;
+        if (replies === 0) replies = metrics.reply_count || 0;
+        if (impressions === 0) impressions = metrics.impression_count || 0;
+      }
+
+      // Log the metrics we're about to save
+      this.logger.log(
+        `Saving metrics: likes=${likes}, retweets=${retweets}, quotes=${quotes}, replies=${replies}, impressions=${impressions}`,
+      );
+
+      // Update engagement in database with a direct query to ensure it works
+      const engagement = await this.updateEngagement(postIdX, {
+        likes,
+        retweets,
+        quotes,
+        replies,
+        impressions,
       });
+
+      // Double-check that we actually updated the database
+      const updatedEngagement = await this.engagementRepository.findOne({
+        where: { postIdX },
+      });
+
+      this.logger.log(
+        `Updated engagement in database: ${JSON.stringify(updatedEngagement)}`,
+      );
+
+      return engagement;
     } catch (error) {
       this.logger.error(
         `Failed to collect metrics for post ${postIdX}: ${error.message}`,

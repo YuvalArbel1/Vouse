@@ -1,6 +1,6 @@
 // src/posts/processors/post-publish.processor.ts
 import { Process, Processor } from '@nestjs/bull';
-import { Logger } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { Job } from 'bull';
 import axios from 'axios';
 
@@ -54,8 +54,21 @@ export class PostPublishProcessor {
     this.logger.log(`Starting to publish post ${postId} for user ${userId}`);
 
     try {
-      // Get the post from the database
-      const post = await this.postService.findOne(postId, userId);
+      // Get the post from the database with error handling
+      let post;
+      try {
+        post = await this.postService.findOne(postId, userId);
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          // Post doesn't exist anymore, log and exit gracefully
+          this.logger.warn(
+            `Post ${postId} for user ${userId} no longer exists, skipping publication`,
+          );
+          return null; // Return early, don't try to update a non-existent post
+        }
+        // For other errors, rethrow
+        throw error;
+      }
 
       // Update status to PUBLISHING
       await this.postService.update(postId, userId, {
@@ -126,6 +139,19 @@ export class PostPublishProcessor {
         userId,
       );
 
+      try {
+        await this.engagementService.collectFreshMetrics(
+          tweetId,
+          tokens.accessToken,
+        );
+        this.logger.log(`Collected initial metrics for tweet ${tweetId}`);
+      } catch (metricsError) {
+        this.logger.warn(
+          `Failed to collect initial metrics: ${metricsError.message}`,
+        );
+        // Don't fail the whole process if metrics collection fails
+      }
+
       this.logger.log(
         `Successfully published post ${postId} as tweet ${tweetId}`,
       );
@@ -138,13 +164,20 @@ export class PostPublishProcessor {
         error instanceof Error ? error.stack : undefined,
       );
 
-      // Update post status to FAILED
-      await this.postService.updateAfterPublishing(
-        postId,
-        null,
-        PostStatus.FAILED,
-        errorMessage,
-      );
+      try {
+        // Only try to update if the error wasn't a NotFoundException
+        await this.postService.updateAfterPublishing(
+          postId,
+          null,
+          PostStatus.FAILED,
+          errorMessage,
+        );
+      } catch (updateError) {
+        // Just log if the update fails too, don't throw a new error
+        this.logger.warn(
+          `Failed to update status for post ${postId}: ${updateError.message}`,
+        );
+      }
 
       // Rethrow to trigger retry mechanism if needed
       throw error;

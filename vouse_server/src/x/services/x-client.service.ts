@@ -266,12 +266,24 @@ export class XClientService {
   async getTweetMetrics(tweetId: string, accessToken?: string): Promise<any> {
     try {
       const endpoint = `/tweets/${tweetId}`;
+      // Define all necessary metrics fields
       const params = {
-        'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics',
+        'tweet.fields':
+          'public_metrics,non_public_metrics,organic_metrics,promoted_metrics',
+        expansions: 'author_id',
+        'user.fields': 'id,username',
       };
 
-      // Add debug logging
-      console.log(`Fetching metrics for tweet ${tweetId}`);
+      console.log(
+        `Fetching metrics for tweet ${tweetId} with token: ${accessToken?.substring(0, 10)}...`,
+      );
+
+      // Must use user token for non-public metrics
+      if (!accessToken) {
+        console.warn(
+          'No access token provided for metrics, using app token which may have limited access',
+        );
+      }
 
       const response = accessToken
         ? await this.makeAuthenticatedRequest(
@@ -283,12 +295,19 @@ export class XClientService {
           )
         : await this.makeAppAuthenticatedRequest('get', endpoint, null, params);
 
-      // Log the response
-      console.log('Twitter API response:', JSON.stringify(response, null, 2));
+      // Log full response for debugging
+      console.log(
+        'Raw Twitter API response:',
+        JSON.stringify(response, null, 2),
+      );
 
       return response;
     } catch (error) {
-      console.error(`Error fetching tweet metrics: ${error.message}`);
+      console.error(`Error fetching tweet metrics for ${tweetId}:`, error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        console.error('Error status:', error.response.status);
+      }
       throw error;
     }
   }

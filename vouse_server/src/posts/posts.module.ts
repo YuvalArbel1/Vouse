@@ -14,14 +14,18 @@ import { PostPublishProcessor } from './processors/post-publish.processor';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { XModule } from '../x/x.module';
+import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
 
+// Re-add the processor that was previously removed
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post, PostEngagement]),
     BullModule.registerQueue({
       name: 'post-publish',
     }),
-    // Removed metrics-collector queue
+    BullModule.registerQueue({
+      name: 'metrics-collector', // Ensure this queue is registered
+    }),
     AuthModule,
     UsersModule,
     XModule,
@@ -30,7 +34,7 @@ import { XModule } from '../x/x.module';
     PostService,
     EngagementService,
     PostPublishProcessor,
-    // Removed MetricsCollectorProcessor
+    MetricsCollectorProcessor,
   ],
   controllers: [PostController, EngagementController],
   exports: [PostService, EngagementService],

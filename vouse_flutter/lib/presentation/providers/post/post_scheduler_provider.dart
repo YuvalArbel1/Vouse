@@ -7,8 +7,9 @@ import 'package:vouse_flutter/domain/usecases/post/save_post_usecase.dart';
 import 'package:vouse_flutter/domain/usecases/server/schedule_post_usecase.dart';
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_post_providers.dart';
-import 'package:vouse_flutter/presentation/providers/server/server_providers.dart';
 import 'package:vouse_flutter/presentation/providers/home/home_content_provider.dart';
+
+import '../server/server_providers.dart';
 
 /// State of the post scheduling process
 enum SchedulingState {
@@ -68,19 +69,19 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
     try {
       state = state.copyWith(state: SchedulingState.scheduling);
 
-      // First, send to server
+      // Always save locally first to ensure we don't lose the post
+      if (saveLocally) {
+        await _savePostUseCase.call(
+          params: SavePostParams(post, userId),
+        );
+      }
+
+      // Then, send to server
       final serverResult = await _schedulePostUseCase.call(
         params: SchedulePostParams(post),
       );
 
       if (serverResult is DataSuccess<String>) {
-        // If server scheduling succeeded, save the post locally too
-        if (saveLocally) {
-          await _savePostUseCase.call(
-            params: SavePostParams(post, userId),
-          );
-        }
-
         // Update state with success
         state = state.copyWith(
           state: SchedulingState.scheduled,
@@ -93,11 +94,8 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
 
         return true;
       } else if (serverResult is DataFailed) {
+        // If server scheduling failed but we saved locally
         if (saveLocally) {
-          // If server failed but we still want local saving
-          await _savePostUseCase.call(
-            params: SavePostParams(post, userId),
-          );
           state = state.copyWith(
             state: SchedulingState.localOnly,
             errorMessage: serverResult.error?.error.toString() ?? 'Failed to schedule on server',

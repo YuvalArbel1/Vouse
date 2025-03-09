@@ -264,23 +264,32 @@ export class XClientService {
    * @returns Engagement metrics data including public_metrics, non_public_metrics, and organic_metrics
    */
   async getTweetMetrics(tweetId: string, accessToken?: string): Promise<any> {
-    const endpoint = `/tweets/${tweetId}`;
-    const params = {
-      'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics',
-    };
+    try {
+      const endpoint = `/tweets/${tweetId}`;
+      const params = {
+        'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics',
+      };
 
-    // If access token is provided, use it for user context
-    // Otherwise fall back to app-only auth for public metrics
-    if (accessToken) {
-      return this.makeAuthenticatedRequest(
-        accessToken,
-        'get',
-        endpoint,
-        null,
-        params,
-      );
-    } else {
-      return this.makeAppAuthenticatedRequest('get', endpoint, null, params);
+      // Add debug logging
+      console.log(`Fetching metrics for tweet ${tweetId}`);
+
+      const response = accessToken
+        ? await this.makeAuthenticatedRequest(
+            accessToken,
+            'get',
+            endpoint,
+            null,
+            params,
+          )
+        : await this.makeAppAuthenticatedRequest('get', endpoint, null, params);
+
+      // Log the response
+      console.log('Twitter API response:', JSON.stringify(response, null, 2));
+
+      return response;
+    } catch (error) {
+      console.error(`Error fetching tweet metrics: ${error.message}`);
+      throw error;
     }
   }
 

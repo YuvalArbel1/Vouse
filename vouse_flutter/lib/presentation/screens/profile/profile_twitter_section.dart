@@ -20,31 +20,54 @@ class ProfileTwitterSection extends ConsumerStatefulWidget {
       _ProfileTwitterSectionState();
 }
 
-class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
+class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> with WidgetsBindingObserver {
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Check connection status on initialization
-    _checkTwitterConnection();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Force check connection status on initialization
+    _refreshTwitterConnection(forceCheck: true);
   }
 
-  /// Check Twitter connection status using the provider
-  Future<void> _checkTwitterConnection({bool forceCheck = false}) async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Always refresh when becoming visible
+    _refreshTwitterConnection();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh when app resumes
+    if (state == AppLifecycleState.resumed) {
+      _refreshTwitterConnection();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Refresh Twitter connection status with consistent error handling
+  Future<void> _refreshTwitterConnection({bool forceCheck = false}) async {
     try {
       setState(() => _isLoading = true);
 
-      // Check Twitter connection status with force flag
-      await ref
+      // Check Twitter connection status
+      final connectionSuccess = await ref
           .read(twitterConnectionProvider.notifier)
           .checkConnectionStatus(forceCheck: forceCheck);
 
-      // Debug log the current state after check
-      final connectionState =
-          ref.read(twitterConnectionProvider).connectionState;
-      debugPrint(
-          "ProfileTwitterSection: Connection state after check: $connectionState");
+      // Debug log current state
+      debugPrint("ProfileTwitterSection: Connection refresh result: $connectionSuccess");
+      debugPrint("ProfileTwitterSection: Current connection state: ${ref.read(twitterConnectionProvider).connectionState}");
+    } catch (e) {
+      debugPrint("ProfileTwitterSection: Error refreshing connection: $e");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -76,19 +99,17 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
 
         if (connectResult) {
           // Force refresh the connection status to update UI consistently
-          await ref
-              .read(twitterConnectionProvider.notifier)
-              .checkConnectionStatus(forceCheck: true);
+          await _refreshTwitterConnection(forceCheck: true);
 
           debugPrint("ProfileTwitterSection: X connection successful");
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 10),
-                  const Text('Twitter account connected successfully'),
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('Twitter account connected successfully'),
                 ],
               ),
               backgroundColor: vAccentColor,
@@ -116,28 +137,28 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
     }
   }
 
-  /// Disconnect Twitter account
+  /// Disconnect Twitter account with improved error handling
   Future<void> _disconnectTwitter() async {
     // Show confirmation dialog
     final shouldDisconnect = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Disconnect X Account'),
-            content: const Text(
-                'Are you sure you want to disconnect your X account?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Disconnect',
-                    style: TextStyle(color: Colors.red)),
-              ),
-            ],
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Disconnect X Account'),
+        content: const Text(
+            'Are you sure you want to disconnect your X account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-        ) ??
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Disconnect',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    ) ??
         false;
 
     if (!shouldDisconnect) return;
@@ -154,9 +175,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
       if (!mounted) return;
 
       // Force refresh the connection status to update UI consistently
-      await ref
-          .read(twitterConnectionProvider.notifier)
-          .checkConnectionStatus(forceCheck: true);
+      await _refreshTwitterConnection(forceCheck: true);
 
       if (disconnectResult) {
         debugPrint("ProfileTwitterSection: X disconnection successful");
@@ -167,7 +186,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             backgroundColor: vBodyGrey,
             behavior: SnackBarBehavior.floating,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       } else {
@@ -192,6 +211,9 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
         twitterConnection.connectionState == TwitterConnectionState.connected;
     final username = twitterConnection.username;
 
+    // Debug connection state in build
+    debugPrint("ProfileTwitterSection build: Connection state: ${twitterConnection.connectionState}, Username: $username");
+
     return SettingsSectionWidget(
       title: 'X (Twitter) Integration',
       children: [
@@ -201,14 +223,14 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: vAccentColor.withAlpha(30),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.alternate_email,
                   size: 28,
                   color: Colors.black,
@@ -232,12 +254,12 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
                 ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vAccentColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Active',
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
@@ -269,7 +291,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: vPrimaryColor.withAlpha(20),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
               ),

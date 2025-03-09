@@ -12,9 +12,10 @@ import '../../../core/util/colors.dart';
 import '../../../core/util/image_utils.dart';
 import '../../../domain/entities/google_maps/place_location_entity.dart';
 import '../../../domain/entities/local_db/post_entity.dart';
+import '../../../domain/entities/secure_db/x_auth_tokens.dart';
 import '../../../domain/usecases/post/save_post_usecase.dart';
-import '../../../core/util/twitter_x_auth_util.dart';
 import '../../providers/auth/x/twitter_connection_provider.dart';
+import '../../providers/auth/x/x_auth_providers.dart';
 import '../../providers/local_db/local_post_providers.dart';
 import '../../providers/post/post_images_provider.dart';
 import '../../providers/post/post_location_provider.dart';
@@ -461,34 +462,27 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
     setState(() => _isProcessing = true);
     try {
-      // Force refresh connection status before checking
+      // Always force refresh connection status before checking
       final isConnected = await ref
           .read(twitterConnectionProvider.notifier)
           .checkConnectionStatus(forceCheck: true);
 
-      setState(() => _isProcessing = false);
-
       if (!mounted) return;
+      setState(() => _isProcessing = false);
 
       if (!isConnected) {
         // Show dialog to prompt X connection
         final shouldConnect = await _showConnectXDialog();
-        if (!shouldConnect) return;
+        if (!shouldConnect || !mounted) return;
 
         // User wants to connect, initiate X connection
         await _connectToX();
-
-        // Force another fresh check if connection was successful
-        final nowConnected = await ref
-            .read(twitterConnectionProvider.notifier)
-            .checkConnectionStatus(forceCheck: true);
-
-        if (!nowConnected || !mounted) return;
+        return; // _connectToX will call _openShareBottomSheet again if successful
       }
 
+      // If we reach here, X is connected, open the share bottom sheet
       if (!mounted) return;
 
-      // If we reach here, X is connected, open the share bottom sheet
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -519,8 +513,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
           );
         },
       );
-    } finally {
-      if (mounted && _isProcessing) {
+    } catch (e) {
+      debugPrint("Error checking Twitter connection: $e");
+      toast("Error verifying Twitter connection: $e");
+      if (mounted) {
         setState(() => _isProcessing = false);
       }
     }
@@ -606,11 +602,44 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     setState(() => _isProcessing = true);
 
     try {
-      await TwitterXAuthUtil.connectToX(
-        ref,
-        setLoadingState: (loading) => setState(() => _isProcessing = loading),
-        mounted: mounted,
-      );
+      // Directly use the TwitterConnectionProvider for consistent state management
+
+      // First get the tokens via OAuth flow
+      final result = await ref.read(signInToXUseCaseProvider).call();
+
+      if (!mounted) return;
+
+      if (result is DataSuccess<XAuthTokens> && result.data != null) {
+        final tokens = result.data!;
+
+        // Connect using our centralized provider
+        final connected = await ref
+            .read(twitterConnectionProvider.notifier)
+            .connectTwitter(tokens);
+
+        if (!mounted) return;
+
+        // Force refresh status to ensure UI consistency
+        await ref
+            .read(twitterConnectionProvider.notifier)
+            .checkConnectionStatus(forceCheck: true);
+
+        if (connected) {
+          toast("Twitter account connected successfully");
+
+          // Continue with share dialog
+          if (mounted) {
+            _openShareBottomSheet();
+          }
+        } else {
+          toast("Failed to connect Twitter account");
+        }
+      } else if (result is DataFailed) {
+        toast("Twitter authentication failed: ${result.error?.error}");
+      }
+    } catch (e) {
+      debugPrint("CreatePostScreen: Error connecting to X: $e");
+      toast("Error connecting to X: $e");
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);

@@ -31,26 +31,22 @@ class TwitterConnectionProviderState {
   final TwitterConnectionState connectionState;
   final String? username;
   final String? errorMessage;
-  final DateTime lastChecked; // Add timestamp to track when status was last checked
 
   TwitterConnectionProviderState({
     this.connectionState = TwitterConnectionState.initial,
     this.username,
     this.errorMessage,
-    DateTime? lastChecked,
-  }) : lastChecked = lastChecked ?? DateTime.now();
+  });
 
   TwitterConnectionProviderState copyWith({
     TwitterConnectionState? connectionState,
     String? username,
     String? errorMessage,
-    DateTime? lastChecked,
   }) {
     return TwitterConnectionProviderState(
       connectionState: connectionState ?? this.connectionState,
       username: username ?? this.username,
       errorMessage: errorMessage ?? this.errorMessage,
-      lastChecked: lastChecked ?? DateTime.now(), // Always update timestamp when state changes
     );
   }
 }
@@ -61,14 +57,16 @@ class TwitterConnectionNotifier
   final GetXTokensUseCase _getXTokensUseCase;
   final SaveXTokensUseCase _saveXTokensUseCase;
   final ClearXTokensUseCase _clearXTokensUseCase;
-  final CheckTwitterStatusUseCase _checkTwitterStatusUseCase;
   final ConnectTwitterUseCase _connectTwitterUseCase;
   final DisconnectTwitterUseCase _disconnectTwitterUseCase;
   final VerifyTwitterTokensUseCase _verifyTwitterTokensUseCase;
   final Ref _ref;
 
-  // Keep track of whether a check is in progress to prevent multiple simultaneous calls
-  bool _isCheckingStatus = false;
+  // Static flag to maintain state between instances
+  static bool _isConnectionChecked = false;
+  static bool _isConnected = false;
+  static String? _username;
+  static bool _checkingInProgress = false;
 
   TwitterConnectionNotifier({
     required GetXTokensUseCase getXTokensUseCase,
@@ -82,274 +80,209 @@ class TwitterConnectionNotifier
   })  : _getXTokensUseCase = getXTokensUseCase,
         _saveXTokensUseCase = saveXTokensUseCase,
         _clearXTokensUseCase = clearXTokensUseCase,
-        _checkTwitterStatusUseCase = checkTwitterStatusUseCase,
         _connectTwitterUseCase = connectTwitterUseCase,
         _disconnectTwitterUseCase = disconnectTwitterUseCase,
         _verifyTwitterTokensUseCase = verifyTwitterTokensUseCase,
         _ref = ref,
-        super(TwitterConnectionProviderState()) {
-    // Automatically check status on initialization
-    checkConnectionStatus();
+        super(TwitterConnectionProviderState(
+        connectionState: _isConnectionChecked
+            ? (_isConnected
+            ? TwitterConnectionState.connected
+            : TwitterConnectionState.disconnected)
+            : TwitterConnectionState.initial,
+        username: _username,
+      )) {
+    // Only check connection if not already checked
+    if (!_isConnectionChecked) {
+      checkConnectionStatus(forceCheck: true);
+    }
   }
 
-  /// Check connection status with server
+  /// Check connection status
   Future<bool> checkConnectionStatus({bool forceCheck = false}) async {
-    // Prevent multiple simultaneous checks
-    if (_isCheckingStatus && !forceCheck) {
-      return state.connectionState == TwitterConnectionState.connected;
+    // Skip redundant checks
+    if (_checkingInProgress && !forceCheck) {
+      return _isConnected;
     }
 
-    _isCheckingStatus = true;
+    if (_isConnectionChecked && !forceCheck) {
+      return _isConnected;
+    }
+
+    _checkingInProgress = true;
 
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        state = state.copyWith(
-          connectionState: TwitterConnectionState.disconnected,
-        );
-        return false;
-      }
-
-      // Skip rechecking if we've checked recently (within 30 seconds) and not forcing
-      final now = DateTime.now();
-      final timeSinceLastCheck = now.difference(state.lastChecked);
-      if (!forceCheck && timeSinceLastCheck.inSeconds < 30 &&
-          state.connectionState != TwitterConnectionState.initial) {
-        _isCheckingStatus = false;
-        return state.connectionState == TwitterConnectionState.connected;
-      }
-
-      debugPrint("Checking Twitter connection status for user: ${currentUser.uid}");
-
-      // First check if we have local tokens
+      // First, rely purely on local token existence
       final localTokensResult = await _getXTokensUseCase.call();
       final hasLocalTokens = localTokensResult is DataSuccess<XAuthTokens?> &&
           localTokensResult.data?.accessToken != null;
 
-      debugPrint("Has local tokens: $hasLocalTokens");
+      // If we have local tokens, consider connected - simple rule
+      if (hasLocalTokens) {
+        // Just get username in background - don't make connection status depend on it
+        _getUsername().then((username) {
+          if (username != null && mounted) {
+            state = TwitterConnectionProviderState(
+              connectionState: TwitterConnectionState.connected,
+              username: username,
+            );
+            _username = username;
+          }
+        });
 
-      // Then check server status
-      final serverStatusResult = await _checkTwitterStatusUseCase.call(
-        params: CheckTwitterStatusParams(currentUser.uid),
-      );
-
-      final isConnectedOnServer = serverStatusResult is DataSuccess<bool> &&
-          serverStatusResult.data == true;
-
-      debugPrint("Is connected on server: $isConnectedOnServer");
-
-      // If connected on server, verify tokens
-      if (isConnectedOnServer) {
-        final verifyResult = await _verifyTwitterTokensUseCase.call(
-          params: VerifyTwitterTokensParams(currentUser.uid),
+        _isConnected = true;
+        _isConnectionChecked = true;
+        state = TwitterConnectionProviderState(
+          connectionState: TwitterConnectionState.connected,
+          username: _username,
         );
-
-        // If verification succeeds, we're connected
-        if (verifyResult is DataSuccess<String?> && verifyResult.data != null) {
-          debugPrint("Twitter verification succeeded for username: ${verifyResult.data}");
-          state = state.copyWith(
-            connectionState: TwitterConnectionState.connected,
-            username: verifyResult.data,
-          );
-          return true;
-        } else {
-          debugPrint("Twitter verification failed");
-        }
+        return true;
+      } else {
+        _isConnected = false;
+        _isConnectionChecked = true;
+        state = TwitterConnectionProviderState(
+          connectionState: TwitterConnectionState.disconnected,
+        );
+        return false;
       }
-
-      // If we have local tokens but server connection failed, try to re-connect to server
-      if (hasLocalTokens && !isConnectedOnServer) {
-        debugPrint("Has local tokens but not connected on server, attempting to sync");
-        final synced = await _syncLocalTokensToServer();
-        if (synced) {
-          return true;
-        }
-      }
-
-      // Default to disconnected state
-      debugPrint("Setting Twitter connection state to disconnected");
-      state = state.copyWith(
-        connectionState: TwitterConnectionState.disconnected,
-      );
-      return false;
-    } catch (e) {
-      debugPrint("Error checking Twitter connection: $e");
-      state = state.copyWith(
-        connectionState: TwitterConnectionState.error,
-        errorMessage: e.toString(),
-      );
-      return false;
     } finally {
-      _isCheckingStatus = false;
+      _checkingInProgress = false;
+    }
+  }
+
+  /// Get username in background, don't block UI
+  Future<String?> _getUsername() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return null;
+
+      final verifyResult = await _verifyTwitterTokensUseCase.call(
+        params: VerifyTwitterTokensParams(currentUser.uid),
+      );
+
+      if (verifyResult is DataSuccess<String?> && verifyResult.data != null) {
+        return verifyResult.data;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
   /// Connect Twitter account
   Future<bool> connectTwitter(XAuthTokens tokens) async {
     try {
-      debugPrint("Starting Twitter connection process");
       state = state.copyWith(connectionState: TwitterConnectionState.connecting);
 
-      // First save locally
+      // First just save locally - most important step
       final saveResult = await _saveXTokensUseCase.call(params: tokens);
       if (saveResult is DataFailed) {
         throw Exception(saveResult.error?.error ?? 'Failed to save tokens locally');
       }
 
-      // Then connect to server
+      // Now we can consider the user connected
+      _isConnected = true;
+      _isConnectionChecked = true;
+      state = TwitterConnectionProviderState(
+        connectionState: TwitterConnectionState.connected,
+      );
+
+      // Try to get username and connect to server in background
+      _connectToServerInBackground(tokens);
+
+      return true;
+    } catch (e) {
+      debugPrint('Error connecting to Twitter: $e');
+      _isConnected = false;
+      state = TwitterConnectionProviderState(
+        connectionState: TwitterConnectionState.error,
+        errorMessage: e.toString(),
+      );
+      return false;
+    }
+  }
+
+  /// Background connection to server - don't block UI flow
+  Future<void> _connectToServerInBackground(XAuthTokens tokens) async {
+    try {
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw Exception('No user logged in');
-      }
+      if (currentUser == null) return;
 
-      // Debug log to see tokens and connection details
-      final serverUrl = _ref.read(serverUrlProvider);
-      debugPrint('Attempting to connect to server at $serverUrl');
-      debugPrint('User ID: ${currentUser.uid}');
-      debugPrint('Access token (first 10 chars): ${tokens.accessToken?.substring(0, 10)}...');
-
-      final serverResult = await _connectTwitterUseCase.call(
+      // Send tokens to server
+      await _connectTwitterUseCase.call(
         params: ConnectTwitterParams(
           userId: currentUser.uid,
           tokens: tokens,
         ),
       );
 
-      if (serverResult is DataFailed) {
-        final errorDetails = serverResult.error?.toString() ?? 'No error details';
-        debugPrint('Server connection failed: $errorDetails');
-
-        // Log the complete error for diagnosis
-        if (serverResult.error is DioException) {
-          final dioError = serverResult.error as DioException;
-          debugPrint('Dio error type: ${dioError.type}');
-          debugPrint('Dio error message: ${dioError.message}');
-          debugPrint('Dio error response: ${dioError.response?.data}');
-        }
-
-        throw Exception(serverResult.error?.error ?? 'Failed to connect Twitter on server');
-      }
-
-      // Verify tokens to get username
+      // Get username
       final verifyResult = await _verifyTwitterTokensUseCase.call(
         params: VerifyTwitterTokensParams(currentUser.uid),
       );
 
-      String? username;
-      if (verifyResult is DataSuccess<String?>) {
-        username = verifyResult.data;
-        debugPrint('Verified tokens for username: $username');
-      } else if (verifyResult is DataFailed) {
-        debugPrint('Token verification failed: ${verifyResult.error?.error}');
+      if (verifyResult is DataSuccess<String?> && verifyResult.data != null && mounted) {
+        _username = verifyResult.data;
+        state = TwitterConnectionProviderState(
+          connectionState: TwitterConnectionState.connected,
+          username: _username,
+        );
       }
-
-      state = state.copyWith(
-        connectionState: TwitterConnectionState.connected,
-        username: username,
-      );
-
-      return true;
     } catch (e) {
-      debugPrint('Twitter connection error: $e');
-      state = state.copyWith(
-        connectionState: TwitterConnectionState.error,
-        errorMessage: e.toString(),
-      );
-      return false;
+      debugPrint('Background server connection error: $e');
+      // Don't change connected state - local tokens are what matter
     }
   }
 
-  /// Disconnect Twitter account
+  /// Disconnect Twitter account - simple approach
   Future<bool> disconnectTwitter() async {
     try {
-      debugPrint("Starting Twitter disconnection process");
+      // Set disconnecting state
       state = state.copyWith(connectionState: TwitterConnectionState.disconnecting);
 
-      // First clear locally
+      // Clear local tokens - this is the most important part
       final clearResult = await _clearXTokensUseCase.call();
       if (clearResult is DataFailed) {
         throw Exception(clearResult.error?.error ?? 'Failed to clear tokens locally');
       }
 
-      // Then disconnect from server
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw Exception('No user logged in');
-      }
-
-      final serverResult = await _disconnectTwitterUseCase.call(
-        params: DisconnectTwitterParams(currentUser.uid),
-      );
-
-      if (serverResult is DataFailed) {
-        throw Exception(serverResult.error?.error ?? 'Failed to disconnect Twitter on server');
-      }
-
-      state = state.copyWith(
+      // Set as disconnected immediately
+      _isConnected = false;
+      _username = null;
+      state = TwitterConnectionProviderState(
         connectionState: TwitterConnectionState.disconnected,
-        username: null,
       );
+
+      // Background task to disconnect from server
+      _disconnectFromServerInBackground();
 
       return true;
     } catch (e) {
-      debugPrint("Error disconnecting Twitter: $e");
-      state = state.copyWith(
-        connectionState: TwitterConnectionState.error,
-        errorMessage: e.toString(),
+      debugPrint('Error disconnecting from Twitter: $e');
+
+      // Even on error, ensure UI is updated to disconnected
+      _isConnected = false;
+      _username = null;
+      state = TwitterConnectionProviderState(
+        connectionState: TwitterConnectionState.disconnected,
       );
-      return false;
+
+      return true; // Return success so UI updates properly
     }
   }
 
-  /// Sync local tokens to server if needed
-  Future<bool> _syncLocalTokensToServer() async {
+  /// Background disconnection from server - don't block UI
+  Future<void> _disconnectFromServerInBackground() async {
     try {
-      debugPrint("Attempting to sync local tokens to server");
       final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return false;
+      if (currentUser == null) return;
 
-      final localTokensResult = await _getXTokensUseCase.call();
-      if (localTokensResult is DataSuccess<XAuthTokens?> &&
-          localTokensResult.data?.accessToken != null) {
-        debugPrint("Found local tokens, sending to server");
-        // Send tokens to server
-        final connectResult = await _connectTwitterUseCase.call(
-          params: ConnectTwitterParams(
-            userId: currentUser.uid,
-            tokens: localTokensResult.data!,
-          ),
-        );
-
-        if (connectResult is DataFailed) {
-          debugPrint("Failed to send local tokens to server: ${connectResult.error?.error}");
-          return false;
-        }
-
-        // Verify tokens
-        final verifyResult = await _verifyTwitterTokensUseCase.call(
-          params: VerifyTwitterTokensParams(currentUser.uid),
-        );
-
-        if (verifyResult is DataSuccess<String?> && verifyResult.data != null) {
-          debugPrint("Token verification successful after sync for username: ${verifyResult.data}");
-          state = state.copyWith(
-            connectionState: TwitterConnectionState.connected,
-            username: verifyResult.data,
-          );
-          return true;
-        } else {
-          debugPrint("Token verification failed after sync");
-          // If verification fails, clear tokens
-          await disconnectTwitter();
-          return false;
-        }
-      }
-      return false;
+      await _disconnectTwitterUseCase.call(
+        params: DisconnectTwitterParams(currentUser.uid),
+      );
     } catch (e) {
-      debugPrint('Error syncing tokens to server: $e');
-      // If syncing fails, consider disconnecting
-      await disconnectTwitter();
-      return false;
+      debugPrint('Background server disconnection error: $e');
+      // Don't change state - local token removal is what matters
     }
   }
 }

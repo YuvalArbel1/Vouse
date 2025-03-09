@@ -124,20 +124,18 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       debugPrint("EditProfileScreen: Checking Twitter connection status");
 
       // Use the TwitterConnectionProvider to check connection status with force flag
-      await ref
+      final isConnected = await ref
           .read(twitterConnectionProvider.notifier)
           .checkConnectionStatus(forceCheck: true);
 
       if (!mounted) return;
 
       // Get the updated connection state
-      final connectionState = ref.read(twitterConnectionProvider);
-      final isConnected =
-          connectionState.connectionState == TwitterConnectionState.connected;
+      final connectionState =
+          ref.read(twitterConnectionProvider).connectionState;
 
       debugPrint(
-          "EditProfileScreen: Connection state after check: ${connectionState.connectionState}");
-      debugPrint("EditProfileScreen: Is connected: $isConnected");
+          "EditProfileScreen: Connection state after check: $connectionState, isConnected: $isConnected");
 
       setState(() {
         _isXConnected = isConnected;
@@ -265,7 +263,7 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     try {
       debugPrint("EditProfileScreen: Starting X disconnection process");
 
-      // Use the TwitterConnectionProvider to handle the disconnection
+      // Use the TwitterConnectionProvider to handle disconnection
       final disconnectResult = await ref
           .read(twitterConnectionProvider.notifier)
           .disconnectTwitter();

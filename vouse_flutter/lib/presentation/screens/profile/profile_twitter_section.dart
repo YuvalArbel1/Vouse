@@ -20,7 +20,8 @@ class ProfileTwitterSection extends ConsumerStatefulWidget {
       _ProfileTwitterSectionState();
 }
 
-class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> with WidgetsBindingObserver {
+class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection>
+    with WidgetsBindingObserver {
   bool _isLoading = false;
 
   @override
@@ -64,8 +65,10 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
           .checkConnectionStatus(forceCheck: forceCheck);
 
       // Debug log current state
-      debugPrint("ProfileTwitterSection: Connection refresh result: $connectionSuccess");
-      debugPrint("ProfileTwitterSection: Current connection state: ${ref.read(twitterConnectionProvider).connectionState}");
+      debugPrint(
+          "ProfileTwitterSection: Connection refresh result: $connectionSuccess");
+      debugPrint(
+          "ProfileTwitterSection: Current connection state: ${ref.read(twitterConnectionProvider).connectionState}");
     } catch (e) {
       debugPrint("ProfileTwitterSection: Error refreshing connection: $e");
     } finally {
@@ -141,24 +144,24 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
   Future<void> _disconnectTwitter() async {
     // Show confirmation dialog
     final shouldDisconnect = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Disconnect X Account'),
-        content: const Text(
-            'Are you sure you want to disconnect your X account?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Disconnect X Account'),
+            content: const Text(
+                'Are you sure you want to disconnect your X account?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Disconnect',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Disconnect',
-                style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (!shouldDisconnect) return;
@@ -186,7 +189,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
             backgroundColor: vBodyGrey,
             behavior: SnackBarBehavior.floating,
             shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       } else {
@@ -212,7 +215,8 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
     final username = twitterConnection.username;
 
     // Debug connection state in build
-    debugPrint("ProfileTwitterSection build: Connection state: ${twitterConnection.connectionState}, Username: $username");
+    debugPrint(
+        "ProfileTwitterSection build: Connection state: ${twitterConnection.connectionState}, Username: $username");
 
     return SettingsSectionWidget(
       title: 'X (Twitter) Integration',
@@ -233,7 +237,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
                 const Icon(
                   Icons.alternate_email,
                   size: 28,
-                  color: Colors.black,
+                  color: vPrimaryColor,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -242,7 +246,10 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
                     children: [
                       Text(
                         'Twitter Account Connected',
-                        style: boldTextStyle(size: 16),
+                        style: boldTextStyle(
+                          size: 16,
+                          color: vPrimaryColor,
+                        ),
                       ),
                       if (username != null)
                         Text(
@@ -254,7 +261,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection> w
                 ),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vAccentColor,
                     borderRadius: BorderRadius.circular(12),

@@ -87,7 +87,7 @@ export class PostService {
     }
 
     try {
-      // Add job to the queue with the calculated delay
+      // Add a job to the queue with the calculated delay
       await this.postPublishQueue.add(
         'publish',
         {

@@ -1,18 +1,11 @@
 // src/x/services/x-client.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import * as dotenv from 'dotenv';
 import * as FormData from 'form-data';
+import * as crypto from 'crypto';
 
 dotenv.config();
-
-// Adding a rate limit tracker
-interface RateLimitInfo {
-  endpoint: string;
-  remaining: number;
-  reset: number; // Timestamp when the rate limit resets
-  lastRequest: number; // Timestamp of the last request
-}
 
 /**
  * Service for making API calls to Twitter (X) using Twitter API v2
@@ -34,9 +27,6 @@ export class XClientService {
   private readonly mediaUploadUrl =
     'https://upload.twitter.com/1.1/media/upload.json';
 
-  // Track rate limits for different endpoints
-  private rateLimits: Map<string, RateLimitInfo> = new Map();
-
   constructor() {
     // Create a pre-configured axios instance for API calls
     this.client = axios.create({
@@ -47,35 +37,17 @@ export class XClientService {
       },
     });
 
-    // Add response interceptor for logging and rate limit tracking
+    // Add response interceptor for logging
     this.client.interceptors.response.use(
       (response) => {
-        // Track rate limit info from response headers
-        this.updateRateLimitInfo(response);
         return response;
       },
       (error) => {
         // Log the error but don't expose sensitive info
         if (error.response) {
-          // Track rate limit info even from error responses
-          this.updateRateLimitInfo(error.response);
-
           this.logger.error(
             `Twitter API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
           );
-
-          // If rate limited, provide clearer error
-          if (error.response.status === 429) {
-            const resetTime = error.response.headers['x-rate-limit-reset'];
-            const waitTime = resetTime
-              ? new Date(parseInt(resetTime) * 1000)
-              : 'unknown time';
-            this.logger.warn(
-              `Rate limited by Twitter API. Reset at ${waitTime}`,
-            );
-            error.isRateLimit = true;
-            error.resetTime = resetTime;
-          }
         } else if (error.request) {
           this.logger.error('Twitter API error: No response received');
         } else {
@@ -84,100 +56,6 @@ export class XClientService {
         return Promise.reject(error);
       },
     );
-  }
-
-  /**
-   * Update rate limit information from response headers
-   */
-  private updateRateLimitInfo(response: AxiosResponse): void {
-    try {
-      const endpoint = response.config.url || 'unknown';
-      const remaining = parseInt(
-        response.headers['x-rate-limit-remaining'] || '-1',
-      );
-      const reset =
-        parseInt(response.headers['x-rate-limit-reset'] || '0') * 1000; // Convert to ms
-
-      if (remaining >= 0) {
-        this.rateLimits.set(endpoint, {
-          endpoint,
-          remaining,
-          reset,
-          lastRequest: Date.now(),
-        });
-
-        // Log rate limit info if we're getting low
-        if (remaining < 10) {
-          this.logger.warn(
-            `Twitter API rate limit for ${endpoint}: ${remaining} requests remaining. Resets at ${new Date(reset).toLocaleString()}`,
-          );
-        }
-      }
-    } catch (error) {
-      // Just log and continue - rate limit tracking is best effort
-      this.logger.debug(`Error tracking rate limits: ${error.message}`);
-    }
-  }
-
-  /**
-   * Check if an endpoint is rate limited and we should wait
-   * @returns Number of milliseconds to wait, or 0 if no wait needed
-   */
-  private checkRateLimit(endpoint: string): number {
-    const info = this.rateLimits.get(endpoint);
-
-    if (!info) return 0; // No info, proceed with request
-
-    // If we have no requests remaining and we're not past the reset time
-    if (info.remaining <= 0 && info.reset > Date.now()) {
-      return info.reset - Date.now() + 1000; // Add 1 second buffer
-    }
-
-    return 0; // No wait needed
-  }
-
-  /**
-   * Execute a request with rate limit handling and retries
-   */
-  private async executeWithRateLimitHandling<T>(
-    fn: () => Promise<T>,
-    endpoint: string,
-    maxRetries = 2,
-  ): Promise<T> {
-    let retries = 0;
-
-    while (true) {
-      try {
-        // Check if we need to wait for rate limit
-        const waitTime = this.checkRateLimit(endpoint);
-        if (waitTime > 0) {
-          this.logger.log(
-            `Waiting ${waitTime}ms for Twitter rate limit to reset`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-        }
-
-        // Execute the request
-        return await fn();
-      } catch (error) {
-        // If rate limited and we have retries left
-        if (error.isRateLimit && retries < maxRetries) {
-          retries++;
-          const waitTime = error.resetTime
-            ? parseInt(error.resetTime) * 1000 - Date.now() + 2000 // Add 2 second buffer
-            : 60000 * (retries + 1); // Exponential backoff
-
-          this.logger.log(
-            `Rate limited. Retrying in ${waitTime / 1000} seconds (retry ${retries}/${maxRetries})`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          continue;
-        }
-
-        // Either not a rate limit error or we're out of retries
-        throw error;
-      }
-    }
   }
 
   /**
@@ -209,10 +87,17 @@ export class XClientService {
       params,
     };
 
-    return this.executeWithRateLimitHandling(async () => {
+    try {
       const response = await axios.request(config);
       return response.data;
-    }, endpoint);
+    } catch (error) {
+      // If the error is due to an expired token, we should handle it at a higher level
+      if (error.response?.status === 401) {
+        this.logger.warn('Twitter access token expired or invalid');
+        throw new Error('TWITTER_TOKEN_EXPIRED');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -246,10 +131,12 @@ export class XClientService {
       params,
     };
 
-    return this.executeWithRateLimitHandling(async () => {
+    try {
       const response = await this.client.request(config);
       return response.data;
-    }, endpoint);
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
@@ -296,20 +183,50 @@ export class XClientService {
     try {
       this.logger.log(`Uploading media of type ${mediaType}`);
 
+      // Use app-level credentials for OAuth 1.0a
+      const consumerKey = process.env.TWITTER_API_KEY;
+      const consumerSecret = process.env.TWITTER_API_SECRET;
+      const accessTokenKey = process.env.TWITTER_ACCESS_TOKEN;
+      const accessTokenSecret = process.env.TWITTER_ACCESS_SECRET;
+
+      if (!consumerKey || !consumerSecret || !accessTokenKey || !accessTokenSecret) {
+        throw new Error('Twitter API credentials not configured for OAuth 1.0a');
+      }
+
+      // Create OAuth 1.0a instance using require to avoid import issues
+      const OAuth = require('oauth-1.0a');
+      const oauth = new OAuth({
+        consumer: { key: consumerKey, secret: consumerSecret },
+        signature_method: 'HMAC-SHA1',
+        hash_function(baseString, key) {
+          return crypto
+            .createHmac('sha1', key)
+            .update(baseString)
+            .digest('base64');
+        },
+      });
+
+      // Request data for OAuth signing
+      const requestData = {
+        url: this.mediaUploadUrl,
+        method: 'POST',
+      };
+
+      // Generate OAuth parameters
+      const token = { key: accessTokenKey, secret: accessTokenSecret };
+      const oauthHeader = oauth.toHeader(oauth.authorize(requestData, token));
+
       // Create form data
       const formData = new FormData();
       formData.append('media_data', mediaData);
 
-      // Use the rate limit handling function for media upload
-      const response = await this.executeWithRateLimitHandling(async () => {
-        // Use axios directly for the multipart/form-data request
-        return axios.post(this.mediaUploadUrl, formData, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            ...formData.getHeaders(),
-          },
-        });
-      }, 'media_upload');
+      // Make the request with OAuth 1.0a authentication
+      const response = await axios.post(this.mediaUploadUrl, formData, {
+        headers: {
+          ...oauthHeader,
+          ...formData.getHeaders(),
+        },
+      });
 
       if (!response.data || !response.data.media_id_string) {
         throw new Error('Failed to get media ID from Twitter response');
@@ -321,6 +238,9 @@ export class XClientService {
       return response.data.media_id_string;
     } catch (error) {
       this.logger.error(`Failed to upload media: ${error.message}`);
+      if (error.response) {
+        this.logger.error(`Error details: ${JSON.stringify(error.response.data)}`);
+      }
       throw error;
     }
   }

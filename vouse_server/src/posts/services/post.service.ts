@@ -59,35 +59,48 @@ export class PostService {
   }
 
   /**
-   * Schedule a post for publishing
+   * Schedule a post for publishing in the queue
+   *
+   * This method handles:
+   * - Converting dates to UTC for consistent calculations
+   * - Calculating proper delay for scheduled posts
+   * - Detecting "post now" requests
+   * - Adding the job to the BullMQ queue
+   * - Error handling and status updates
+   *
+   * @param post The post entity to be scheduled
+   * @returns Promise<void>
    */
   private async schedulePost(post: Post): Promise<void> {
-    // Instead of using the current server time, use the post's creation time
-    const referenceTime = post.createdAt;
-
-    // Make sure scheduledAt is a Date
-    const scheduledTime =
+    // Convert times to UTC to ensure consistent comparison
+    const createdAtUTC = post.createdAt.toISOString();
+    const scheduledAtUTC =
       post.scheduledAt instanceof Date
-        ? post.scheduledAt
-        : new Date(post.scheduledAt as unknown as string);
+        ? post.scheduledAt.toISOString()
+        : new Date(post.scheduledAt as unknown as string).toISOString();
 
-    // Calculate delay in milliseconds based on the client-provided times
-    const delayFromCreation = scheduledTime.getTime() - referenceTime.getTime();
+    const createdAtTime = new Date(createdAtUTC).getTime();
+    const scheduledAtTime = new Date(scheduledAtUTC).getTime();
 
-    // If the scheduled time is before or very close to the creation time,
-    // it should be posted immediately
-    let delayMs = delayFromCreation <= 3000 ? 0 : delayFromCreation;
+    // Calculate delay in milliseconds based on UTC times
+    let delayMs = Math.max(0, scheduledAtTime - createdAtTime);
 
-    // For additional safety, check if the delay is negative
-    if (delayMs < 0) {
+    // If scheduled time is very close to created time, post immediately
+    if (Math.abs(scheduledAtTime - createdAtTime) < 60000) {
+      // Within 1 minute
       this.logger.log(
-        `Post ${post.id} had negative delay (${delayMs}ms), scheduling for immediate publication`,
+        `Post ${post.id} set for immediate publishing (scheduled near creation time)`,
       );
       delayMs = 0;
     }
 
+    // Log the actual times for debugging
+    this.logger.log(
+      `Time debug - Created: ${createdAtUTC}, Scheduled: ${scheduledAtUTC}, Delay: ${delayMs}ms`,
+    );
+
     try {
-      // Add a job to the queue with the calculated delay
+      // Add job to the queue with the calculated delay
       await this.postPublishQueue.add(
         'publish',
         {
@@ -106,7 +119,7 @@ export class PostService {
       );
 
       this.logger.log(
-        `Post ${post.id} scheduled for publishing at ${scheduledTime.toISOString()} (delay: ${delayMs}ms)`,
+        `Post ${post.id} scheduled for publishing at ${scheduledAtUTC} (delay: ${delayMs}ms)`,
       );
     } catch (error) {
       const errorMessage =

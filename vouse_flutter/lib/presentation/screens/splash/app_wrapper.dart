@@ -12,7 +12,8 @@ import '../../providers/local_db/database_provider.dart';
 import '../../providers/navigation/navigation_service.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../providers/local_db/local_user_providers.dart';
-import '../../providers/server/server_sync_provider.dart'; // Add this import
+import '../../providers/server/server_sync_provider.dart';
+import '../../providers/engagement/post_engagement_provider.dart'; // Add this import
 
 // Domain entities and use cases
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
@@ -34,7 +35,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   bool _isInitializingDatabase = true;
   bool _isAuthenticating = true;
   bool _isCheckingProfile = true;
-  bool _isSynchronizingServer = true; // Added flag for server sync
+  bool _isSynchronizingServer = true;
+  bool _isLoadingEngagement = true; // Added flag for engagement loading
 
   @override
   void initState() {
@@ -76,6 +78,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           _isAuthenticating = false;
           _isCheckingProfile = false;
           _isSynchronizingServer = false;
+          _isLoadingEngagement = false;
         });
       }
     }
@@ -141,6 +144,23 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         try {
           // Trigger synchronization with server
           await ref.read(serverSyncProvider.notifier).synchronizePosts();
+
+          // After server sync, load engagement data
+          setState(() {
+            _isLoadingEngagement = true;
+          });
+
+          try {
+            // Load engagement data for posts
+            await ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+          } catch (e) {
+            debugPrint('Engagement data loading error: $e');
+            // Continue even if engagement loading fails
+          } finally {
+            setState(() {
+              _isLoadingEngagement = false;
+            });
+          }
         } catch (e) {
           debugPrint('Server synchronization error: $e');
           // Continue even if sync fails - don't block app startup
@@ -167,6 +187,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         setState(() {
           _isCheckingProfile = false;
           _isSynchronizingServer = false;
+          _isLoadingEngagement = false;
         });
       }
     }
@@ -204,11 +225,14 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   @override
   Widget build(BuildContext context) {
     // Show loading during critical initialization stages
-    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile || _isSynchronizingServer) {
+    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile ||
+        _isSynchronizingServer || _isLoadingEngagement) {
       // Custom loading message based on current step
       String loadingMessage = "Preparing your Vouse experience...";
 
-      if (_isSynchronizingServer) {
+      if (_isLoadingEngagement) {
+        loadingMessage = "Loading your engagement metrics...";
+      } else if (_isSynchronizingServer) {
         loadingMessage = "Syncing your posted content...";
       } else if (_isCheckingProfile) {
         loadingMessage = "Loading your profile...";

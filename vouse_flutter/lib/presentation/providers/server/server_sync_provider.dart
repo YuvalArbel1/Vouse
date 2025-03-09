@@ -12,6 +12,7 @@ import 'package:vouse_flutter/domain/usecases/server/get_server_posts_usecase.da
 import 'package:vouse_flutter/presentation/providers/local_db/local_post_providers.dart';
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
 import 'package:vouse_flutter/presentation/providers/server/server_providers.dart';
+import 'package:vouse_flutter/presentation/providers/engagement/post_engagement_provider.dart';
 
 import '../../../domain/usecases/post/get_posts_by_user_usecase.dart';
 
@@ -36,12 +37,14 @@ class ServerSyncState {
   final String? errorMessage;
   final DateTime? lastSyncTime;
   final int postsUpdated;
+  final int engagementsUpdated;
 
   ServerSyncState({
     this.state = SyncState.initial,
     this.errorMessage,
     this.lastSyncTime,
     this.postsUpdated = 0,
+    this.engagementsUpdated = 0,
   });
 
   ServerSyncState copyWith({
@@ -49,12 +52,14 @@ class ServerSyncState {
     String? errorMessage,
     DateTime? lastSyncTime,
     int? postsUpdated,
+    int? engagementsUpdated,
   }) {
     return ServerSyncState(
       state: state ?? this.state,
       errorMessage: errorMessage ?? this.errorMessage,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
       postsUpdated: postsUpdated ?? this.postsUpdated,
+      engagementsUpdated: engagementsUpdated ?? this.engagementsUpdated,
     );
   }
 }
@@ -139,6 +144,9 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
             engagementMap[engagement.postIdLocal] = engagement;
           }
         }
+
+        // Update the engagement provider with the new data
+        _ref.read(postEngagementDataProvider.notifier).updateEngagementData(engagementResult.data!);
       }
 
       // 3. Get all local posts to check which ones should be updated
@@ -164,8 +172,9 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
       // Get the current time for comparing with scheduled posts
       final now = DateTime.now();
 
-      // Count of posts that were updated
+      // Count of posts and engagements that were updated
       int updatedPostsCount = 0;
+      int updatedEngagementsCount = 0;
 
       // 4. Process server posts
       if (serverPostsResult is DataSuccess<List<PostEntity>>) {
@@ -234,6 +243,11 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
         }
       }
 
+      // Update engagement count
+      if (engagementResult is DataSuccess<List<PostEngagement>>) {
+        updatedEngagementsCount = engagementResult.data!.length;
+      }
+
       // Refresh all posts in providers to get the updated data
       _ref.read(postRefreshProvider.notifier).refreshAll();
 
@@ -242,9 +256,10 @@ class ServerSyncNotifier extends StateNotifier<ServerSyncState> {
         state: SyncState.completed,
         lastSyncTime: DateTime.now(),
         postsUpdated: updatedPostsCount,
+        engagementsUpdated: updatedEngagementsCount,
       );
 
-      debugPrint('ServerSync: Completed, updated $updatedPostsCount posts');
+      debugPrint('ServerSync: Completed, updated $updatedPostsCount posts, $updatedEngagementsCount engagements');
       return true;
     } catch (e) {
       debugPrint('ServerSync: Error during sync: $e');

@@ -12,6 +12,7 @@ import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.
 
 import '../server/server_sync_provider.dart';
 import '../user/user_profile_provider.dart';
+import '../engagement/post_engagement_provider.dart'; // Add this import
 
 /// State for home screen content
 class HomeContentState {
@@ -122,7 +123,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
       // Get all post data from providers
       final postedPostsAsync = await _ref.read(postedPostsProvider.future);
       final scheduledPostsAsync =
-          await _ref.read(scheduledPostsProvider.future);
+      await _ref.read(scheduledPostsProvider.future);
       final draftPostsAsync = await _ref.read(draftPostsProvider.future);
 
       // Update post counts
@@ -170,6 +171,9 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
       // First, synchronize with the server to update post statuses
       await _ref.read(serverSyncProvider.notifier).synchronizePosts();
 
+      // Then refresh engagement data
+      await _ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+
       // Then load user profile if needed
       if (_ref.read(userProfileProvider).loadingState !=
           UserProfileLoadingState.loading) {
@@ -195,7 +199,7 @@ class HomeContentNotifier extends StateNotifier<HomeContentState> {
 
 /// Provider for the home content
 final homeContentProvider =
-    StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
+StateNotifierProvider<HomeContentNotifier, HomeContentState>((ref) {
   return HomeContentNotifier(ref);
 });
 

@@ -16,6 +16,7 @@ import 'package:vouse_flutter/presentation/providers/local_db/local_user_provide
 
 import '../../../core/resources/data_state.dart';
 import '../../providers/server/server_sync_provider.dart';
+import '../../providers/engagement/post_engagement_provider.dart';
 import '../../widgets/post/post_preview/publish_posts_header.dart';
 
 /// A refined, analytics-driven screen showing published posts with:
@@ -111,6 +112,9 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     // First synchronize with server to update post statuses
     await ref.read(serverSyncProvider.notifier).synchronizePosts();
 
+    // Then fetch the latest engagement data
+    await ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+
     // Reset animations for visual feedback
     _animationController.reset();
 
@@ -205,7 +209,9 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
               child: filteredPostsAsync.when(
                 data: (posts) => _buildPostsSection(
                     posts, ref.watch(engagementMetricsProvider), activeFilter),
-                loading: () => const Center(/* ... */),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
                 error: (error, _) => Center(child: Text('Error: $error')),
               ),
             ),

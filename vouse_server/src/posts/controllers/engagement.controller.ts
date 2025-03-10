@@ -32,7 +32,8 @@ export class EngagementController {
   constructor(
     private readonly engagementService: EngagementService,
     private readonly xAuthService: XAuthService,
-  ) {}
+  ) {
+  }
 
   /**
    * Get all engagement metrics for the current user's posts
@@ -425,7 +426,7 @@ export class EngagementController {
    * @param user Current authenticated user
    * @param limit Maximum number of posts to refresh
    */
-  @Post('refresh/all')
+  @Post('refreshall')
   @UseGuards(FirebaseAuthGuard)
   async refreshAllEngagements(
     @CurrentUser() user: DecodedIdToken,

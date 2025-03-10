@@ -269,7 +269,7 @@ export class XClientService {
       // Define all necessary metrics fields
       const params = {
         'tweet.fields':
-          'public_metrics,non_public_metrics,organic_metrics,promoted_metrics',
+          'public_metrics,non_public_metrics,organic_metrics',
         expansions: 'author_id',
         'user.fields': 'id,username',
       };

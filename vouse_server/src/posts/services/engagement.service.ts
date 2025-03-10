@@ -125,8 +125,8 @@ export class EngagementService {
     if (limit) {
       query.take(limit);
     }
-
-    return query.getMany();
+    const a = await query.getMany();
+    return a;
   }
 
   /**

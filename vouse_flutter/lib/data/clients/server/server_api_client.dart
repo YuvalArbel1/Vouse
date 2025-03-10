@@ -112,7 +112,7 @@ abstract class ServerApiClient {
   );
 
   /// Refresh all engagement metrics
-  @POST('/engagements/refresh/all')
+  @POST('/engagements/refreshall')
   Future<ResponseWrapper<Map<String, dynamic>>> refreshAllEngagements();
 
   /// Batch refresh multiple posts' engagement metrics

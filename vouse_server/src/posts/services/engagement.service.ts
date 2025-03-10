@@ -1,12 +1,17 @@
 // src/posts/services/engagement.service.ts
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 
 import { PostEngagement } from '../entities/engagement.entity';
 import { Post } from '../entities/post.entity';
+import { PostStatus } from '../entities/post.entity';
 import { XClientService } from '../../x/services/x-client.service';
 
+/**
+ * Service for managing post engagement metrics
+ * Enhanced with batch operations and utility methods
+ */
 @Injectable()
 export class EngagementService {
   public readonly logger = new Logger(EngagementService.name);
@@ -21,6 +26,12 @@ export class EngagementService {
 
   /**
    * Initialize engagement tracking for a newly published post
+   * Creates an empty record with default values
+   *
+   * @param postIdX Twitter post ID
+   * @param postIdLocal Local app-generated post ID
+   * @param userId User who owns the post
+   * @returns The created engagement record
    */
   async initializeEngagement(
     postIdX: string,
@@ -44,12 +55,15 @@ export class EngagementService {
     const savedEngagement = await this.engagementRepository.save(engagement);
 
     // No automatic scheduling of metrics collection
-
     return savedEngagement;
   }
 
   /**
-   * Get engagement metrics for a post
+   * Get engagement metrics for a post by Twitter ID
+   *
+   * @param postIdX Twitter post ID
+   * @param userId User who owns the post
+   * @returns The engagement record
    */
   async getEngagement(
     postIdX: string,
@@ -70,6 +84,10 @@ export class EngagementService {
 
   /**
    * Get engagement metrics for a post by its local ID
+   *
+   * @param postIdLocal Local app-generated post ID
+   * @param userId User who owns the post
+   * @returns The engagement record
    */
   async getEngagementByLocalId(
     postIdLocal: string,
@@ -90,6 +108,10 @@ export class EngagementService {
 
   /**
    * Get engagement metrics for all of a user's posts
+   *
+   * @param userId User ID to get engagements for
+   * @param limit Optional limit on number of results
+   * @returns Array of engagement records
    */
   async getAllUserEngagements(
     userId: string,
@@ -109,6 +131,10 @@ export class EngagementService {
 
   /**
    * Update engagement metrics for a post
+   *
+   * @param postIdX Twitter post ID
+   * @param metrics Object containing metrics to update
+   * @returns Updated engagement record
    */
   async updateEngagement(
     postIdX: string,
@@ -156,6 +182,10 @@ export class EngagementService {
 
   /**
    * Collect fresh metrics for a post from Twitter API
+   *
+   * @param postIdX Twitter post ID
+   * @param accessToken User's Twitter access token
+   * @returns Updated engagement record
    */
   async collectFreshMetrics(
     postIdX: string,
@@ -248,5 +278,56 @@ export class EngagementService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Collect fresh metrics for multiple posts at once
+   * This helps batch process metrics collection to minimize API calls
+   *
+   * @param postIds Array of Twitter post IDs
+   * @param accessToken User's Twitter access token
+   * @returns Object mapping post IDs to their engagement data
+   */
+  async batchCollectFreshMetrics(
+    postIds: string[],
+    accessToken: string,
+  ): Promise<{ [key: string]: PostEngagement }> {
+    const results: { [key: string]: PostEngagement } = {};
+
+    // Process each post ID in sequence to avoid rate limits
+    for (const postIdX of postIds) {
+      try {
+        const engagement = await this.collectFreshMetrics(postIdX, accessToken);
+        results[postIdX] = engagement;
+      } catch (error) {
+        this.logger.error(
+          `Failed to collect metrics for post ${postIdX}: ${error.message}`,
+          error.stack,
+        );
+        // Continue with next post
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get all Twitter IDs for a user's published posts
+   * Useful for bulk operations on all of a user's posts
+   *
+   * @param userId User's Firebase ID
+   * @returns Array of Twitter post IDs
+   */
+  async getPublishedPostIds(userId: string): Promise<string[]> {
+    const posts = await this.postRepository.find({
+      where: {
+        userId,
+        status: PostStatus.PUBLISHED,
+        postIdX: Not(IsNull()),
+      },
+      select: ['postIdX'],
+    });
+
+    return posts.map((post) => post.postIdX).filter((id) => id !== null);
   }
 }

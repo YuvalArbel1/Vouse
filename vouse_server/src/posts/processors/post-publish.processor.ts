@@ -10,6 +10,10 @@ import { XClientService } from '../../x/services/x-client.service';
 import { XAuthService } from '../../x/services/x-auth.service';
 import { PostStatus } from '../entities/post.entity';
 
+/**
+ * Processor for handling post publishing queue jobs
+ * Now only initializes engagement tracking without collecting initial metrics
+ */
 @Processor('post-publish')
 export class PostPublishProcessor {
   private readonly logger = new Logger(PostPublishProcessor.name);
@@ -48,6 +52,13 @@ export class PostPublishProcessor {
     }
   }
 
+  /**
+   * Handle the publishing of a post to Twitter
+   * Creates and uploads media if needed, publishes the post, and initializes engagement tracking
+   *
+   * @param job The Bull job containing postId and userId
+   * @returns The updated post object after publishing
+   */
   @Process('publish')
   async handlePublish(job: Job<{ postId: string; userId: string }>) {
     const { postId, userId } = job.data;
@@ -132,26 +143,14 @@ export class PostPublishProcessor {
         PostStatus.PUBLISHED,
       );
 
-      // Initialize engagement tracking
+      // Initialize engagement tracking without collecting initial metrics
       await this.engagementService.initializeEngagement(
         tweetId,
         post.postIdLocal,
         userId,
       );
 
-      try {
-        await this.engagementService.collectFreshMetrics(
-          tweetId,
-          tokens.accessToken,
-        );
-        this.logger.log(`Collected initial metrics for tweet ${tweetId}`);
-      } catch (metricsError) {
-        this.logger.warn(
-          `Failed to collect initial metrics: ${metricsError.message}`,
-        );
-        // Don't fail the whole process if metrics collection fails
-      }
-
+      // Log successful publication
       this.logger.log(
         `Successfully published post ${postId} as tweet ${tweetId}`,
       );

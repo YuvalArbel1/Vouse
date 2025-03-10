@@ -8,6 +8,10 @@ import { Queue } from 'bull';
 import { EngagementService } from '../services/engagement.service';
 import { XAuthService } from '../../x/services/x-auth.service';
 
+/**
+ * Processor that handles collecting metrics for posts
+ * Now operates on-demand only without scheduling recurring jobs
+ */
 @Processor('metrics-collector')
 export class MetricsCollectorProcessor {
   private readonly logger = new Logger(MetricsCollectorProcessor.name);
@@ -19,6 +23,14 @@ export class MetricsCollectorProcessor {
     private readonly metricsQueue: Queue,
   ) {}
 
+  /**
+   * Process a metrics collection job for a specific tweet
+   * This method handles fetching and storing the latest metrics for a post
+   * It no longer schedules repeated collection automatically.
+   *
+   * @param job The Bull job containing postIdX and userId
+   * @returns The updated engagement record
+   */
   @Process('collect')
   async handleMetricsCollection(job: Job<{ postIdX: string; userId: string }>) {
     const { postIdX, userId } = job.data;
@@ -41,66 +53,12 @@ export class MetricsCollectorProcessor {
 
       this.logger.log(`Successfully collected metrics for tweet ${postIdX}`);
 
-      // Schedule next collection after appropriate delay
-      // First day: every 2 hours, after that: every 6 hours for a week
-      const hoursSinceCreation =
-        (Date.now() - engagement.createdAt.getTime()) / (1000 * 60 * 60);
-
-      const nextDelayHours = hoursSinceCreation < 24 ? 2 : 6;
-      const totalHours = Math.round(hoursSinceCreation);
-
-      // Stop after a week (168 hours)
-      if (totalHours < 168) {
-        await this.metricsQueue.add(
-          'collect',
-          {
-            postIdX,
-            userId,
-          },
-          {
-            delay: nextDelayHours * 60 * 60 * 1000, // hours to milliseconds
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 60000,
-            },
-            removeOnComplete: true,
-          },
-        );
-
-        this.logger.log(
-          `Scheduled next metrics collection for tweet ${postIdX} in ${nextDelayHours} hours`,
-        );
-      } else {
-        this.logger.log(
-          `Finished collecting metrics for tweet ${postIdX} after a week`,
-        );
-      }
-
+      // Return the updated engagement data without scheduling next collection
       return engagement;
     } catch (error) {
       this.logger.error(
         `Failed to collect metrics for tweet ${postIdX}: ${error.message}`,
         error.stack,
-      );
-
-      // Even if metrics collection fails, we want to retry later
-      // For safety, we'll schedule the next attempt with a larger delay
-      await this.metricsQueue.add(
-        'collect',
-        {
-          postIdX,
-          userId,
-        },
-        {
-          delay: 4 * 60 * 60 * 1000, // 4 hours
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 60000,
-          },
-          removeOnComplete: true,
-        },
       );
 
       // Rethrow to trigger current job's retry mechanism if needed

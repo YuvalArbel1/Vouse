@@ -117,6 +117,8 @@ vouse_server/.env.development.local
 vouse_server/.env.test.local
 vouse_server/.env.production.local
 vouse_server/.env.local
+vouse_server/vouse-4d2c0-firebase-adminsdk-fbsvc-0ae3a7c438.json
+vouse_server/package-lock.json
 
 # Temp directory
 vouse_server/.temp

@@ -418,36 +418,15 @@ class PostCard extends ConsumerWidget {
   //--------------------------------------------------------------------------
   /// Builds a row for posted posts showing post time and action icons.
   Widget _buildIconsRowPosted(PostEngagement? engagement) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Posted ${relativeTimeDescription(post.updatedAt!)}",
-              style: secondaryTextStyle(color: vAccentColor, size: 12),
-            ),
-            const SizedBox(height: 4),
-            _buildActionIcons(engagement),
-          ],
+        Text(
+          "Posted ${relativeTimeDescription(post.updatedAt!)}",
+          style: secondaryTextStyle(color: vAccentColor, size: 12),
         ),
-
-        // Add refresh button if post has Twitter ID
-        if (post.postIdX != null)
-          Consumer(
-            builder: (context, ref, _) => IconButton(
-              icon: Icon(Icons.refresh, size: 18, color: vPrimaryColor),
-              onPressed: () {
-                // Refresh engagement data for this post
-                if (post.postIdX != null) {
-                  ref.read(postEngagementDataProvider.notifier)
-                      .refreshEngagement(post.postIdX!);
-                }
-              },
-              tooltip: 'Refresh metrics',
-            ),
-          ),
+        const SizedBox(height: 4),
+        _buildActionIcons(engagement),
       ],
     );
   }

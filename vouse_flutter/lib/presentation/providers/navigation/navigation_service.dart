@@ -238,6 +238,8 @@ class NavigationService {
       ),
     );
   }
+
+
 }
 
 /// Provider for the navigation service that includes Ref

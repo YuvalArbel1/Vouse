@@ -22,8 +22,8 @@ abstract class ServerApiClient {
   /// Create a new post on the server for scheduling
   @POST('/posts')
   Future<ResponseWrapper<ServerPostModel>> createPost(
-      @Body() ServerPostModel post,
-      );
+    @Body() ServerPostModel post,
+  );
 
   /// Get all posts for the current user
   @GET('/posts')
@@ -32,54 +32,54 @@ abstract class ServerApiClient {
   /// Get a single post by server ID
   @GET('/posts/{id}')
   Future<ResponseWrapper<ServerPostModel>> getPost(
-      @Path('id') String id,
-      );
+    @Path('id') String id,
+  );
 
   /// Get a post by its local ID from the app
   @GET('/posts/local/{postIdLocal}')
   Future<ResponseWrapper<ServerPostModel>> getPostByLocalId(
-      @Path('postIdLocal') String postIdLocal,
-      );
+    @Path('postIdLocal') String postIdLocal,
+  );
 
   /// Update a post
   @PATCH('/posts/{id}')
   Future<ResponseWrapper<ServerPostModel>> updatePost(
-      @Path('id') String id,
-      @Body() ServerPostModel post,
-      );
+    @Path('id') String id,
+    @Body() ServerPostModel post,
+  );
 
   /// Delete a post
   @DELETE('/posts/{id}')
   Future<ResponseWrapper<void>> deletePost(
-      @Path('id') String id,
-      );
+    @Path('id') String id,
+  );
 
   // Twitter Auth endpoints
 
   /// Connect a Twitter account by storing OAuth tokens
   @POST('/x/auth/{userId}/connect')
   Future<ResponseWrapper<void>> connectTwitterAccount(
-      @Path('userId') String userId,
-      @Body() TwitterAuthModel tokens,
-      );
+    @Path('userId') String userId,
+    @Body() TwitterAuthModel tokens,
+  );
 
   /// Disconnect Twitter account
   @DELETE('/x/auth/{userId}/disconnect')
   Future<ResponseWrapper<void>> disconnectTwitterAccount(
-      @Path('userId') String userId,
-      );
+    @Path('userId') String userId,
+  );
 
   /// Check Twitter connection status
   @GET('/x/auth/{userId}/status')
   Future<ResponseWrapper<Map<String, dynamic>>> checkTwitterStatus(
-      @Path('userId') String userId,
-      );
+    @Path('userId') String userId,
+  );
 
   /// Verify Twitter tokens are valid
   @POST('/x/auth/{userId}/verify')
   Future<ResponseWrapper<Map<String, dynamic>>> verifyTwitterTokens(
-      @Path('userId') String userId,
-      );
+    @Path('userId') String userId,
+  );
 
   // Engagement endpoints
 
@@ -90,28 +90,34 @@ abstract class ServerApiClient {
   /// Get engagement for a specific post by Twitter ID
   @GET('/engagements/{postIdX}')
   Future<ResponseWrapper<PostEngagementModel>> getEngagement(
-      @Path('postIdX') String postIdX,
-      );
+    @Path('postIdX') String postIdX,
+  );
 
   /// Get engagement by local post ID
   @GET('/engagements/local/{postIdLocal}')
   Future<ResponseWrapper<PostEngagementModel>> getEngagementByLocalId(
-      @Path('postIdLocal') String postIdLocal,
-      );
+    @Path('postIdLocal') String postIdLocal,
+  );
 
   /// Force refresh of engagement metrics for a post
   @POST('/engagements/refresh/{postIdX}')
   Future<ResponseWrapper<PostEngagementModel>> refreshEngagement(
-      @Path('postIdX') String postIdX,
-      );
+    @Path('postIdX') String postIdX,
+  );
 
   /// Refresh metrics for a post by local ID
   @POST('/engagements/refresh/local/{postIdLocal}')
   Future<ResponseWrapper<PostEngagementModel>> refreshEngagementByLocalId(
-      @Path('postIdLocal') String postIdLocal,
-      );
+    @Path('postIdLocal') String postIdLocal,
+  );
 
   /// Refresh all engagement metrics
   @POST('/engagements/refresh/all')
   Future<ResponseWrapper<Map<String, dynamic>>> refreshAllEngagements();
+
+  /// Batch refresh multiple posts' engagement metrics
+  @POST('/engagements/refresh/batch')
+  Future<ResponseWrapper<Map<String, dynamic>>> refreshBatchEngagements(
+    @Body() Map<String, List<String>> postIds,
+  );
 }

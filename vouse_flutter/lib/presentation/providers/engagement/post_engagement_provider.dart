@@ -1,5 +1,6 @@
 // lib/presentation/providers/engagement/post_engagement_provider.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/entities/server/post_engagement.dart';
@@ -53,6 +54,7 @@ class PostEngagementState {
 class PostEngagementNotifier extends StateNotifier<PostEngagementState> {
   final GetPostEngagementsUseCase _getPostEngagementsUseCase;
   final RefreshAllEngagementsUseCase _refreshAllEngagementsUseCase;
+  final Ref _ref;
 
   /// Whether a refresh operation is in progress
   bool _isRefreshing = false;
@@ -60,8 +62,10 @@ class PostEngagementNotifier extends StateNotifier<PostEngagementState> {
   PostEngagementNotifier({
     required GetPostEngagementsUseCase getPostEngagementsUseCase,
     required RefreshAllEngagementsUseCase refreshAllEngagementsUseCase,
+    required Ref ref,
   })  : _getPostEngagementsUseCase = getPostEngagementsUseCase,
         _refreshAllEngagementsUseCase = refreshAllEngagementsUseCase,
+        _ref = ref,
         super(PostEngagementState());
 
   /// Updates the engagement data with a new list of engagements
@@ -122,6 +126,62 @@ class PostEngagementNotifier extends StateNotifier<PostEngagementState> {
     }
   }
 
+  /// Refreshes engagements for multiple posts at once
+  Future<bool> refreshBatchEngagements(List<String> postIds) async {
+    if (_isRefreshing) return false;
+    _isRefreshing = true;
+
+    try {
+      state = state.copyWith(isLoading: true, errorMessage: null);
+
+      final repository = _ref.read(serverRepositoryProvider);
+      final result = await repository.refreshBatchEngagements(postIds);
+
+      if (result is DataSuccess<Map<String, dynamic>>) {
+        // After forcing a batch refresh, fetch the updated data
+        await fetchEngagementData();
+        return true;
+      } else if (result is DataFailed) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: result.error?.error.toString() ?? 'Unknown error',
+        );
+        return false;
+      }
+
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString(),
+      );
+      return false;
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  /// Refreshes engagement for a specific post by ID
+  Future<void> refreshEngagement(String postIdX) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+
+    try {
+      state = state.copyWith(isLoading: true);
+
+      // For now, just refresh all engagements
+      // In the future, you can implement a specific post refresh when you add that endpoint
+      await refreshAllEngagements();
+    } catch (e) {
+      // Handle error
+      if (kDebugMode) {
+        print('Error refreshing engagement: $e');
+      }
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
   /// Forces a refresh of all engagement data from the server
   Future<bool> refreshAllEngagements() async {
     if (_isRefreshing) return false;
@@ -168,10 +228,13 @@ class PostEngagementNotifier extends StateNotifier<PostEngagementState> {
 }
 
 /// Provider for post engagement data
-final postEngagementDataProvider = StateNotifierProvider<PostEngagementNotifier, PostEngagementState>((ref) {
+final postEngagementDataProvider =
+    StateNotifierProvider<PostEngagementNotifier, PostEngagementState>((ref) {
   return PostEngagementNotifier(
     getPostEngagementsUseCase: ref.watch(getPostEngagementsUseCaseProvider),
-    refreshAllEngagementsUseCase: ref.watch(refreshAllEngagementsUseCaseProvider),
+    refreshAllEngagementsUseCase:
+        ref.watch(refreshAllEngagementsUseCaseProvider),
+    ref: ref,
   );
 });
 
@@ -182,7 +245,7 @@ final totalEngagementProvider = Provider<Map<String, int>>((ref) {
   final metrics = {
     'Likes': 0,
     'Comments': 0, // Twitter calls these "replies"
-    'Reposts': 0,  // Twitter calls these "retweets" + "quotes"
+    'Reposts': 0, // Twitter calls these "retweets" + "quotes"
     'Impressions': 0,
   };
 
@@ -190,8 +253,10 @@ final totalEngagementProvider = Provider<Map<String, int>>((ref) {
   for (final engagement in engagementState.engagementByPostId.values) {
     metrics['Likes'] = (metrics['Likes'] ?? 0) + engagement.likes;
     metrics['Comments'] = (metrics['Comments'] ?? 0) + engagement.replies;
-    metrics['Reposts'] = (metrics['Reposts'] ?? 0) + engagement.retweets + engagement.quotes;
-    metrics['Impressions'] = (metrics['Impressions'] ?? 0) + engagement.impressions;
+    metrics['Reposts'] =
+        (metrics['Reposts'] ?? 0) + engagement.retweets + engagement.quotes;
+    metrics['Impressions'] =
+        (metrics['Impressions'] ?? 0) + engagement.impressions;
   }
 
   return metrics;

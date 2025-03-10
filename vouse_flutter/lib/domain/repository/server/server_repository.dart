@@ -64,4 +64,7 @@ abstract class ServerRepository {
 
   /// Refresh all engagement metrics
   Future<DataState<Map<String, dynamic>>> refreshAllEngagements();
+
+  /// Batch refresh engagement metrics for multiple posts
+  Future<DataState<Map<String, dynamic>>> refreshBatchEngagements(List<String> postIds);
 }

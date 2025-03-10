@@ -544,4 +544,33 @@ class ServerRepositoryImpl implements ServerRepository {
       lastUpdated: model.updatedAt,
     );
   }
+
+  @override
+  Future<DataState<Map<String, dynamic>>> refreshBatchEngagements(List<String> postIds) async {
+    try {
+      final response = await _apiClient.refreshBatchEngagements({
+        'postIds': postIds,
+      });
+
+      if (response.success && response.data != null) {
+        return DataSuccess(response.data!);
+      } else {
+        return DataFailed(
+          DioException(
+            requestOptions: RequestOptions(path: ''),
+            error: response.message ?? 'Failed to refresh batch engagements',
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      return DataFailed(e);
+    } catch (e) {
+      return DataFailed(
+        DioException(
+          requestOptions: RequestOptions(path: ''),
+          error: e.toString(),
+        ),
+      );
+    }
+  }
 }

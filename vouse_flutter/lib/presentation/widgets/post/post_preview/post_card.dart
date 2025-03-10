@@ -14,8 +14,10 @@ import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/usecases/post/delete_post_usecase.dart';
 
 import '../../../../core/util/time_util.dart';
+import '../../../../domain/entities/server/post_engagement.dart';
 import '../../../../domain/usecases/server/delete_server_post_usecase.dart';
 import '../../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
+import '../../../providers/engagement/post_engagement_provider.dart';
 import '../../../providers/server/server_providers.dart';
 
 /// A post card that:
@@ -39,6 +41,11 @@ class PostCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isScheduled = post.scheduledAt != null && post.postIdX == null;
     final navigationService = ref.watch(navigationServiceProvider);
+
+    // Add this line to access engagement data
+    final engagementData = ref.watch(postEngagementDataProvider);
+    final engagement = post.postIdX != null ?
+    engagementData.engagementByPostId[post.postIdX!] : null;
 
     return SizedBox(
       width: cardWidth,
@@ -91,7 +98,7 @@ class PostCard extends ConsumerWidget {
 
                 // 5) Show bottom status based on post type:
                 if (post.postIdX != null && post.updatedAt != null)
-                  _buildIconsRowPosted()
+                  _buildIconsRowPosted(engagement)
                 else if (post.scheduledAt != null)
                   _buildScheduledButton()
                 else
@@ -410,17 +417,37 @@ class PostCard extends ConsumerWidget {
   // 5) Bottom status indicators
   //--------------------------------------------------------------------------
   /// Builds a row for posted posts showing post time and action icons.
-  Widget _buildIconsRowPosted() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildIconsRowPosted(PostEngagement? engagement) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          // Use relative time description
-          "Posted ${relativeTimeDescription(post.updatedAt!)}",
-          style: secondaryTextStyle(color: vAccentColor, size: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Posted ${relativeTimeDescription(post.updatedAt!)}",
+              style: secondaryTextStyle(color: vAccentColor, size: 12),
+            ),
+            const SizedBox(height: 4),
+            _buildActionIcons(engagement),
+          ],
         ),
-        const SizedBox(height: 4),
-        _buildActionIcons(),
+
+        // Add refresh button if post has Twitter ID
+        if (post.postIdX != null)
+          Consumer(
+            builder: (context, ref, _) => IconButton(
+              icon: Icon(Icons.refresh, size: 18, color: vPrimaryColor),
+              onPressed: () {
+                // Refresh engagement data for this post
+                if (post.postIdX != null) {
+                  ref.read(postEngagementDataProvider.notifier)
+                      .refreshEngagement(post.postIdX!);
+                }
+              },
+              tooltip: 'Refresh metrics',
+            ),
+          ),
       ],
     );
   }
@@ -473,16 +500,24 @@ class PostCard extends ConsumerWidget {
   // Action icons row (only for posted content)
   //--------------------------------------------------------------------------
   /// Builds a row of action icons (comment, retweet, like, stats) with counts.
-  Widget _buildActionIcons() {
+  Widget _buildActionIcons(PostEngagement? engagement) {
     final iconColor = vPrimaryColor.withAlpha(120);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _iconWithCount(Icons.chat_bubble_outline, "0", iconColor),
-        _iconWithCount(Icons.repeat, "0", iconColor),
-        _iconWithCount(Icons.favorite_border, "0", iconColor),
-        _iconWithCount(Icons.bar_chart_outlined, "0", iconColor),
+        _iconWithCount(Icons.chat_bubble_outline,
+            engagement != null ? "${engagement.replies}" : "0",
+            iconColor),
+        _iconWithCount(Icons.repeat,
+            engagement != null ? "${engagement.retweets + engagement.quotes}" : "0",
+            iconColor),
+        _iconWithCount(Icons.favorite_border,
+            engagement != null ? "${engagement.likes}" : "0",
+            iconColor),
+        _iconWithCount(Icons.bar_chart_outlined,
+            engagement != null ? "${engagement.impressions}" : "0",
+            iconColor),
       ],
     );
   }

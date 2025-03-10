@@ -182,6 +182,19 @@ export class PostController {
       if (post.status === PostStatus.PUBLISHED) {
         throw new ForbiddenException('Cannot update already published posts');
       }
+      // Add check for scheduled posts close to publish time
+      if (post.status === PostStatus.SCHEDULED && post.scheduledAt) {
+        const now = new Date();
+        const scheduledAt = new Date(post.scheduledAt);
+        const diffMinutes =
+          (scheduledAt.getTime() - now.getTime()) / (1000 * 60);
+
+        if (diffMinutes < 2) {
+          throw new ForbiddenException(
+            'Cannot update posts scheduled to be published in less than 2 minutes',
+          );
+        }
+      }
 
       const updatedPost = await this.postService.update(
         id,

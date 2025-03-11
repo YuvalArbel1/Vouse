@@ -120,4 +120,18 @@ abstract class ServerApiClient {
   Future<ResponseWrapper<Map<String, dynamic>>> refreshBatchEngagements(
     @Body() Map<String, List<String>> postIds,
   );
+
+  /// Register device token for push notifications
+  @POST('/notifications/{userId}/register')
+  Future<ResponseWrapper<void>> registerDeviceToken(
+    @Path('userId') String userId,
+    @Body() Map<String, dynamic> data,
+  );
+
+  /// Unregister device token
+  @DELETE('/notifications/{userId}/tokens/{token}')
+  Future<ResponseWrapper<void>> unregisterDeviceToken(
+    @Path('userId') String userId,
+    @Path('token') String token,
+  );
 }

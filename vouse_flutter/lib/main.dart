@@ -7,7 +7,17 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:vouse_flutter/presentation/theme/app_theme.dart';
 import 'package:vouse_flutter/presentation/screens/splash/app_wrapper.dart';
+import 'data/notification/notification_service.dart';
 import 'firebase_options.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Required for background handling
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Ensure Firebase is initialized
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 /// The main entry point of the Vouse app.
 ///
@@ -28,6 +38,11 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Set up background handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Initialize notification service
+    await NotificationService().initialize();
 
     // Run the app inside a ProviderScope for Riverpod support
     runApp(const ProviderScope(child: App()));

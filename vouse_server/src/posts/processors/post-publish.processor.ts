@@ -9,6 +9,7 @@ import { EngagementService } from '../services/engagement.service';
 import { XClientService } from '../../x/services/x-client.service';
 import { XAuthService } from '../../x/services/x-auth.service';
 import { PostStatus } from '../entities/post.entity';
+import { NotificationService } from '../../notifications/services/notification.service';
 
 /**
  * Processor for handling post publishing queue jobs
@@ -23,6 +24,7 @@ export class PostPublishProcessor {
     private readonly engagementService: EngagementService,
     private readonly xClientService: XClientService,
     private readonly xAuthService: XAuthService,
+    private readonly notificationService: NotificationService, // Add this
   ) {}
 
   /**
@@ -150,6 +152,20 @@ export class PostPublishProcessor {
         userId,
       );
 
+      if (tweetId && updatedPost.status === PostStatus.PUBLISHED) {
+        try {
+          // Send notification
+          await this.notificationService.sendPostPublishedNotification(
+            updatedPost,
+          );
+          this.logger.log(
+            `Sent post published notification for post ${postId}`,
+          );
+        } catch (error) {
+          // Just log the error but don't fail the entire process
+          this.logger.error(`Failed to send notification: ${error.message}`);
+        }
+      }
       // Log successful publication
       this.logger.log(
         `Successfully published post ${postId} as tweet ${tweetId}`,

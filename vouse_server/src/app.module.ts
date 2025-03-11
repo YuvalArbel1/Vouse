@@ -8,6 +8,7 @@ import { XModule } from './x/x.module';
 import { PostsModule } from './posts/posts.module';
 import { typeOrmConfig } from './config/typeorm.config';
 import { redisConfig } from './config/redis.config';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { redisConfig } from './config/redis.config';
     UsersModule, // User management
     XModule, // Twitter API v2 integration
     PostsModule, // Post scheduling and metrics
+    NotificationsModule, // Notification
   ],
   controllers: [],
   providers: [],

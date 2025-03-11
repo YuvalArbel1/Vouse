@@ -32,8 +32,7 @@ export class EngagementController {
   constructor(
     private readonly engagementService: EngagementService,
     private readonly xAuthService: XAuthService,
-  ) {
-  }
+  ) {}
 
   /**
    * Get all engagement metrics for the current user's posts

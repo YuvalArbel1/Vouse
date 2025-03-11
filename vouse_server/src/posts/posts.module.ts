@@ -15,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { XModule } from '../x/x.module';
 import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 // Re-add the processor that was previously removed
 @Module({
@@ -29,6 +30,7 @@ import { MetricsCollectorProcessor } from './processors/metrics-collector.proces
     AuthModule,
     UsersModule,
     XModule,
+    NotificationsModule,
   ],
   providers: [
     PostService,

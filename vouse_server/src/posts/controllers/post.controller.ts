@@ -170,13 +170,16 @@ export class PostController {
   @Patch(':id')
   @UseGuards(FirebaseAuthGuard)
   async update(
-    @Param('id') id: string,
+    @Param('id') postIdLocal: string,
     @Body() updatePostDto: UpdatePostDto,
     @CurrentUser() user: DecodedIdToken,
   ) {
     try {
       // First check if the post exists
-      const post = await this.postService.findOne(id, user.uid);
+      const post = await this.postService.findOneByLocalId(
+        postIdLocal,
+        user.uid,
+      );
 
       // Prevent editing published posts
       if (post.status === PostStatus.PUBLISHED) {
@@ -197,7 +200,7 @@ export class PostController {
       }
 
       const updatedPost = await this.postService.update(
-        id,
+        post.id,
         user.uid,
         updatePostDto,
       );
@@ -243,10 +246,16 @@ export class PostController {
    */
   @Delete(':id')
   @UseGuards(FirebaseAuthGuard)
-  async remove(@Param('id') postIdLocal: string, @CurrentUser() user: DecodedIdToken) {
+  async remove(
+    @Param('id') postIdLocal: string,
+    @CurrentUser() user: DecodedIdToken,
+  ) {
     try {
       // First check if the post exists
-      const post = await this.postService.findOneByLocalId(postIdLocal, user.uid);
+      const post = await this.postService.findOneByLocalId(
+        postIdLocal,
+        user.uid,
+      );
 
       // Prevent deleting published posts
       if (post.status === PostStatus.PUBLISHED) {

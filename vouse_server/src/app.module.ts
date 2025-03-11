@@ -1,5 +1,4 @@
 // src/app.module.ts
-import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { UsersModule } from './users/users.module';
@@ -9,6 +8,8 @@ import { PostsModule } from './posts/posts.module';
 import { typeOrmConfig } from './config/typeorm.config';
 import { redisConfig } from './config/redis.config';
 import { NotificationsModule } from './notifications/notifications.module';
+import { RequestLoggerMiddleware } from './httpRequestMiddleware';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 
 @Module({
   imports: [
@@ -35,4 +36,8 @@ import { NotificationsModule } from './notifications/notifications.module';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}

@@ -243,17 +243,17 @@ export class PostController {
    */
   @Delete(':id')
   @UseGuards(FirebaseAuthGuard)
-  async remove(@Param('id') id: string, @CurrentUser() user: DecodedIdToken) {
+  async remove(@Param('id') postIdLocal: string, @CurrentUser() user: DecodedIdToken) {
     try {
       // First check if the post exists
-      const post = await this.postService.findOne(id, user.uid);
+      const post = await this.postService.findOneByLocalId(postIdLocal, user.uid);
 
       // Prevent deleting published posts
       if (post.status === PostStatus.PUBLISHED) {
         throw new ForbiddenException('Cannot delete already published posts');
       }
 
-      await this.postService.remove(id, user.uid);
+      await this.postService.remove(post.id, user.uid);
       return {
         success: true,
         message: 'Post deleted successfully',

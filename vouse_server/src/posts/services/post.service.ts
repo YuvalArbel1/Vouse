@@ -88,6 +88,7 @@ export class PostService {
             userId: post.userId,
           },
           {
+            jobId: `publish-${post.id}`,
             delay: 0,
             attempts: 3,
             backoff: {
@@ -132,6 +133,7 @@ export class PostService {
             userId: post.userId,
           },
           {
+            jobId: `publish-${post.id}`,
             delay: 0,
             attempts: 3,
             backoff: {
@@ -166,6 +168,7 @@ export class PostService {
           userId: post.userId,
         },
         {
+          jobId: `publish-${post.id}`,
           delay: delayMs,
           attempts: 3, // Retry up to 3 times if publishing fails
           backoff: {
@@ -292,16 +295,28 @@ export class PostService {
         updateData.status = PostStatus.SCHEDULED;
       }
 
-      // Remove existing job if it exists
-      const existingJobs = await this.postPublishQueue.getJobs([
-        'delayed',
-        'waiting',
-      ]);
-      for (const job of existingJobs) {
-        const jobData = job.data;
-        if (jobData.postId === post.id) {
+      try {
+        const job = await this.postPublishQueue.getJob(`publish-${post.id}`);
+        if (job) {
           await job.remove();
-          break;
+          this.logger.log(`Removed existing job for post ${post.id}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Error removing job for post ${post.id}: ${error.message}`,
+        );
+
+        // Fallback to old method as safety
+        const existingJobs = await this.postPublishQueue.getJobs([
+          'delayed',
+          'waiting',
+        ]);
+        for (const job of existingJobs) {
+          const jobData = job.data;
+          if (jobData.postId === post.id) {
+            await job.remove();
+            break;
+          }
         }
       }
     }
@@ -334,15 +349,28 @@ export class PostService {
 
     // If scheduled, remove from queue first
     if (post.status === PostStatus.SCHEDULED) {
-      const existingJobs = await this.postPublishQueue.getJobs([
-        'delayed',
-        'waiting',
-      ]);
-      for (const job of existingJobs) {
-        const jobData = job.data;
-        if (jobData.postId === post.id) {
+      try {
+        const job = await this.postPublishQueue.getJob(`publish-${post.id}`);
+        if (job) {
           await job.remove();
-          break;
+          this.logger.log(`Removed job for deleted post ${post.id}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Error removing job for post ${post.id}: ${error.message}`,
+        );
+
+        // Fallback to old method as safety
+        const existingJobs = await this.postPublishQueue.getJobs([
+          'delayed',
+          'waiting',
+        ]);
+        for (const job of existingJobs) {
+          const jobData = job.data;
+          if (jobData.postId === post.id) {
+            await job.remove();
+            break;
+          }
         }
       }
     }
@@ -375,34 +403,5 @@ export class PostService {
     }
 
     return post;
-  }
-
-  /**
-   * Get posts scheduled for a specific time range
-   */
-  async findScheduledInRange(startDate: Date, endDate: Date): Promise<Post[]> {
-    return this.postRepository.find({
-      where: {
-        status: PostStatus.SCHEDULED,
-        scheduledAt: Between(startDate, endDate),
-      },
-      order: { scheduledAt: 'ASC' },
-    });
-  }
-
-  /**
-   * Get recently published posts for metrics collection
-   */
-  async findRecentlyPublished(hoursAgo: number = 24): Promise<Post[]> {
-    const cutoffDate = new Date();
-    cutoffDate.setHours(cutoffDate.getHours() - hoursAgo);
-
-    return this.postRepository.find({
-      where: {
-        status: PostStatus.PUBLISHED,
-        publishedAt: MoreThan(cutoffDate),
-      },
-      order: { publishedAt: 'DESC' },
-    });
   }
 }

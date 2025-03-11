@@ -18,6 +18,8 @@ import 'package:vouse_flutter/presentation/widgets/profile/settings_section_widg
 import 'package:vouse_flutter/presentation/widgets/profile/about_dialog_content.dart';
 import 'package:vouse_flutter/presentation/widgets/profile/legal_text.dart';
 
+import '../../widgets/profile/notification_settings_section.dart';
+
 /// A screen that displays the user's profile and provides access to account settings.
 ///
 /// Features:
@@ -305,6 +307,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
                                 // Twitter Integration Section
                                 const ProfileTwitterSection(),
+
+                                const SizedBox(height: 24),
+
+                                const NotificationSettingsSection(),
 
                                 const SizedBox(height: 24),
 

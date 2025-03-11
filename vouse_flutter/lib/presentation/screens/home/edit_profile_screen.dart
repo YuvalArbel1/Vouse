@@ -10,10 +10,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/presentation/widgets/home/profile_avatar_widget.dart';
 
 import '../../../core/resources/data_state.dart';
+import '../../../data/notification/notification_service.dart';
 import '../../../domain/entities/local_db/user_entity.dart';
 import '../../../domain/entities/secure_db/x_auth_tokens.dart';
 import '../../providers/auth/x/twitter_connection_provider.dart';
 import '../../providers/auth/x/x_auth_providers.dart';
+import '../../providers/notification/notification_provider.dart';
 import '../../providers/user/user_profile_provider.dart';
 import '../../../core/util/colors.dart';
 import '../../../core/util/common.dart';
@@ -232,6 +234,42 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  // Request notification permission and register device token
+  Future<void> _requestNotificationPermissions() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      setState(() => _isProcessing = true);
+
+      // Initialize the notification service
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+
+      // Get the FCM token
+      final token = await notificationService.getToken();
+
+      if (token != null) {
+        // Register the token with the server
+        await ref.read(notificationStatusProvider.notifier).enableNotifications(
+              user.uid,
+              token,
+            );
+
+        if (!mounted) return;
+
+        // Don't show UI feedback for this background process
+        debugPrint('Notification permissions granted and token registered');
+      }
+    } catch (e) {
+      debugPrint('Error setting up notifications: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
   /// Disconnects from X (Twitter) by clearing stored tokens
   Future<void> _disconnectFromX() async {
     // Show confirmation dialog
@@ -326,18 +364,29 @@ class EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (!mounted) return;
 
       if (saveResult is DataSuccess<void>) {
+        // Request notification permissions if this is the initial profile creation
+        if (!widget.isEditProfile) {
+          await _requestNotificationPermissions();
+        }
+
         if (widget.isEditProfile) {
-          ref.read(navigationServiceProvider).navigateBack(context);
+          if (mounted) {
+            ref.read(navigationServiceProvider).navigateBack(context);
+          }
         } else {
-          ref
-              .read(navigationServiceProvider)
-              .navigateToAppNavigator(context, clearStack: true);
+          if (mounted) {
+            ref
+                .read(navigationServiceProvider)
+                .navigateToAppNavigator(context, clearStack: true);
+          }
         }
       } else if (saveResult is DataFailed<void>) {
         toast("Error saving user: ${saveResult.error?.error}");
       }
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 

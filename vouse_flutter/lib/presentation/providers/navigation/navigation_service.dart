@@ -239,7 +239,11 @@ class NavigationService {
     );
   }
 
-
+  /// Navigate to edit a scheduled post
+  void navigateToEditScheduledPost(BuildContext context, PostEntity post) {
+    // Use the same CreatePostScreen but pass a flag to indicate it's a scheduled post edit
+    _navigate(context, CreatePostScreen(scheduledPostToEdit: post));
+  }
 }
 
 /// Provider for the navigation service that includes Ref

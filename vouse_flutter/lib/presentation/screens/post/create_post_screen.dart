@@ -44,11 +44,14 @@ import '../../widgets/common/loading/full_screen_loading.dart';
 class CreatePostScreen extends ConsumerStatefulWidget {
   /// The draft post to edit (if any)
   final PostEntity? draftToEdit;
+  final PostEntity? scheduledPostToEdit;
+  final bool _isEditingScheduledPost = false;
 
   /// Creates a new post creation screen.
   const CreatePostScreen({
     super.key,
     this.draftToEdit,
+    this.scheduledPostToEdit,
   });
 
   @override
@@ -69,6 +72,15 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
   /// The draft being edited
   PostEntity? _editingDraft;
+
+  /// Whether we're editing a scheduled post
+  bool _isEditingScheduledPost = false;
+
+  /// The scheduled date/time (when editing a scheduled post)
+  DateTime? _scheduledDateTime;
+
+  /// The post being edited (can be draft or scheduled)
+  PostEntity? _editingPost;
 
   /// Animation controller for the screen transition effects.
   late AnimationController _animationController;
@@ -105,8 +117,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
     // Store initial values for change detection
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Load draft data AFTER the widget tree is built
-      _loadDraftIfEditing();
+      // Load post data AFTER the widget tree is built
+      if (widget.scheduledPostToEdit != null) {
+        _loadScheduledPostForEditing();
+      } else {
+        _loadDraftIfEditing();
+      }
       _captureInitialValues();
     });
   }
@@ -123,6 +139,46 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
       if (!mounted) return;
       setStatusBarColor(context.cardColor);
     });
+  }
+
+  // Loads data for a scheduled post being edited
+  void _loadScheduledPostForEditing() {
+    final scheduledPost = widget.scheduledPostToEdit;
+    if (scheduledPost != null) {
+      try {
+        // Set the post text
+        ref.read(postTextProvider.notifier).state = scheduledPost.content;
+
+        // Load existing images
+        for (final path in scheduledPost.localImagePaths) {
+          ref.read(postImagesProvider.notifier).addImageFromGallery(path);
+        }
+
+        // Load location if available
+        if (scheduledPost.locationLat != null &&
+            scheduledPost.locationLng != null) {
+          final location = PlaceLocationEntity(
+            latitude: scheduledPost.locationLat!,
+            longitude: scheduledPost.locationLng!,
+            address: scheduledPost.locationAddress,
+          );
+          ref.read(postLocationProvider.notifier).state = location;
+        }
+
+        // Set state to track that we're editing a scheduled post
+        setState(() {
+          _titleController.text = scheduledPost.title;
+          _scheduledDateTime = scheduledPost.scheduledAt;
+          _editingPost = scheduledPost;
+          _isEditingScheduledPost = true;
+        });
+
+        // Capture initial values after loading the post
+        _captureInitialValues();
+      } catch (e) {
+        toast("Error loading scheduled post: $e");
+      }
+    }
   }
 
   /// Captures the initial state of the post content for change detection
@@ -509,7 +565,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
                 ],
               ),
               child: SchedulePostBottomSheet(
-                editingDraft: _editingDraft,
+                editingDraft: _isEditing ? _editingDraft : null,
+                editingScheduledPost:
+                    _isEditingScheduledPost ? widget.scheduledPostToEdit : null,
               ),
             ),
           );

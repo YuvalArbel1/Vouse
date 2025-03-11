@@ -131,9 +131,36 @@ class PostCard extends ConsumerWidget {
                 ),
               ),
             ),
+          if (isScheduled)
+            Positioned(
+              top: 12,
+              left: 12, // Position it to the left corner
+              child: InkWell(
+                onTap: () => _navigateToEditScheduledPost(
+                    context, ref, navigationService),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: vAccentColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  void _navigateToEditScheduledPost(BuildContext context, WidgetRef ref,
+      NavigationService navigationService) {
+    // Navigate to CreatePostScreen with the post for editing
+    navigationService.navigateToEditScheduledPost(context, post);
   }
 
   /// Shows a confirmation dialog for deleting a scheduled post

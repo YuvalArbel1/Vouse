@@ -30,10 +30,14 @@ class SchedulePostBottomSheet extends ConsumerStatefulWidget {
   /// The draft post being edited (if any)
   final PostEntity? editingDraft;
 
+  /// The scheduled post being edited (if any)
+  final PostEntity? editingScheduledPost;
+
   /// Creates a [SchedulePostBottomSheet].
   const SchedulePostBottomSheet({
     super.key,
     this.editingDraft,
+    this.editingScheduledPost,
   });
 
   @override
@@ -61,12 +65,16 @@ class _SchedulePostBottomSheetState
   String _selectedReplyOption = 'Everyone';
 
   @override
-  @override
   void initState() {
     super.initState();
     // Initialize with existing draft title if available
     if (widget.editingDraft != null) {
       _titleController.text = widget.editingDraft!.title;
+    } else if (widget.editingScheduledPost != null) {
+      _titleController.text = widget.editingScheduledPost!.title;
+      _scheduledDateTime = widget.editingScheduledPost!.scheduledAt;
+      _selectedReplyOption =
+          widget.editingScheduledPost!.visibility ?? 'Everyone';
     }
 
     // Force check Twitter connection status on sheet open
@@ -266,30 +274,51 @@ class _SchedulePostBottomSheetState
         scheduledDateTime = scheduledDateTime.toUtc();
       }
 
+      // Determine if we're editing an existing scheduled post or creating a new one
+      final String postIdLocal = widget.editingScheduledPost?.postIdLocal ??
+          widget.editingDraft?.postIdLocal ??
+          const Uuid().v4();
+
+      // If we're editing a scheduled post that had images before, handle image removal
+      List<String> cloudImageUrls = [];
+      if (widget.editingScheduledPost != null) {
+        // Keep existing cloud URLs unless we're replacing images
+        cloudImageUrls = widget.editingScheduledPost!.cloudImageUrls;
+
+        // If we had images before but not now, clear cloud URLs
+        if (widget.editingScheduledPost!.localImagePaths.isNotEmpty && localPaths.isEmpty) {
+          cloudImageUrls = [];
+        }
+      } else if (widget.editingDraft != null) {
+        cloudImageUrls = widget.editingDraft!.cloudImageUrls ?? [];
+      }
+
       // Create post entity, using existing ID if editing
       final postEntity = PostEntity(
-        postIdLocal: widget.editingDraft?.postIdLocal ?? const Uuid().v4(),
-        postIdX: widget.editingDraft?.postIdX,
+        postIdLocal: postIdLocal,
+        postIdX: widget.editingScheduledPost?.postIdX ?? widget.editingDraft?.postIdX,
         content: text,
         title: title,
-        createdAt: widget.editingDraft?.createdAt ?? DateTime.now(),
+        createdAt: widget.editingScheduledPost?.createdAt ?? widget.editingDraft?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         scheduledAt: scheduledDateTime,
-        // Can be null for immediate posting
         visibility: _selectedReplyOption,
         localImagePaths: localPaths,
-        cloudImageUrls: widget.editingDraft?.cloudImageUrls ?? [],
+        cloudImageUrls: cloudImageUrls,
         locationLat: lat,
         locationLng: lng,
         locationAddress: addr,
       );
 
+      // Handle the edit scenarios differently when updating server
+      final isEditingScheduled = widget.editingScheduledPost != null;
+
       // Use the scheduler provider to handle both server and local saving
-      final success =
-          await ref.read(postSchedulerProvider.notifier).schedulePost(
-                post: postEntity,
-                userId: user.uid,
-              );
+      final success = await ref.read(postSchedulerProvider.notifier).schedulePost(
+        post: postEntity,
+        userId: user.uid,
+        isUpdating: isEditingScheduled,
+      );
 
       if (!mounted) return;
 
@@ -298,7 +327,7 @@ class _SchedulePostBottomSheetState
         final schedulerState = ref.read(postSchedulerProvider);
         String message = _scheduledDateTime == null
             ? 'Post will be published immediately'
-            : 'Post scheduled for ${DateFormat('MMM d, h:mm a').format(_scheduledDateTime!.toLocal())}';
+            : 'Post ${isEditingScheduled ? 'updated' : 'scheduled'} for ${DateFormat('MMM d, h:mm a').format(_scheduledDateTime!.toLocal())}';
 
         if (schedulerState.state == SchedulingState.localOnly) {
           message += ' (local only)';
@@ -333,13 +362,13 @@ class _SchedulePostBottomSheetState
         await ref.read(homeContentProvider.notifier).refreshHomeContent();
 
         // Then invalidate these providers to force refresh
-        ref.invalidate(postedPostsProvider);
+        ref.invalidate(scheduledPostsProvider);
 
         if (mounted) {
           ref.read(navigationServiceProvider).navigateToAppNavigator(
-                context,
-                clearStack: true,
-              );
+            context,
+            clearStack: true,
+          );
         }
       } else {
         // Small delay to ensure UI updates before navigation

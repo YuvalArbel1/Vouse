@@ -1,6 +1,7 @@
 // lib/presentation/providers/post/post_scheduler_provider.dart
 
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/resources/data_state.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
@@ -13,17 +14,13 @@ import 'package:vouse_flutter/presentation/providers/local_db/local_post_provide
 import 'package:vouse_flutter/presentation/providers/home/home_content_provider.dart';
 import 'package:vouse_flutter/presentation/providers/post/save_post_with_upload_provider.dart';
 
+import '../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
+import '../../../domain/usecases/server/update_server_post_usecase.dart';
 import '../home/home_posts_providers.dart';
 import '../server/server_providers.dart';
 
 /// State of the post scheduling process
-enum SchedulingState {
-  initial,
-  scheduling,
-  scheduled,
-  failed,
-  localOnly
-}
+enum SchedulingState { initial, scheduling, scheduled, failed, localOnly }
 
 /// State for the post scheduler provider
 class PostSchedulerState {
@@ -66,11 +63,12 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
         super(PostSchedulerState());
 
   /// Schedule a post on the server and save it locally
-  /// Schedule a post on the server and save it locally
+  /// Update the PostSchedulerNotifier to add an isUpdating parameter
   Future<bool> schedulePost({
     required PostEntity post,
     required String userId,
     bool saveLocally = true,
+    bool isUpdating = false, // Add this parameter with default false
   }) async {
     try {
       state = state.copyWith(state: SchedulingState.scheduling);
@@ -111,9 +109,49 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
       }
 
       // Then, send to server with updated post (containing cloud URLs)
-      final serverResult = await _schedulePostUseCase.call(
-        params: SchedulePostParams(updatedPost),
-      );
+      DataState<String> serverResult;
+
+      if (isUpdating) {
+        // Get the server ID of the post
+        final serverPostResult = await _ref.read(getServerPostByLocalIdUseCaseProvider).call(
+          params: GetServerPostByLocalIdParams(post.postIdLocal),
+        );
+
+        // Fix the DioException? error by proper type handling
+        if (serverPostResult is DataSuccess && serverPostResult.data != null) {
+          // Update the post on the server
+          final updateResult = await _ref.read(updateServerPostUseCaseProvider).call(
+            params: UpdateServerPostParams(
+              serverPostResult.data!.postIdLocal, // This is the server's ID
+              updatedPost,
+            ),
+          );
+
+          if (updateResult is DataSuccess) {
+            serverResult = DataSuccess<String>(updateResult.data!.postIdLocal);
+          } else if (updateResult is DataFailed) {
+            serverResult = DataFailed<String>(
+              DioException(
+                requestOptions: RequestOptions(path: ''),
+                error: updateResult.error?.error ?? 'Failed to update post',
+              ),
+            );
+          } else {
+            throw Exception("Unexpected update result");
+          }
+        } else {
+          // If not found on server, fallback to creating new
+          serverResult = await _schedulePostUseCase.call(
+            params: SchedulePostParams(updatedPost),
+          );
+        }
+      } else {
+        // Create new post
+        serverResult = await _schedulePostUseCase.call(
+          params: SchedulePostParams(updatedPost),
+        );
+      }
+
 
       if (serverResult is DataSuccess<String>) {
         // Update state with success
@@ -126,7 +164,8 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
         _ref.read(postRefreshProvider.notifier).refreshAll();
 
         // Explicitly refresh posted posts if this is an immediate post
-        if (post.scheduledAt == null || post.scheduledAt!.isBefore(DateTime.now())) {
+        if (post.scheduledAt == null ||
+            post.scheduledAt!.isBefore(DateTime.now())) {
           _ref.read(postRefreshProvider.notifier).refreshPosted();
 
           // Force invalidate the providers to ensure they reload data
@@ -143,14 +182,16 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
         if (saveLocally) {
           state = state.copyWith(
             state: SchedulingState.localOnly,
-            errorMessage: serverResult.error?.error.toString() ?? 'Failed to schedule on server',
+            errorMessage: serverResult.error?.error.toString() ??
+                'Failed to schedule on server',
           );
           // Still refresh local content providers
           _ref.read(postRefreshProvider.notifier).refreshAll();
           return true;
         } else {
           // Failed completely
-          throw Exception(serverResult.error?.error.toString() ?? 'Failed to schedule post');
+          throw Exception(serverResult.error?.error.toString() ??
+              'Failed to schedule post');
         }
       }
 
@@ -173,7 +214,7 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
 
 /// Provider for post scheduler
 final postSchedulerProvider =
-StateNotifierProvider<PostSchedulerNotifier, PostSchedulerState>((ref) {
+    StateNotifierProvider<PostSchedulerNotifier, PostSchedulerState>((ref) {
   return PostSchedulerNotifier(
     savePostUseCase: ref.watch(savePostUseCaseProvider),
     schedulePostUseCase: ref.watch(schedulePostUseCaseProvider),

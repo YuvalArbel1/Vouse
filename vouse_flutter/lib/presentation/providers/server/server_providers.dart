@@ -25,6 +25,7 @@ import '../../../domain/repository/notification/notification_repository.dart';
 import '../../../domain/usecases/server/delete_server_post_usecase.dart';
 import '../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
 import '../../../domain/usecases/server/refresh_batch_engagements_usecase.dart';
+import '../../../domain/usecases/server/update_server_post_usecase.dart';
 
 /// Expose server URL as a provider so it can be accessed from other files
 // In lib/presentation/providers/server/server_providers.dart
@@ -187,4 +188,11 @@ final refreshBatchEngagementsUseCaseProvider =
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final apiClient = ref.watch(serverApiClientProvider);
   return NotificationRepositoryImpl(apiClient);
+});
+
+/// Update server post use case provider
+final updateServerPostUseCaseProvider =
+    Provider<UpdateServerPostUseCase>((ref) {
+  final repository = ref.watch(serverRepositoryProvider);
+  return UpdateServerPostUseCase(repository);
 });

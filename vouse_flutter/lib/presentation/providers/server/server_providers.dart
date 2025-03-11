@@ -29,7 +29,7 @@ import '../../../domain/usecases/server/refresh_batch_engagements_usecase.dart';
 /// Expose server URL as a provider so it can be accessed from other files
 // In lib/presentation/providers/server/server_providers.dart
 final serverUrlProvider = Provider<String>((ref) {
-  return 'https://3b1c-2a0d-6fc0-ecf-bb00-d5f9-3508-9350-c6b5.ngrok-free.app';
+  return 'https://79a1-2a0d-6fc0-844-df00-d12c-8c88-3fdc-1fb5.ngrok-free.app';
 });
 
 /// Dio provider for server API client with auth token interceptor

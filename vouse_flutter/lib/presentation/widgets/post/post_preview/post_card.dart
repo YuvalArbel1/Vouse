@@ -17,6 +17,7 @@ import '../../../../core/util/time_util.dart';
 import '../../../../domain/entities/server/post_engagement.dart';
 import '../../../../domain/usecases/server/delete_server_post_usecase.dart';
 import '../../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart';
+import '../../../../domain/usecases/server/refresh_post_engagement_usecase.dart';
 import '../../../providers/engagement/post_engagement_provider.dart';
 import '../../../providers/server/server_providers.dart';
 
@@ -44,8 +45,9 @@ class PostCard extends ConsumerWidget {
 
     // Add this line to access engagement data
     final engagementData = ref.watch(postEngagementDataProvider);
-    final engagement = post.postIdX != null ?
-    engagementData.engagementByPostId[post.postIdX!] : null;
+    final engagement = post.postIdX != null
+        ? engagementData.engagementByPostId[post.postIdX!]
+        : null;
 
     return SizedBox(
       width: cardWidth,
@@ -98,7 +100,7 @@ class PostCard extends ConsumerWidget {
 
                 // 5) Show bottom status based on post type:
                 if (post.postIdX != null && post.updatedAt != null)
-                  _buildIconsRowPosted(engagement)
+                  _buildIconsRowPosted(engagement, ref)
                 else if (post.scheduledAt != null)
                   _buildScheduledButton()
                 else
@@ -148,6 +150,107 @@ class PostCard extends ConsumerWidget {
     if (result) {
       // Use async/await properly with a function that returns Future
       unawaited(_deleteScheduledPost(context, ref, navigationService));
+    }
+  }
+
+  Future<void> _refreshPostEngagement(WidgetRef ref) async {
+    try {
+      // Check if this post has a Twitter ID (postIdX)
+      if (post.postIdX == null || post.postIdX!.isEmpty) {
+        ScaffoldMessenger.of(ref.context).showSnackBar(
+          SnackBar(
+            content: const Text('Cannot refresh metrics for this post'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      // Show loading indicator
+      ScaffoldMessenger.of(ref.context).showSnackBar(
+        const SnackBar(
+          content: Text('Refreshing metrics...'),
+          duration: Duration(milliseconds: 800),
+        ),
+      );
+
+      // Capture engagement before the refresh to check if there's a change
+      final beforeRefresh = ref
+          .read(postEngagementDataProvider)
+          .engagementByPostId[post.postIdX!];
+
+      // Refresh engagement for this specific post
+      final result = await ref.read(refreshPostEngagementUseCaseProvider).call(
+            params: RefreshPostEngagementParams(post.postIdX!),
+          );
+
+      // Force refresh the data in the provider to ensure we have the latest
+      await ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+
+      // Get the updated engagement data
+      final afterRefresh = ref
+          .read(postEngagementDataProvider)
+          .engagementByPostId[post.postIdX!];
+
+      // Determine if there was any change in the metrics
+      bool hasChanges = false;
+      if (beforeRefresh != null && afterRefresh != null) {
+        hasChanges = (beforeRefresh.likes != afterRefresh.likes) ||
+            (beforeRefresh.retweets != afterRefresh.retweets) ||
+            (beforeRefresh.quotes != afterRefresh.quotes) ||
+            (beforeRefresh.replies != afterRefresh.replies) ||
+            (beforeRefresh.impressions != afterRefresh.impressions);
+      }
+
+      // Show appropriate message based on result and whether metrics changed
+      if (result is DataSuccess) {
+        if (hasChanges) {
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: const Text('Metrics updated successfully'),
+              backgroundColor: vAccentColor,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: const Text('No new engagement metrics available'),
+              backgroundColor: Colors.grey.shade600,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else if (result is DataFailed) {
+        // Handle the null error case specifically
+        if (result.error?.error == null) {
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content:
+                  const Text('No new engagement data available at this time'),
+              backgroundColor: Colors.orange.shade300,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(ref.context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result.error?.error}'),
+              backgroundColor: Colors.red.shade400,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(ref.context).showSnackBar(
+        SnackBar(
+          content: Text('Error refreshing metrics: $e'),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -417,16 +520,72 @@ class PostCard extends ConsumerWidget {
   // 5) Bottom status indicators
   //--------------------------------------------------------------------------
   /// Builds a row for posted posts showing post time and action icons.
-  Widget _buildIconsRowPosted(PostEngagement? engagement) {
+  Widget _buildIconsRowPosted(PostEngagement? engagement, WidgetRef ref) {
+    final iconColor = vPrimaryColor.withAlpha(120);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // "Posted X time ago" text
         Text(
           "Posted ${relativeTimeDescription(post.updatedAt!)}",
           style: secondaryTextStyle(color: vAccentColor, size: 12),
         ),
+
         const SizedBox(height: 4),
-        _buildActionIcons(engagement),
+
+        // Engagement metrics row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _iconWithCount(Icons.chat_bubble_outline,
+                engagement != null ? "${engagement.replies}" : "0", iconColor),
+            _iconWithCount(
+                Icons.repeat,
+                engagement != null
+                    ? "${engagement.retweets + engagement.quotes}"
+                    : "0",
+                iconColor),
+            _iconWithCount(Icons.favorite_border,
+                engagement != null ? "${engagement.likes}" : "0", iconColor),
+            _iconWithCount(
+                Icons.bar_chart_outlined,
+                engagement != null ? "${engagement.impressions}" : "0",
+                iconColor),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        // Centered refresh button
+        Center(
+          child: GestureDetector(
+            onTap: () => _refreshPostEngagement(ref),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: vPrimaryColor.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: vPrimaryColor.withAlpha(50)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh, size: 14, color: vPrimaryColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    "Refresh",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: vPrimaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -486,17 +645,17 @@ class PostCard extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _iconWithCount(Icons.chat_bubble_outline,
-            engagement != null ? "${engagement.replies}" : "0",
-            iconColor),
-        _iconWithCount(Icons.repeat,
-            engagement != null ? "${engagement.retweets + engagement.quotes}" : "0",
+            engagement != null ? "${engagement.replies}" : "0", iconColor),
+        _iconWithCount(
+            Icons.repeat,
+            engagement != null
+                ? "${engagement.retweets + engagement.quotes}"
+                : "0",
             iconColor),
         _iconWithCount(Icons.favorite_border,
-            engagement != null ? "${engagement.likes}" : "0",
-            iconColor),
+            engagement != null ? "${engagement.likes}" : "0", iconColor),
         _iconWithCount(Icons.bar_chart_outlined,
-            engagement != null ? "${engagement.impressions}" : "0",
-            iconColor),
+            engagement != null ? "${engagement.impressions}" : "0", iconColor),
       ],
     );
   }

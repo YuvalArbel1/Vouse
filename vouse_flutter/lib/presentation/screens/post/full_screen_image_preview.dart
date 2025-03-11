@@ -74,8 +74,6 @@ class _FullScreenImagePreviewState
 
   @override
   void dispose() {
-    // IMPORTANT: Restore UI settings when screen is disposed
-    UiSettings.showAllSystemUI();
 
     if (widget.useDirectList) {
       _localImages.clear();

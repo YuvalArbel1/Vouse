@@ -415,30 +415,32 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
         // Show success message
         final BuildContext currentContext = context;
-        ScaffoldMessenger.of(currentContext).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(_isEditing
-                    ? "Draft updated successfully"
-                    : "Draft \"$draftTitle\" saved successfully"),
-              ],
+        if (mounted) {
+          ScaffoldMessenger.of(currentContext).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(_isEditing
+                      ? "Draft updated successfully"
+                      : "Draft \"$draftTitle\" saved successfully"),
+                ],
+              ),
+              backgroundColor: vAccentColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            backgroundColor: vAccentColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+          );
 
-        // Use the new navigateAfterPostSave method instead of navigateBack
-        ref.read(navigationServiceProvider).navigateAfterPostSave(
-              currentContext,
-              _isEditing,
-            );
+          // Use the new navigateAfterPostSave method instead of navigateBack
+          ref.read(navigationServiceProvider).navigateAfterPostSave(
+                currentContext,
+                _isEditing,
+              );
+        }
       } else if (result is DataFailed) {
         toast("Error saving draft: ${result.error?.error}");
       }

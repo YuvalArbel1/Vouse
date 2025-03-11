@@ -14,10 +14,12 @@ class NotificationSettingsSection extends ConsumerStatefulWidget {
   const NotificationSettingsSection({super.key});
 
   @override
-  ConsumerState<NotificationSettingsSection> createState() => _NotificationSettingsSectionState();
+  ConsumerState<NotificationSettingsSection> createState() =>
+      _NotificationSettingsSectionState();
 }
 
-class _NotificationSettingsSectionState extends ConsumerState<NotificationSettingsSection> {
+class _NotificationSettingsSectionState
+    extends ConsumerState<NotificationSettingsSection> {
   bool _isLoading = false;
 
   @override
@@ -31,8 +33,25 @@ class _NotificationSettingsSectionState extends ConsumerState<NotificationSettin
     try {
       setState(() => _isLoading = true);
 
-      // Read the notification status
+      // Read the notification status from preferences
       await ref.read(notificationStatusProvider.notifier).checkStatus();
+
+      // Also check actual device permission status
+      final notificationService = NotificationService();
+      final areEnabled = await notificationService.areNotificationsEnabled();
+
+      // If permissions are actually enabled but our state says disabled, update it
+      if (areEnabled && !ref.read(notificationStatusProvider)) {
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        if (userId != null) {
+          final token = await notificationService.getToken();
+          if (token != null) {
+            await ref
+                .read(notificationStatusProvider.notifier)
+                .enableNotifications(userId, token);
+          }
+        }
+      }
     } catch (e) {
       debugPrint('Error checking notification status: $e');
     } finally {
@@ -55,7 +74,9 @@ class _NotificationSettingsSectionState extends ConsumerState<NotificationSettin
     try {
       if (currentStatus) {
         // Disable notifications
-        await ref.read(notificationStatusProvider.notifier).disableNotifications(userId);
+        await ref
+            .read(notificationStatusProvider.notifier)
+            .disableNotifications(userId);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -69,14 +90,17 @@ class _NotificationSettingsSectionState extends ConsumerState<NotificationSettin
         final token = await notificationService.getToken();
 
         if (token != null) {
-          await ref.read(notificationStatusProvider.notifier).enableNotifications(userId, token);
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Notifications enabled'),
-              backgroundColor: vAccentColor,
-            ),
-          );
+          await ref
+              .read(notificationStatusProvider.notifier)
+              .enableNotifications(userId, token);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Notifications enabled'),
+                backgroundColor: vAccentColor,
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -142,7 +166,8 @@ class _NotificationSettingsSectionState extends ConsumerState<NotificationSettin
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vAccentColor,
                     borderRadius: BorderRadius.circular(12),

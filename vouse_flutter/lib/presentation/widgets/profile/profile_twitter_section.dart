@@ -1,4 +1,4 @@
-// lib/presentation/screens/profile/profile_twitter_section.dart
+// lib/presentation/widgets/profile/profile_twitter_section.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,21 +106,23 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection>
 
           debugPrint("ProfileTwitterSection: X connection successful");
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: const [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 10),
-                  Text('Twitter account connected successfully'),
-                ],
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: const [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text('Twitter account connected successfully'),
+                  ],
+                ),
+                backgroundColor: vAccentColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              backgroundColor: vAccentColor,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          );
+            );
+          }
         } else {
           debugPrint("ProfileTwitterSection: X connection failed");
           toast('Failed to connect Twitter account');
@@ -183,15 +185,17 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection>
       if (disconnectResult) {
         debugPrint("ProfileTwitterSection: X disconnection successful");
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Twitter account disconnected successfully'),
-            backgroundColor: vBodyGrey,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Twitter account disconnected successfully'),
+              backgroundColor: vBodyGrey,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
       } else {
         debugPrint("ProfileTwitterSection: X disconnection failed");
         toast('Failed to disconnect Twitter account');
@@ -237,7 +241,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection>
                 const Icon(
                   Icons.alternate_email,
                   size: 28,
-                  color: vPrimaryColor,
+                  color: vAccentColor,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -248,7 +252,7 @@ class _ProfileTwitterSectionState extends ConsumerState<ProfileTwitterSection>
                         'Twitter Account Connected',
                         style: boldTextStyle(
                           size: 16,
-                          color: vPrimaryColor,
+                          color: vAccentColor,
                         ),
                       ),
                       if (username != null)

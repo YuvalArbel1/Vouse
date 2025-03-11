@@ -7,7 +7,7 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/presentation/providers/auth/firebase/firebase_auth_notifier.dart';
 import 'package:vouse_flutter/presentation/providers/auth/x/twitter_connection_provider.dart';
 import 'package:vouse_flutter/presentation/providers/user/user_profile_provider.dart';
-import 'package:vouse_flutter/presentation/screens/profile/profile_twitter_section.dart';
+import 'package:vouse_flutter/presentation/widgets/profile/profile_twitter_section.dart';
 import 'package:vouse_flutter/presentation/widgets/common/loading/full_screen_loading.dart';
 import 'package:vouse_flutter/presentation/providers/navigation/navigation_service.dart';
 

@@ -28,4 +28,16 @@ class ImagesRemoteDataSource {
     final snapshot = await uploadTask.whenComplete(() => {});
     return snapshot.ref.getDownloadURL();
   }
+
+  /// Deletes an image from Firebase Storage using its download URL
+  Future<void> deleteImageByUrl(String downloadUrl) async {
+    try {
+      // Extract the storage reference from the URL
+      final ref = _storage.refFromURL(downloadUrl);
+      await ref.delete();
+    } catch (e) {
+      // Rethrow to allow repository to handle or log
+      rethrow;
+    }
+  }
 }

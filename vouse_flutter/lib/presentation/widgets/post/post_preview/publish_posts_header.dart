@@ -1,13 +1,15 @@
-// lib/presentation/widgets/post/post_preview/published_posts_header.dart
+// lib/presentation/widgets/post/post_preview/publish_posts_header.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/util/colors.dart';
 import '../../../../domain/entities/local_db/user_entity.dart';
+import '../../../providers/filter/post_filtered_provider.dart';
 
 /// A stylish header widget for the published posts screen
-class PublishedPostsHeader extends StatelessWidget {
+class PublishedPostsHeader extends ConsumerWidget {
   final UserEntity? userProfile;
   final int postCount;
 
@@ -34,7 +36,20 @@ class PublishedPostsHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Use the engagementMetricsProvider to get real data
+    final engagementMetrics = ref.watch(engagementMetricsProvider);
+
+    // Calculate engagement based on real metrics
+    final totalEngagement = (
+        (engagementMetrics['Likes'] ?? 0) +
+            (engagementMetrics['Comments'] ?? 0) +
+            (engagementMetrics['Reposts'] ?? 0)
+    );
+
+    // Calculate progress as a percentage (max 50 posts = 100%)
+    final progressPercentage = (postCount / 50 * 100).round();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -95,9 +110,9 @@ class PublishedPostsHeader extends StatelessWidget {
             children: [
               _buildStatChip('📝 Total Posts', postCount.toString()),
               _buildStatChip(
-                  '🚀 Engagement', (postCount * 12.5).round().toString()),
+                  '🚀 Engagement', totalEngagement.toString()),
               _buildStatChip(
-                  '🌟 Progress', '${(postCount / 50 * 100).round()}%'),
+                  '🌟 Progress', '$progressPercentage%'),
             ],
           ),
         ],

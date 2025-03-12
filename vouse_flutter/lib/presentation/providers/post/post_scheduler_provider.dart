@@ -68,7 +68,7 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
     required PostEntity post,
     required String userId,
     bool saveLocally = true,
-    bool isUpdating = false, // Add this parameter with default false
+    bool isUpdating = false,
   }) async {
     try {
       state = state.copyWith(state: SchedulingState.scheduling);
@@ -76,29 +76,62 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
       // Post with updated cloud URLs (if any)
       PostEntity updatedPost = post;
 
+      // When updating, check if we need to delete old images
+      if (isUpdating) {
+        final getOriginalPostResult =
+            await _ref.read(getSinglePostUseCaseProvider).call(
+                  params: GetSinglePostParams(post.postIdLocal),
+                );
+
+        if (getOriginalPostResult is DataSuccess<PostEntity?> &&
+            getOriginalPostResult.data != null) {
+          final originalPost = getOriginalPostResult.data!;
+
+          // Find URLs of images that should be deleted (not in the new post)
+          final imagesToDelete = <String>[];
+          for (final cloudUrl in originalPost.cloudImageUrls) {
+            // If this URL is not in the new post's cloud URLs, mark for deletion
+            if (!post.cloudImageUrls.contains(cloudUrl)) {
+              imagesToDelete.add(cloudUrl);
+            }
+          }
+
+          // Delete the old images from Firebase Storage
+          if (imagesToDelete.isNotEmpty) {
+            final imagesRepo = _ref.read(imagesRepositoryProvider);
+            await imagesRepo.deleteImagesFromFirebase(imagesToDelete);
+          }
+        }
+      }
+
       // Check if there are local images that need uploading
       if (post.localImagePaths.isNotEmpty) {
         // Use the SavePostWithUploadUseCase to upload images first
-        final saveWithUploadUseCase = _ref.read(savePostWithUploadUseCaseProvider);
+        final saveWithUploadUseCase =
+            _ref.read(savePostWithUploadUseCaseProvider);
 
         final params = SavePostWithUploadParams(
           userUid: userId,
           postEntity: post,
-          localImageFiles: post.localImagePaths.map((path) => File(path)).toList(),
+          localImageFiles:
+              post.localImagePaths.map((path) => File(path)).toList(),
         );
 
         final result = await saveWithUploadUseCase.call(params: params);
 
         if (result is DataFailed) {
-          throw Exception(result.error?.error.toString() ?? 'Failed to upload images');
+          throw Exception(
+              result.error?.error.toString() ?? 'Failed to upload images');
         }
 
         // Fetch the updated post with cloud URLs from the local DB
-        final getPostResult = await _ref.read(getSinglePostUseCaseProvider).call(
-          params: GetSinglePostParams(post.postIdLocal),
-        );
+        final getPostResult =
+            await _ref.read(getSinglePostUseCaseProvider).call(
+                  params: GetSinglePostParams(post.postIdLocal),
+                );
 
-        if (getPostResult is DataSuccess<PostEntity?> && getPostResult.data != null) {
+        if (getPostResult is DataSuccess<PostEntity?> &&
+            getPostResult.data != null) {
           updatedPost = getPostResult.data!;
         }
       } else if (saveLocally) {
@@ -113,19 +146,22 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
 
       if (isUpdating) {
         // Get the server ID of the post
-        final serverPostResult = await _ref.read(getServerPostByLocalIdUseCaseProvider).call(
-          params: GetServerPostByLocalIdParams(post.postIdLocal),
-        );
+        final serverPostResult =
+            await _ref.read(getServerPostByLocalIdUseCaseProvider).call(
+                  params: GetServerPostByLocalIdParams(post.postIdLocal),
+                );
 
         // Fix the DioException? error by proper type handling
         if (serverPostResult is DataSuccess && serverPostResult.data != null) {
           // Update the post on the server
-          final updateResult = await _ref.read(updateServerPostUseCaseProvider).call(
-            params: UpdateServerPostParams(
-              serverPostResult.data!.postIdLocal, // This is the server's ID
-              updatedPost,
-            ),
-          );
+          final updateResult = await _ref
+              .read(updateServerPostUseCaseProvider)
+              .call(
+                params: UpdateServerPostParams(
+                  serverPostResult.data!.postIdLocal, // This is the server's ID
+                  updatedPost,
+                ),
+              );
 
           if (updateResult is DataSuccess) {
             serverResult = DataSuccess<String>(updateResult.data!.postIdLocal);
@@ -151,7 +187,6 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
           params: SchedulePostParams(updatedPost),
         );
       }
-
 
       if (serverResult is DataSuccess<String>) {
         // Update state with success

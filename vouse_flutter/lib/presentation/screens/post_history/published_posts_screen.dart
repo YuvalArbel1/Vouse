@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
-import 'package:vouse_flutter/presentation/screens/post/create_post_screen.dart';
 import 'package:vouse_flutter/presentation/widgets/common/empty_state.dart';
 import 'package:vouse_flutter/presentation/widgets/common/filter_chips.dart';
 import 'package:vouse_flutter/presentation/widgets/post/post_preview/post_card.dart';
@@ -13,22 +12,21 @@ import 'package:vouse_flutter/domain/entities/local_db/user_entity.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vouse_flutter/domain/usecases/home/get_user_usecase.dart';
 import 'package:vouse_flutter/presentation/providers/local_db/local_user_providers.dart';
+import 'package:vouse_flutter/presentation/providers/navigation/navigation_service.dart';
 
 import '../../../core/resources/data_state.dart';
+import '../../../core/util/common.dart';
 import '../../providers/server/server_sync_provider.dart';
 import '../../providers/engagement/post_engagement_provider.dart';
+import '../../widgets/common/loading/post_loading.dart';
 import '../../widgets/post/post_preview/publish_posts_header.dart';
 
-/// A refined, analytics-driven screen showing published posts with:
+/// Analytics-driven screen showing published posts with:
 /// - Personalized header
 /// - Engagement metrics
 /// - Filtering capabilities
 /// - Performance visualization
 ///
-/// Architecture:
-/// - Uses Clean Architecture principles
-/// - Leverages Riverpod for state management
-/// - Implements separation of concerns
 class PublishedPostsScreen extends ConsumerStatefulWidget {
   const PublishedPostsScreen({super.key});
 
@@ -55,11 +53,14 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
   /// User profile for personalized header
   UserEntity? _userProfile;
 
+  /// Loading state
+  bool _isRefreshing = false;
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _loadUserProfile();
+    _initializeData();
   }
 
   /// Initialize screen animations
@@ -81,8 +82,30 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
       parent: _animationController,
       curve: Curves.easeOutCubic,
     ));
+  }
 
-    _animationController.forward();
+  /// Initialize data when the screen loads
+  Future<void> _initializeData() async {
+    setState(() => _isRefreshing = true);
+
+    try {
+      // Load user profile
+      await _loadUserProfile();
+
+      // Ensure we have the latest engagement data
+      if (ref.read(postEngagementDataProvider).engagementByPostId.isEmpty) {
+        await ref
+            .read(postEngagementDataProvider.notifier)
+            .fetchEngagementData();
+      }
+
+      // Start animation after data is loaded
+      _animationController.forward();
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
   }
 
   /// Load user profile for personalized content
@@ -93,39 +116,44 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     final getUserUC = ref.read(getUserUseCaseProvider);
     final result = await getUserUC.call(params: GetUserParams(user.uid));
 
-    if (result is DataSuccess<UserEntity?>) {
+    if (result is DataSuccess<UserEntity?> && mounted) {
       setState(() {
         _userProfile = result.data;
       });
     }
   }
 
-  /// Navigate to create post screen
-  void _navigateToCreatePost() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
-  }
-
-  /// Refresh data and reset animations
+  /// Refresh all data
   Future<void> _refreshData() async {
-    // First synchronize with server to update post statuses
-    await ref.read(serverSyncProvider.notifier).synchronizePosts();
+    if (_isRefreshing) return;
 
-    // Then fetch the latest engagement data
-    await ref.read(postEngagementDataProvider.notifier).refreshAllEngagements();
+    setState(() => _isRefreshing = true);
 
-    // Reset animations for visual feedback
-    _animationController.reset();
+    try {
+      // First synchronize with server to update post statuses
+      await ref.read(serverSyncProvider.notifier).synchronizePosts();
 
-    // Invalidate the filtered posts provider to force refetching
-    ref.invalidate(filteredPostsProvider);
+      // Then fetch the latest engagement data
+      await ref
+          .read(postEngagementDataProvider.notifier)
+          .refreshAllEngagements();
 
-    // Load user profile for personalized content
-    await _loadUserProfile();
+      // Reset animations for visual feedback
+      _animationController.reset();
 
-    // Start animations after data is loaded
-    _animationController.forward();
+      // Invalidate the filtered posts provider to force refetching
+      ref.invalidate(filteredPostsProvider);
+
+      // Load user profile for personalized content
+      await _loadUserProfile();
+
+      // Start animations after data is loaded
+      _animationController.forward();
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
   }
 
   @override
@@ -134,57 +162,14 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: vAppLayoutBackground,
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: vPrimaryColor,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // Personalized Header
-            SliverToBoxAdapter(
-              child: PublishedPostsHeader(
-                userProfile: _userProfile,
-                postCount: _calculateTotalPosts(),
-              ),
-            ),
-
-            // Filter Chips
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _FilterHeaderDelegate(
-                child: Container(
-                  color: Colors.white,
-                  child: FilterChips(
-                    filters: _filterOptions,
-                    activeFilter: ref.watch(activeTimeFilterProvider),
-                    onFilterChanged: (filter) {
-                      ref.read(activeTimeFilterProvider.notifier).state =
-                          filter;
-                      _animationController.reset();
-                      _animationController.forward();
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            // Main Content
-            SliverToBoxAdapter(
-              child: _buildPostsContent(),
-            ),
-          ],
-        ),
-      ),
-    );
+  /// Navigate to create post screen
+  void _navigateToCreatePost() {
+    ref.read(navigationServiceProvider).navigateToCreatePost(context);
   }
 
   /// Calculate total posts from filtered data
   int _calculateTotalPosts() {
-    final postsAsync = ref.read(filteredPostsProvider);
+    final postsAsync = ref.watch(filteredPostsProvider);
     return postsAsync.when(
       data: (posts) => posts.length,
       loading: () => 0,
@@ -192,13 +177,77 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    // Check if engagement data is loading
+    final isEngagementLoading = ref.watch(isEngagementLoadingProvider);
+    final showLoading = _isRefreshing || isEngagementLoading;
+
+    return Scaffold(
+      backgroundColor: vAppLayoutBackground,
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        color: vPrimaryColor,
+        child: Stack(
+          children: [
+            CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // Personalized Header
+                SliverToBoxAdapter(
+                  child: PublishedPostsHeader(
+                    userProfile: _userProfile,
+                    postCount: _calculateTotalPosts(),
+                  ),
+                ),
+
+                // Filter Chips
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _FilterHeaderDelegate(
+                    child: Container(
+                      color: Colors.white,
+                      child: FilterChips(
+                        filters: _filterOptions,
+                        activeFilter: ref.watch(activeTimeFilterProvider),
+                        onFilterChanged: (filter) {
+                          ref.read(activeTimeFilterProvider.notifier).state =
+                              filter;
+                          _animationController.reset();
+                          _animationController.forward();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Main Content
+                SliverToBoxAdapter(
+                  child: _buildPostsContent(),
+                ),
+              ],
+            ),
+
+            // Loading overlay
+            if (showLoading)
+              BlockingSpinnerOverlay(
+                isVisible: true,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Build main posts content with metrics and grid/list
   Widget _buildPostsContent() {
-    // In _buildPostsContent()
     return Consumer(
       builder: (context, ref, _) {
         final filteredPostsAsync = ref.watch(filteredPostsProvider);
         final activeFilter = ref.watch(activeTimeFilterProvider);
+
+        // Get engagement metrics using the provider
+        final engagementMetrics = ref.watch(engagementMetricsProvider);
 
         return FadeTransition(
           opacity: _fadeAnimation,
@@ -207,10 +256,10 @@ class _PublishedPostsScreenState extends ConsumerState<PublishedPostsScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
               child: filteredPostsAsync.when(
-                data: (posts) => _buildPostsSection(
-                    posts, ref.watch(engagementMetricsProvider), activeFilter),
+                data: (posts) =>
+                    _buildPostsSection(posts, engagementMetrics, activeFilter),
                 loading: () => const Center(
-                  child: CircularProgressIndicator(),
+                  child: HorizontalPostListLoading(itemCount: 2),
                 ),
                 error: (error, _) => Center(child: Text('Error: $error')),
               ),

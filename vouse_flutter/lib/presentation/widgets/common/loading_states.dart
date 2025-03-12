@@ -9,14 +9,6 @@ import 'package:vouse_flutter/core/util/colors.dart';
 /// - Customizable colors and animation speeds
 /// - Various preset shapes (rectangle, circle, rounded rectangle)
 /// - Can be combined to create complex loading UI patterns
-///
-/// Usage:
-/// ```dart
-/// ShimmerLoading(
-///   width: double.infinity,
-///   height: 24,
-///   borderRadius: 8,
-/// )
 /// ```
 class ShimmerLoading extends StatefulWidget {
   /// Width of the shimmer container

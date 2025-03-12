@@ -48,6 +48,27 @@ class PostEngagementState {
       lastRefreshedAt: lastRefreshedAt ?? this.lastRefreshedAt,
     );
   }
+
+  /// Get total metrics across all posts
+  Map<String, int> getTotalMetrics() {
+    final metrics = {
+      'Likes': 0,
+      'Comments': 0,
+      'Reposts': 0,
+      'Impressions': 0,
+    };
+
+    for (final engagement in engagementByPostId.values) {
+      metrics['Likes'] = (metrics['Likes'] ?? 0) + engagement.likes;
+      metrics['Comments'] = (metrics['Comments'] ?? 0) + engagement.replies;
+      metrics['Reposts'] =
+          (metrics['Reposts'] ?? 0) + engagement.retweets + engagement.quotes;
+      metrics['Impressions'] =
+          (metrics['Impressions'] ?? 0) + engagement.impressions;
+    }
+
+    return metrics;
+  }
 }
 
 /// Notifier for post engagement data
@@ -225,6 +246,11 @@ class PostEngagementNotifier extends StateNotifier<PostEngagementState> {
   PostEngagement? getEngagementByLocalId(String postIdLocal) {
     return state.engagementByLocalId[postIdLocal];
   }
+
+  /// Gets aggregated total metrics across all posts
+  Map<String, int> getTotalMetrics() {
+    return state.getTotalMetrics();
+  }
 }
 
 /// Provider for post engagement data
@@ -241,23 +267,15 @@ final postEngagementDataProvider =
 /// Provider for total engagement counts across all posts
 final totalEngagementProvider = Provider<Map<String, int>>((ref) {
   final engagementState = ref.watch(postEngagementDataProvider);
+  return engagementState.getTotalMetrics();
+});
 
-  final metrics = {
-    'Likes': 0,
-    'Comments': 0, // Twitter calls these "replies"
-    'Reposts': 0, // Twitter calls these "retweets" + "quotes"
-    'Impressions': 0,
-  };
+/// Provider for checking if engagement data is currently loading
+final isEngagementLoadingProvider = Provider<bool>((ref) {
+  return ref.watch(postEngagementDataProvider).isLoading;
+});
 
-  // Sum up all engagement metrics
-  for (final engagement in engagementState.engagementByPostId.values) {
-    metrics['Likes'] = (metrics['Likes'] ?? 0) + engagement.likes;
-    metrics['Comments'] = (metrics['Comments'] ?? 0) + engagement.replies;
-    metrics['Reposts'] =
-        (metrics['Reposts'] ?? 0) + engagement.retweets + engagement.quotes;
-    metrics['Impressions'] =
-        (metrics['Impressions'] ?? 0) + engagement.impressions;
-  }
-
-  return metrics;
+/// Provider that returns the count of posts with engagement data
+final postsWithEngagementCountProvider = Provider<int>((ref) {
+  return ref.watch(postEngagementDataProvider).engagementByPostId.length;
 });

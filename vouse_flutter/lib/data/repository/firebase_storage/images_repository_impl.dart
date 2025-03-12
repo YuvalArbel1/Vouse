@@ -32,4 +32,18 @@ class ImagesRepositoryImpl implements ImagesRepository {
     }
     return urls;
   }
+
+  /// Deletes images from Firebase Storage using their cloud URLs.
+  @override
+  Future<void> deleteImagesFromFirebase(List<String> cloudUrls) async {
+    for (final url in cloudUrls) {
+      try {
+        await _dataSource.deleteImageByUrl(url);
+      } catch (e) {
+        // Log error but continue deleting other images
+        print('Error deleting image: $e');
+      }
+    }
+  }
+
 }

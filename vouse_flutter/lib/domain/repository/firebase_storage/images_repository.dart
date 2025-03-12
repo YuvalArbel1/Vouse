@@ -13,4 +13,7 @@ abstract class ImagesRepository {
     required String postTitle,
     required List<File> files,
   });
+  /// Deletes the images from the remote storage.
+  Future<void> deleteImagesFromFirebase(List<String> cloudUrls);
+
 }

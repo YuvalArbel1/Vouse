@@ -1,7 +1,9 @@
-// lib/presentation/widgets/post/engagement_metrics_card.dart
+// lib/presentation/widgets/stats/engagement_metrics_card.dart
 
 import 'package:flutter/material.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vouse_flutter/presentation/providers/filter/post_filtered_provider.dart';
 
 /// A card widget displaying engagement metrics with visualizations.
 ///
@@ -10,7 +12,7 @@ import 'package:vouse_flutter/core/util/colors.dart';
 /// - Custom styling for each metric
 /// - Mini chart visualization
 /// - Time period indicator
-class EngagementMetricsCard extends StatelessWidget {
+class EngagementMetricsCard extends ConsumerWidget {
   /// Engagement data to display
   final Map<String, int> metrics;
 
@@ -25,7 +27,10 @@ class EngagementMetricsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Use the engagementMetricsProvider to get real data
+    final realMetrics = ref.watch(engagementMetricsProvider);
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -47,7 +52,8 @@ class EngagementMetricsCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: vPrimaryColor.withAlpha(30),
                     borderRadius: BorderRadius.circular(12),
@@ -74,10 +80,14 @@ class EngagementMetricsCard extends StatelessWidget {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               children: [
-                _buildMetricItem('❤️ Likes', metrics['Likes'] ?? 0, Icons.favorite, Colors.red),
-                _buildMetricItem('💬 Comments', metrics['Comments'] ?? 0, Icons.chat_bubble, Colors.blue),
-                _buildMetricItem('🔄 Reposts', metrics['Reposts'] ?? 0, Icons.repeat, Colors.green),
-                _buildMetricItem('👁️ Views', metrics['Impressions'] ?? 0, Icons.visibility, Colors.purple),
+                _buildMetricItem('❤️ Likes', realMetrics['Likes'] ?? 0,
+                    Icons.favorite, Colors.red),
+                _buildMetricItem('💬 Comments', realMetrics['Comments'] ?? 0,
+                    Icons.chat_bubble, Colors.blue),
+                _buildMetricItem('🔄 Reposts', realMetrics['Reposts'] ?? 0,
+                    Icons.repeat, Colors.green),
+                _buildMetricItem('👁️ Views', realMetrics['Impressions'] ?? 0,
+                    Icons.visibility, Colors.purple),
               ],
             ),
 
@@ -94,6 +104,7 @@ class EngagementMetricsCard extends StatelessWidget {
               child: CustomPaint(
                 painter: _MiniChartPainter(
                   color: vPrimaryColor,
+                  metrics: metrics,
                 ),
               ),
             ),
@@ -145,8 +156,12 @@ class EngagementMetricsCard extends StatelessWidget {
 /// Custom painter for the mini engagement chart
 class _MiniChartPainter extends CustomPainter {
   final Color color;
+  final Map<String, int> metrics;
 
-  _MiniChartPainter({required this.color});
+  _MiniChartPainter({
+    required this.color,
+    required this.metrics,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -162,17 +177,30 @@ class _MiniChartPainter extends CustomPainter {
 
     final path = Path();
 
-    // Generate some data points
-    final points = <Offset>[];
-    final random = DateTime.now().microsecond;
+    // Check if all metrics are zero
+    final allZeros = metrics.values.every((value) => value == 0);
 
-    for (var i = 0; i < 10; i++) {
-      final x = i * size.width / 9;
-      final y = size.height * 0.5 -
-          (((i + random) % 7) * size.height * 0.05) -
-          (i % 3 == 0 ? size.height * 0.1 : 0) -
-          (i % 5 == 0 ? size.height * 0.15 : 0);
-      points.add(Offset(x, y));
+    // Generate points based on data
+    final points = <Offset>[];
+
+    if (allZeros) {
+      // If all zeros, draw a flat line in the middle
+      for (var i = 0; i < 10; i++) {
+        final x = i * size.width / 9;
+        final y = size.height * 0.5; // Middle of the chart
+        points.add(Offset(x, y));
+      }
+    } else {
+      // Generate some visual points - in a real app you'd use time-series data
+      final random = DateTime.now().microsecond;
+      for (var i = 0; i < 10; i++) {
+        final x = i * size.width / 9;
+        final y = size.height * 0.5 -
+            (((i + random) % 7) * size.height * 0.05) -
+            (i % 3 == 0 ? size.height * 0.1 : 0) -
+            (i % 5 == 0 ? size.height * 0.15 : 0);
+        points.add(Offset(x, y));
+      }
     }
 
     // Move to starting point

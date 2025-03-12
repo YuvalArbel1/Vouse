@@ -10,7 +10,7 @@ import 'package:vouse_flutter/presentation/providers/filter/post_filtered_provid
 /// Features:
 /// - Grid layout of various metrics
 /// - Custom styling for each metric
-/// - Mini chart visualization
+/// - Mini chart visualization using actual metric data
 /// - Time period indicator
 class EngagementMetricsCard extends ConsumerWidget {
   /// Engagement data to display
@@ -93,18 +93,18 @@ class EngagementMetricsCard extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // Mini chart placeholder
+            // Mini chart using actual data
             Container(
-              height: 60,
+              height: 80,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: vPrimaryColor.withAlpha(20),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: CustomPaint(
-                painter: _MiniChartPainter(
+                painter: MiniChartPainter(
                   color: vPrimaryColor,
-                  metrics: metrics,
+                  metrics: realMetrics, // Use real metrics for the chart
                 ),
               ),
             ),
@@ -153,12 +153,12 @@ class EngagementMetricsCard extends ConsumerWidget {
   }
 }
 
-/// Custom painter for the mini engagement chart
-class _MiniChartPainter extends CustomPainter {
+/// Custom painter for the mini engagement chart that uses actual metric data
+class MiniChartPainter extends CustomPainter {
   final Color color;
   final Map<String, int> metrics;
 
-  _MiniChartPainter({
+  MiniChartPainter({
     required this.color,
     required this.metrics,
   });
@@ -167,7 +167,7 @@ class _MiniChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 2
+      ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
     final dotPaint = Paint()
@@ -177,10 +177,20 @@ class _MiniChartPainter extends CustomPainter {
 
     final path = Path();
 
-    // Check if all metrics are zero
-    final allZeros = metrics.values.every((value) => value == 0);
+    // Check if all metrics are zero or metrics are empty
+    final allZeros =
+        metrics.isEmpty || metrics.values.every((value) => value == 0);
 
-    // Generate points based on data
+    // Define the metrics we want to display in order
+    final metricKeys = ['Likes', 'Comments', 'Reposts', 'Impressions'];
+
+    // Calculate the maximum value for scaling (or use 1 if all are zero)
+    final maxValue = allZeros
+        ? 1
+        : metrics.values
+            .fold<int>(0, (max, value) => value > max ? value : max);
+
+    // Generate points based on actual data
     final points = <Offset>[];
 
     if (allZeros) {
@@ -191,15 +201,31 @@ class _MiniChartPainter extends CustomPainter {
         points.add(Offset(x, y));
       }
     } else {
-      // Generate some visual points - in a real app you'd use time-series data
-      final random = DateTime.now().microsecond;
-      for (var i = 0; i < 10; i++) {
-        final x = i * size.width / 9;
-        final y = size.height * 0.5 -
-            (((i + random) % 7) * size.height * 0.05) -
-            (i % 3 == 0 ? size.height * 0.1 : 0) -
-            (i % 5 == 0 ? size.height * 0.15 : 0);
+      // Use the actual metric values
+      final usableMetrics =
+          metricKeys.where((key) => metrics.containsKey(key)).toList();
+      final segmentWidth =
+          size.width / (usableMetrics.length - 1).clamp(1, double.infinity);
+
+      for (var i = 0; i < usableMetrics.length; i++) {
+        final key = usableMetrics[i];
+        final value = metrics[key] ?? 0;
+
+        // Normalize value between 0 and 1, then invert for y-coordinate (0 = bottom)
+        final normalizedValue = value / maxValue;
+
+        // Convert to y position (higher values = lower y position)
+        final y = size.height -
+            (normalizedValue * size.height * 0.8) -
+            (size.height * 0.1);
+        final x = i * segmentWidth;
+
         points.add(Offset(x, y));
+      }
+
+      // If we have less than 2 points, add some fake ones to make a visible line
+      if (points.length < 2) {
+        points.add(Offset(size.width, points.first.dy));
       }
     }
 
@@ -226,7 +252,7 @@ class _MiniChartPainter extends CustomPainter {
 
     // Draw dots at data points
     for (final point in points) {
-      canvas.drawCircle(point, 2, dotPaint);
+      canvas.drawCircle(point, 3, dotPaint);
     }
 
     // Draw a filled gradient area
@@ -241,7 +267,7 @@ class _MiniChartPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           color.withAlpha(100),
-          color.withAlpha(0),
+          color.withAlpha(10),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 

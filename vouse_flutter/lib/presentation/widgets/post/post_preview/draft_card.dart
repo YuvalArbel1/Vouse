@@ -7,6 +7,11 @@ import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 
 import '../../../providers/navigation/navigation_service.dart';
+import '../../../../domain/usecases/post/delete_post_usecase.dart';
+import '../../../providers/local_db/local_post_providers.dart';
+import '../../../providers/post/post_refresh_provider.dart';
+import '../../../providers/home/home_content_provider.dart';
+import '../../../../core/resources/data_state.dart';
 
 /// A specialized card widget for displaying draft posts with a consistent,
 /// polished appearance.
@@ -71,7 +76,7 @@ class DraftCard extends ConsumerWidget {
               children: [
                 // Title area
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(50, 16, 16, 8),
                   child: post.title.isNotEmpty
                       ? Row(
                           children: [
@@ -132,6 +137,27 @@ class DraftCard extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+
+                // Delete button
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: InkWell(
+                    onTap: () => _showDeleteConfirmDialog(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -365,5 +391,95 @@ class DraftCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Shows a confirmation dialog for deleting a draft post
+  Future<void> _showDeleteConfirmDialog(
+      BuildContext context, WidgetRef ref) async {
+    final result =
+        await ref.read(navigationServiceProvider).showConfirmationDialog(
+              context,
+              'Delete Draft',
+              'Are you sure you want to delete this draft? This action cannot be undone.',
+              cancelText: 'Cancel',
+              confirmText: 'Delete',
+            );
+
+    if (result) {
+      if (context.mounted) {
+        // User confirmed deletion
+        _deleteDraft(context, ref);
+      }
+    }
+  }
+
+  /// Deletes the draft post from local database
+  Future<void> _deleteDraft(BuildContext context, WidgetRef ref) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(vPrimaryColor),
+        ),
+      ),
+    );
+
+    try {
+      // Delete from local database
+      final deleteUseCase = ref.read(deletePostUseCaseProvider);
+      final result = await deleteUseCase.call(
+        params: DeletePostParams(post.postIdLocal),
+      );
+
+      // Hide loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result is DataSuccess) {
+        // Refresh providers
+        ref.read(postRefreshProvider.notifier).refreshDrafts();
+        ref.read(postRefreshProvider.notifier).refreshAll();
+
+        // Explicitly refresh home content
+        await ref.read(homeContentProvider.notifier).refreshHomeContent();
+
+        if (context.mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Draft deleted successfully'),
+              backgroundColor: vAccentColor,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else if (result is DataFailed && context.mounted) {
+        // Show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${result.error?.error}'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // Hide loading dialog if there was an exception
+      if (context.mounted) {
+        Navigator.of(context).pop();
+
+        // Show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }

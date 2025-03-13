@@ -113,7 +113,7 @@ class PostCard extends ConsumerWidget {
           if (isScheduled)
             Positioned(
               top: 12,
-              right: 12,
+              left: 16,
               child: InkWell(
                 onTap: () =>
                     _showDeleteConfirmDialog(context, ref, navigationService),
@@ -131,23 +131,45 @@ class PostCard extends ConsumerWidget {
                 ),
               ),
             ),
+          // Edit button
           if (isScheduled)
             Positioned(
               top: 12,
-              left: 12, // Position it to the left corner
+              right: 16,
               child: InkWell(
                 onTap: () => _navigateToEditScheduledPost(
                     context, ref, navigationService),
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: vAccentColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.edit,
                     color: Colors.white,
-                    size: 16,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(40),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.edit_note,
+                        size: 14,
+                        color: vPrimaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'EDIT',
+                        style: TextStyle(
+                          color: vPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -174,7 +196,7 @@ class PostCard extends ConsumerWidget {
       confirmText: 'Delete',
     );
 
-    if (result) {
+    if (result && context.mounted) {
       // Use async/await properly with a function that returns Future
       unawaited(_deleteScheduledPost(context, ref, navigationService));
     }
@@ -378,7 +400,7 @@ class PostCard extends ConsumerWidget {
   /// Builds a centered title with the post's title text.
   Widget _buildCenteredTitle() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(50, 6, 50, 6),
       child: Text(
         post.title,
         textAlign: TextAlign.center,

@@ -575,9 +575,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => title.contains('scheduled')
-                ? _navigateToScheduledPosts()
-                : _navigateToCreatePost(),
+            onPressed: () => _navigateToCreatePost(),
             style: ElevatedButton.styleFrom(
               backgroundColor: vPrimaryColor,
               foregroundColor: Colors.white,

@@ -59,7 +59,6 @@ class TwitterConnectionNotifier
   final ConnectTwitterUseCase _connectTwitterUseCase;
   final DisconnectTwitterUseCase _disconnectTwitterUseCase;
   final VerifyTwitterTokensUseCase _verifyTwitterTokensUseCase;
-  final Ref _ref;
 
   // Static flag to maintain state between instances
   static bool _isConnectionChecked = false;
@@ -82,7 +81,6 @@ class TwitterConnectionNotifier
         _connectTwitterUseCase = connectTwitterUseCase,
         _disconnectTwitterUseCase = disconnectTwitterUseCase,
         _verifyTwitterTokensUseCase = verifyTwitterTokensUseCase,
-        _ref = ref,
         super(TwitterConnectionProviderState(
         connectionState: _isConnectionChecked
             ? (_isConnected

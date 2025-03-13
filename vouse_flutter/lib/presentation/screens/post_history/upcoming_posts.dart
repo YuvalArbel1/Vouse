@@ -50,8 +50,6 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
   /// Fade animation for content
   late Animation<double> _fadeAnimation;
 
-  /// User profile for personalization
-  UserEntity? _userProfile;
 
   /// Tracks refresh state
   bool _isRefreshing = false;
@@ -94,7 +92,6 @@ class _UpcomingPostsScreenState extends ConsumerState<UpcomingPostsScreen>
 
     if (result is DataSuccess<UserEntity?>) {
       setState(() {
-        _userProfile = result.data;
       });
     }
   }

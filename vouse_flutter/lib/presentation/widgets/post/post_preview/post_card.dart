@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:path/path.dart';
 import 'package:vouse_flutter/core/util/colors.dart';
 import 'package:vouse_flutter/domain/entities/local_db/post_entity.dart';
 import 'package:vouse_flutter/presentation/providers/post/post_refresh_provider.dart';
@@ -681,32 +680,6 @@ class PostCard extends ConsumerWidget {
           size: 13,
         ),
       ),
-    );
-  }
-
-  //--------------------------------------------------------------------------
-  // Action icons row (only for posted content)
-  //--------------------------------------------------------------------------
-  /// Builds a row of action icons (comment, retweet, like, stats) with counts.
-  Widget _buildActionIcons(PostEngagement? engagement) {
-    final iconColor = vPrimaryColor.withAlpha(120);
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _iconWithCount(Icons.chat_bubble_outline,
-            engagement != null ? "${engagement.replies}" : "0", iconColor),
-        _iconWithCount(
-            Icons.repeat,
-            engagement != null
-                ? "${engagement.retweets + engagement.quotes}"
-                : "0",
-            iconColor),
-        _iconWithCount(Icons.favorite_border,
-            engagement != null ? "${engagement.likes}" : "0", iconColor),
-        _iconWithCount(Icons.bar_chart_outlined,
-            engagement != null ? "${engagement.impressions}" : "0", iconColor),
-      ],
     );
   }
 

@@ -45,7 +45,6 @@ class CreatePostScreen extends ConsumerStatefulWidget {
   /// The draft post to edit (if any)
   final PostEntity? draftToEdit;
   final PostEntity? scheduledPostToEdit;
-  final bool _isEditingScheduledPost = false;
 
   /// Creates a new post creation screen.
   const CreatePostScreen({
@@ -76,11 +75,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
   /// Whether we're editing a scheduled post
   bool _isEditingScheduledPost = false;
 
-  /// The scheduled date/time (when editing a scheduled post)
-  DateTime? _scheduledDateTime;
 
-  /// The post being edited (can be draft or scheduled)
-  PostEntity? _editingPost;
 
   /// Animation controller for the screen transition effects.
   late AnimationController _animationController;
@@ -168,8 +163,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
         // Set state to track that we're editing a scheduled post
         setState(() {
           _titleController.text = scheduledPost.title;
-          _scheduledDateTime = scheduledPost.scheduledAt;
-          _editingPost = scheduledPost;
           _isEditingScheduledPost = true;
         });
 

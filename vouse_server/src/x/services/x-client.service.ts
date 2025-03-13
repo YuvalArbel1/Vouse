@@ -1,9 +1,10 @@
 // src/x/services/x-client.service.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import * as dotenv from 'dotenv';
 import * as FormData from 'form-data';
 import * as crypto from 'crypto';
+import { XAuthService } from './x-auth.service';
 
 dotenv.config();
 
@@ -29,7 +30,10 @@ export class XClientService {
   private readonly mediaUploadUrl =
     'https://upload.twitter.com/1.1/media/upload.json';
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => XAuthService))
+    private readonly xAuthService: XAuthService,
+  ) {
     // Create a pre-configured axios instance for API calls
     this.client = axios.create({
       baseURL: this.apiBaseUrl,
@@ -62,12 +66,16 @@ export class XClientService {
 
   /**
    * Make an authenticated request to Twitter's API using a user's access token
+   * Now with automatic token refresh on 401 errors
    *
    * @param accessToken User's OAuth access token
    * @param method HTTP method
    * @param endpoint API endpoint (without base URL)
    * @param data Request body data
    * @param params Query parameters
+   * @param baseUrl Optional base URL override
+   * @param userId User's Firebase ID (needed for token refresh)
+   * @param isRetry Flag to prevent infinite refresh loops
    * @returns API response data
    */
   async makeAuthenticatedRequest(
@@ -77,6 +85,8 @@ export class XClientService {
     data?: any,
     params?: any,
     baseUrl?: string,
+    userId?: string,
+    isRetry: boolean = false,
   ): Promise<any> {
     const config: AxiosRequestConfig = {
       method,
@@ -93,11 +103,55 @@ export class XClientService {
       const response = await axios.request(config);
       return response.data;
     } catch (error) {
-      // If the error is due to an expired token, we should handle it at a higher level
+      // Handle token expiration (401 Unauthorized)
+      if (error.response?.status === 401 && userId && !isRetry) {
+        this.logger.log(
+          `Access token expired for user ${userId}, attempting refresh...`,
+        );
+
+        try {
+          // Try to refresh the token
+          const newAccessToken = await this.xAuthService.refreshTokens(userId);
+
+          if (newAccessToken) {
+            this.logger.log(
+              `Successfully refreshed token for user ${userId}, retrying request`,
+            );
+
+            // Retry the original request with the new token, but mark as retry
+            // to prevent potential infinite loops
+            return this.makeAuthenticatedRequest(
+              newAccessToken,
+              method,
+              endpoint,
+              data,
+              params,
+              baseUrl,
+              userId,
+              true,
+            );
+          }
+        } catch (refreshError) {
+          this.logger.error(`Token refresh failed: ${refreshError.message}`);
+        }
+      }
+
+      // If the error is due to rate limiting, add specific info
+      if (error.response?.status === 429) {
+        const resetTime = error.response.headers['x-rate-limit-reset'];
+        const rateError: any = new Error('Twitter API rate limit exceeded');
+        rateError.isRateLimit = true;
+        rateError.resetTime = resetTime;
+        throw rateError;
+      }
+
+      // If the error is due to an expired token, throw a specific error
       if (error.response?.status === 401) {
         this.logger.warn('Twitter access token expired or invalid');
         throw new Error('TWITTER_TOKEN_EXPIRED');
       }
+
+      // Re-throw the original error
       throw error;
     }
   }
@@ -145,12 +199,11 @@ export class XClientService {
    * Post a tweet on behalf of a user using Twitter API v2 POST /tweets endpoint
    * Supports location data by appending it to the tweet text
    *
-   * Reference: https://developer.twitter.com/en/docs/twitter-api/tweets/manage-tweets/api-reference/post-tweets
-   *
    * @param accessToken User's OAuth access token
    * @param text The tweet text content
    * @param mediaIds Optional array of media IDs to attach to the tweet
    * @param locationAddress Optional location address to append to the tweet
+   * @param userId User's Firebase ID (needed for token refresh)
    * @returns The API response with tweet data
    */
   async postTweet(
@@ -158,6 +211,7 @@ export class XClientService {
     text: string,
     mediaIds?: string[],
     locationAddress?: string | null,
+    userId?: string,
   ): Promise<any> {
     let tweetText = text;
     const endpoint = '/tweets';
@@ -185,24 +239,31 @@ export class XClientService {
       data.media = { media_ids: mediaIds };
     }
 
-    return this.makeAuthenticatedRequest(accessToken, 'post', endpoint, data);
+    return this.makeAuthenticatedRequest(
+      accessToken,
+      'post',
+      endpoint,
+      data,
+      undefined,
+      undefined,
+      userId,
+    );
   }
 
   /**
-   * Upload media to Twitter's media endpoint
-   * Note: This still uses the v1.1 API as the v2 API does not have a direct media upload endpoint
-   *
-   * Reference: https://developer.twitter.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
+   * Upload media to Twitter's media endpoint with token refresh support
    *
    * @param accessToken User's OAuth access token
    * @param mediaData Base64 encoded media data
    * @param mediaType MIME type of the media
+   * @param userId User's Firebase ID (needed for token refresh)
    * @returns Media ID string to use when posting tweets
    */
   async uploadMedia(
     accessToken: string,
     mediaData: string,
     mediaType: string,
+    userId?: string,
   ): Promise<string> {
     try {
       this.logger.log(`Uploading media of type ${mediaType}`);
@@ -251,22 +312,44 @@ export class XClientService {
       const formData = new FormData();
       formData.append('media_data', mediaData);
 
-      // Make the request with OAuth 1.0a authentication
-      const response = await axios.post(this.mediaUploadUrl, formData, {
-        headers: {
-          ...oauthHeader,
-          ...formData.getHeaders(),
-        },
-      });
+      try {
+        // Make the request with OAuth 1.0a authentication
+        const response = await axios.post(this.mediaUploadUrl, formData, {
+          headers: {
+            ...oauthHeader,
+            ...formData.getHeaders(),
+          },
+        });
 
-      if (!response.data || !response.data.media_id_string) {
-        throw new Error('Failed to get media ID from Twitter response');
+        if (!response.data || !response.data.media_id_string) {
+          throw new Error('Failed to get media ID from Twitter response');
+        }
+
+        this.logger.log(
+          `Successfully uploaded media ID: ${response.data.media_id_string}`,
+        );
+        return response.data.media_id_string;
+      } catch (error) {
+        // If it's a token expiration, try to refresh and retry
+        if (error.response?.status === 401 && userId) {
+          this.logger.log(
+            'Media upload failed with 401, attempting to refresh token',
+          );
+
+          try {
+            const newAccessToken =
+              await this.xAuthService.refreshTokens(userId);
+            if (newAccessToken) {
+              this.logger.log('Token refreshed, retrying media upload');
+              // Retry the upload with the new token but don't pass userId to avoid loops
+              return this.uploadMedia(newAccessToken, mediaData, mediaType);
+            }
+          } catch (refreshError) {
+            this.logger.error('Token refresh failed:', refreshError.message);
+          }
+        }
+        throw error;
       }
-
-      this.logger.log(
-        `Successfully uploaded media ID: ${response.data.media_id_string}`,
-      );
-      return response.data.media_id_string;
     } catch (error) {
       this.logger.error(`Failed to upload media: ${error.message}`);
       if (error.response) {
@@ -281,13 +364,16 @@ export class XClientService {
   /**
    * Get tweet metrics for a specific tweet using Twitter API v2 GET /tweets/:id endpoint
    *
-   * Reference: https://developer.twitter.com/en/docs/twitter-api/tweets/lookup/api-reference/get-tweets-id
-   *
    * @param tweetId The ID of the tweet
    * @param accessToken User's OAuth access token (optional, will use app token if not provided)
+   * @param userId User's Firebase ID (needed for token refresh)
    * @returns Engagement metrics data including public_metrics, non_public_metrics, and organic_metrics
    */
-  async getTweetMetrics(tweetId: string, accessToken?: string): Promise<any> {
+  async getTweetMetrics(
+    tweetId: string,
+    accessToken?: string,
+    userId?: string,
+  ): Promise<any> {
     try {
       const endpoint = `/tweets/${tweetId}`;
       // Define all necessary metrics fields
@@ -306,25 +392,18 @@ export class XClientService {
         console.warn(
           'No access token provided for metrics, using app token which may have limited access',
         );
+        return this.makeAppAuthenticatedRequest('get', endpoint, null, params);
       }
 
-      const response = accessToken
-        ? await this.makeAuthenticatedRequest(
-            accessToken,
-            'get',
-            endpoint,
-            null,
-            params,
-          )
-        : await this.makeAppAuthenticatedRequest('get', endpoint, null, params);
-
-      // Log full response for debugging
-      console.log(
-        'Raw Twitter API response:',
-        JSON.stringify(response, null, 2),
+      return this.makeAuthenticatedRequest(
+        accessToken,
+        'get',
+        endpoint,
+        undefined,
+        params,
+        undefined,
+        userId,
       );
-
-      return response;
     } catch (error) {
       console.error(`Error fetching tweet metrics for ${tweetId}:`, error);
       if (error.response) {
@@ -338,12 +417,11 @@ export class XClientService {
   /**
    * Verify the user's credentials and get basic account info using Twitter API v2 GET /users/me endpoint
    *
-   * Reference: https://developer.twitter.com/en/docs/twitter-api/users/lookup/api-reference/get-users-me
-   *
    * @param accessToken User's OAuth access token
+   * @param userId User's Firebase ID (needed for token refresh)
    * @returns User account data if valid, throws error otherwise
    */
-  async verifyCredentials(accessToken: string): Promise<any> {
+  async verifyCredentials(accessToken: string, userId?: string): Promise<any> {
     const endpoint = '/users/me';
     const params = {
       'user.fields': 'id,name,username',
@@ -353,8 +431,10 @@ export class XClientService {
       accessToken,
       'get',
       endpoint,
-      null,
+      undefined,
       params,
+      undefined,
+      userId,
     );
   }
 }

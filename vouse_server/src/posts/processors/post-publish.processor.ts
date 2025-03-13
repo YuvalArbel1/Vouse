@@ -109,11 +109,12 @@ export class PostPublishProcessor {
             const { base64Image, contentType } =
               await this.downloadImageFromUrl(imageUrl);
 
-            // Upload to Twitter
+            // Upload to Twitter - pass userId for token refresh
             const mediaId = await this.xClientService.uploadMedia(
               tokens.accessToken,
               base64Image,
               contentType,
+              userId,
             );
 
             if (mediaId) {
@@ -146,6 +147,7 @@ export class PostPublishProcessor {
         post.content,
         mediaIds.length > 0 ? mediaIds : undefined,
         locationAddress,
+        userId, // Pass userId for token refresh
       );
 
       // Get the tweet ID from the response

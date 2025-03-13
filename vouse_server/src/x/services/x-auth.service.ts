@@ -1,8 +1,9 @@
 // src/x/services/x-auth.service.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { UserService } from '../../users/services/user.service';
 import { XClientService } from './x-client.service';
 import { TokenEncryption } from '../../common/utils/token_encryption.util';
+import axios from 'axios';
 
 interface TwitterAuthTokens {
   accessToken: string | null;
@@ -32,6 +33,7 @@ export class XAuthService {
 
   constructor(
     private readonly userService: UserService,
+    @Inject(forwardRef(() => XClientService))
     private readonly xClientService: XClientService,
   ) {
     this.tokenEncryption = new TokenEncryption();
@@ -209,5 +211,94 @@ export class XAuthService {
     isConnected: boolean,
   ): Promise<any> {
     return this.userService.updateConnectionStatus(userId, { isConnected });
+  }
+
+  /**
+   * Refresh an expired access token using the refresh token
+   *
+   * @param userId Firebase user ID
+   * @returns A new access token or null if refresh failed
+   */
+  async refreshTokens(userId: string): Promise<string | null> {
+    try {
+      this.logger.log(`Attempting to refresh tokens for user ${userId}`);
+
+      // Get the current tokens
+      const tokens = await this.getUserTokens(userId);
+      if (!tokens || !tokens.refreshToken) {
+        this.logger.error(`No refresh token found for user ${userId}`);
+        return null;
+      }
+
+      // Twitter OAuth 2.0 token endpoint
+      const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
+
+      // Twitter client ID is required for OAuth 2.0
+      const clientId = process.env.TWITTER_API_KEY;
+      if (!clientId) {
+        this.logger.error(
+          'Twitter API key not configured in environment variables',
+        );
+        return null;
+      }
+
+      // Create form data for token refresh request
+      const formData = new URLSearchParams();
+      formData.append('refresh_token', tokens.refreshToken);
+      formData.append('grant_type', 'refresh_token');
+      formData.append('client_id', clientId);
+
+      // Make the request to refresh the token
+      const response = await axios.post(tokenUrl, formData.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      // Extract new tokens from response
+      const newAccessToken = response.data.access_token;
+      const newRefreshToken =
+        response.data.refresh_token || tokens.refreshToken;
+      const expiresIn = response.data.expires_in || 7200;
+
+      // Calculate token expiration time
+      const tokenExpiresAt = new Date();
+      tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
+
+      // Encrypt the new tokens
+      const encryptedAccessToken = this.tokenEncryption.encrypt(newAccessToken);
+      const encryptedRefreshToken =
+        this.tokenEncryption.encrypt(newRefreshToken);
+
+      // Update the tokens in the database
+      await this.userService.connectTwitter(userId, {
+        accessToken: encryptedAccessToken || '', // Convert null to empty string
+        refreshToken: encryptedRefreshToken || '', // Convert null to empty string
+        tokenExpiresAt: tokenExpiresAt.toISOString(),
+      });
+
+      this.logger.log(
+        `Successfully refreshed tokens for user ${userId}, expires at ${tokenExpiresAt.toISOString()}`,
+      );
+
+      // Return the new access token for immediate use
+      return newAccessToken;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to refresh tokens for user ${userId}: ${errorMessage}`,
+      );
+
+      // If the refresh token is invalid, update connection status
+      if (error.response?.status === 400 || error.response?.status === 401) {
+        this.logger.warn(
+          `Invalid refresh token for user ${userId}, disconnecting account`,
+        );
+        await this.updateConnectionStatus(userId, false);
+      }
+
+      return null;
+    }
   }
 }

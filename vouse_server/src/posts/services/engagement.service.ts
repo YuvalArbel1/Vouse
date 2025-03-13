@@ -185,19 +185,22 @@ export class EngagementService {
    *
    * @param postIdX Twitter post ID
    * @param accessToken User's Twitter access token
+   * @param userId User's Firebase ID (for token refresh)
    * @returns Updated engagement record
    */
   async collectFreshMetrics(
     postIdX: string,
     accessToken: string,
+    userId?: string,
   ): Promise<PostEngagement> {
     try {
       this.logger.log(`Collecting fresh metrics for tweet ${postIdX}`);
 
-      // Fetch metrics from Twitter API
+      // Fetch metrics from Twitter API - now passing userId for token refresh
       const response = await this.xClientService.getTweetMetrics(
         postIdX,
         accessToken,
+        userId,
       );
 
       // Log the full response for debugging
@@ -286,18 +289,24 @@ export class EngagementService {
    *
    * @param postIds Array of Twitter post IDs
    * @param accessToken User's Twitter access token
+   * @param userId User's Firebase ID (for token refresh)
    * @returns Object mapping post IDs to their engagement data
    */
   async batchCollectFreshMetrics(
     postIds: string[],
     accessToken: string,
+    userId?: string,
   ): Promise<{ [key: string]: PostEngagement }> {
     const results: { [key: string]: PostEngagement } = {};
 
     // Process each post ID in sequence to avoid rate limits
     for (const postIdX of postIds) {
       try {
-        const engagement = await this.collectFreshMetrics(postIdX, accessToken);
+        const engagement = await this.collectFreshMetrics(
+          postIdX,
+          accessToken,
+          userId,
+        );
         results[postIdX] = engagement;
       } catch (error) {
         this.logger.error(

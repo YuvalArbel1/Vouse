@@ -275,10 +275,11 @@ export class EngagementController {
         );
       }
 
-      // Force refresh metrics
+      // Force refresh metrics - pass userId for token refresh
       const engagement = await this.engagementService.collectFreshMetrics(
         postIdX,
         tokens.accessToken,
+        user.uid,
       );
 
       // Update cache
@@ -362,11 +363,12 @@ export class EngagementController {
         );
       }
 
-      // Force refresh metrics using the Twitter ID from the found engagement
+      // Force refresh metrics using the Twitter ID from the found engagement - pass userId for token refresh
       const updatedEngagement =
         await this.engagementService.collectFreshMetrics(
           engagement.postIdX,
           tokens.accessToken,
+          user.uid,
         );
 
       // Update both caches
@@ -457,9 +459,11 @@ export class EngagementController {
         i++
       ) {
         try {
+          // Pass userId for token refresh
           const updated = await this.engagementService.collectFreshMetrics(
             engagements[i].postIdX,
             tokens.accessToken,
+            user.uid,
           );
           refreshResults.push(updated);
 
@@ -547,10 +551,11 @@ export class EngagementController {
             user.uid,
           );
 
-          // Refresh metrics
+          // Refresh metrics - pass userId for token refresh
           const updated = await this.engagementService.collectFreshMetrics(
             postIdX,
             tokens.accessToken,
+            user.uid,
           );
 
           refreshResults.push({

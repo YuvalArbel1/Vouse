@@ -8,6 +8,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Define callback type for notification taps
+typedef NotificationCallback = void Function(Map<String, dynamic> payload);
+
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -17,11 +20,14 @@ class NotificationService {
   static const String _postPublishedChannelName = 'Post Published Notifications';
   static const String _postPublishedChannelDesc = 'Notifications for when your posts are published';
 
-  // Custom icon from drawable folder
-  static const String _notificationIcon = '@drawable/vouse_app_logo';
+  // Custom icon from drawable folder - use mipmap instead of drawable for app icon
+  static const String _notificationIcon = '@mipmap/vouse_app_logo';
 
   // Preferences key
   static const String _notificationEnabledKey = 'notification_status_enabled';
+
+  // Callback for notification taps
+  NotificationCallback? _onNotificationTap;
 
   // Singleton pattern
   static final NotificationService _singleton = NotificationService._internal();
@@ -30,6 +36,11 @@ class NotificationService {
 
   // Stream for notification clicks when app is in background/terminated
   Stream<RemoteMessage> get onNotificationOpen => FirebaseMessaging.onMessageOpenedApp;
+
+  // Set callback for notification taps
+  void setNotificationTapCallback(NotificationCallback callback) {
+    _onNotificationTap = callback;
+  }
 
   // Initialize notifications
   Future<void> initialize() async {
@@ -95,6 +106,11 @@ class NotificationService {
       if (message != null) {
         debugPrint('App opened from terminated state via notification');
         _handleRemoteMessage(message);
+
+        // Also handle tap action since app was opened from terminated state
+        if (_onNotificationTap != null) {
+          _onNotificationTap!(message.data);
+        }
       }
     });
 
@@ -114,6 +130,14 @@ class NotificationService {
       }
 
       _handleRemoteMessage(message);
+    });
+
+    // Listen for background message taps
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('Notification opened from background state');
+      if (_onNotificationTap != null) {
+        _onNotificationTap!(message.data);
+      }
     });
 
     // Set background message handler
@@ -208,6 +232,11 @@ class NotificationService {
   // Handle when a user taps on a notification
   void _handleNotificationTap(Map<String, dynamic> payload) {
     final notificationType = payload['type'];
+
+    // Call the callback if registered
+    if (_onNotificationTap != null) {
+      _onNotificationTap!(payload);
+    }
 
     switch (notificationType) {
       case 'post_published':

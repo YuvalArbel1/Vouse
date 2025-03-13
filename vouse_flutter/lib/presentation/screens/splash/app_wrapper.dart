@@ -7,7 +7,9 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 // Providers
 import '../../../core/util/ui_settings.dart';
+import '../../../data/notification/notification_service.dart';
 import '../../providers/auth/firebase/auth_state_provider.dart';
+import '../../providers/home/home_content_provider.dart';
 import '../../providers/local_db/database_provider.dart';
 import '../../providers/navigation/navigation_service.dart';
 import '../../providers/user/user_profile_provider.dart';
@@ -70,6 +72,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
         print('Initialization Error: $e');
       }
 
+      await _initializeNotifications();
+
       // In case of critical error, remove splash and show error
       if (mounted) {
         FlutterNativeSplash.remove();
@@ -81,6 +85,37 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           _isLoadingEngagement = false;
         });
       }
+    }
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      // Get the notification service
+      final notificationService = NotificationService();
+
+      // Initialize notifications
+      await notificationService.initialize();
+
+      // Set up callback for notification taps
+      notificationService.setNotificationTapCallback((payload) {
+        debugPrint('Notification tapped with payload: $payload');
+
+        // When notification is tapped, sync with server
+        if (mounted) {
+          // Trigger a server sync
+          ref.read(serverSyncProvider.notifier).synchronizePosts().then((_) {
+            // After sync, refresh home content
+            ref.read(homeContentProvider.notifier).refreshHomeContent();
+            if (mounted) {
+              // Navigate to home tab (index 0)
+              ref.read(navigationServiceProvider).navigateToMainTab(context, 0);
+            }
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error initializing notifications: $e');
+      // Don't block app startup if notifications fail
     }
   }
 
@@ -106,7 +141,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           await _handleAuthenticatedUser();
           break;
         case AuthState.initial:
-        // Unexpected state, default to sign-in
+          // Unexpected state, default to sign-in
           _navigateToSignIn();
           break;
       }
@@ -152,7 +187,9 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
 
           try {
             // Load engagement data for posts
-            await ref.read(postEngagementDataProvider.notifier).fetchEngagementData();
+            await ref
+                .read(postEngagementDataProvider.notifier)
+                .fetchEngagementData();
           } catch (e) {
             debugPrint('Engagement data loading error: $e');
             // Continue even if engagement loading fails
@@ -225,8 +262,11 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
   @override
   Widget build(BuildContext context) {
     // Show loading during critical initialization stages
-    if (_isInitializingDatabase || _isAuthenticating || _isCheckingProfile ||
-        _isSynchronizingServer || _isLoadingEngagement) {
+    if (_isInitializingDatabase ||
+        _isAuthenticating ||
+        _isCheckingProfile ||
+        _isSynchronizingServer ||
+        _isLoadingEngagement) {
       // Custom loading message based on current step
       String loadingMessage = "Preparing your Vouse experience...";
 

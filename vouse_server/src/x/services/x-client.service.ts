@@ -23,6 +23,8 @@ export class XClientService {
   private client: AxiosInstance;
   // Twitter API v2 base URL
   private readonly apiBaseUrl = 'https://api.twitter.com/2';
+  // Twitter API v1.1 base URL (for endpoints not available in v2)
+  private readonly apiV1BaseUrl = 'https://api.twitter.com/1.1';
   // Twitter media upload URL (still v1.1)
   private readonly mediaUploadUrl =
     'https://upload.twitter.com/1.1/media/upload.json';
@@ -141,21 +143,43 @@ export class XClientService {
 
   /**
    * Post a tweet on behalf of a user using Twitter API v2 POST /tweets endpoint
+   * Supports location data by appending it to the tweet text
    *
    * Reference: https://developer.twitter.com/en/docs/twitter-api/tweets/manage-tweets/api-reference/post-tweets
    *
    * @param accessToken User's OAuth access token
    * @param text The tweet text content
    * @param mediaIds Optional array of media IDs to attach to the tweet
+   * @param locationAddress Optional location address to append to the tweet
    * @returns The API response with tweet data
    */
   async postTweet(
     accessToken: string,
     text: string,
     mediaIds?: string[],
+    locationAddress?: string | null,
   ): Promise<any> {
+    let tweetText = text;
     const endpoint = '/tweets';
-    const data: any = { text };
+
+    // Add location to the tweet text if provided
+    if (locationAddress) {
+      const locationText = `\n\n📍 ${locationAddress}`;
+      // Check if adding location will exceed Twitter's character limit
+      if (text.length + locationText.length <= 280) {
+        tweetText = text + locationText;
+        this.logger.log(
+          `Added location text to tweet on new line: ${locationText}`,
+        );
+      } else {
+        this.logger.warn(
+          `Location text would exceed character limit, skipping`,
+        );
+      }
+    }
+
+    const data: any = { text: tweetText };
+
     // Add media if present
     if (mediaIds && mediaIds.length > 0) {
       data.media = { media_ids: mediaIds };

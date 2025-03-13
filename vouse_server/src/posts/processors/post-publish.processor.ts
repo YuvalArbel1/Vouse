@@ -13,7 +13,13 @@ import { NotificationService } from '../../notifications/services/notification.s
 
 /**
  * Processor for handling post publishing queue jobs
- * Now only initializes engagement tracking without collecting initial metrics
+ *
+ * This processor:
+ * - Manages the tweet publishing workflow
+ * - Handles media uploads for images
+ * - Supports location data in tweets as text
+ * - Creates engagement tracking for published posts
+ * - Manages error handling and retry logic
  */
 @Processor('post-publish')
 export class PostPublishProcessor {
@@ -24,7 +30,7 @@ export class PostPublishProcessor {
     private readonly engagementService: EngagementService,
     private readonly xClientService: XClientService,
     private readonly xAuthService: XAuthService,
-    private readonly notificationService: NotificationService, // Add this
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -125,11 +131,21 @@ export class PostPublishProcessor {
         }
       }
 
-      // Publish the post to Twitter
+      // Check for location data and log it if present
+      let locationAddress = null;
+      if (post.locationLat && post.locationLng && post.locationAddress) {
+        this.logger.log(
+          `Post has location data: ${post.locationLat},${post.locationLng} (${post.locationAddress})`,
+        );
+        locationAddress = post.locationAddress;
+      }
+
+      // Publish the post to Twitter with location as text if available
       const result = await this.xClientService.postTweet(
         tokens.accessToken,
         post.content,
         mediaIds.length > 0 ? mediaIds : undefined,
+        locationAddress,
       );
 
       // Get the tweet ID from the response

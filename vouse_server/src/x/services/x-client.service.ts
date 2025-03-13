@@ -147,30 +147,18 @@ export class XClientService {
    * @param accessToken User's OAuth access token
    * @param text The tweet text content
    * @param mediaIds Optional array of media IDs to attach to the tweet
-   * @param location
    * @returns The API response with tweet data
    */
   async postTweet(
     accessToken: string,
     text: string,
     mediaIds?: string[],
-    location?: { lat: number; lng: number },
   ): Promise<any> {
     const endpoint = '/tweets';
     const data: any = { text };
     // Add media if present
     if (mediaIds && mediaIds.length > 0) {
       data.media = { media_ids: mediaIds };
-    }
-
-    // Add location coordinates
-    if (location && location.lat && location.lng) {
-      data.geo = {
-        coordinates: {
-          type: 'Point',
-          coordinates: [location.lng, location.lat], // Note: Longitude first!
-        },
-      };
     }
 
     return this.makeAuthenticatedRequest(accessToken, 'post', endpoint, data);

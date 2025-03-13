@@ -130,13 +130,6 @@ export class PostPublishProcessor {
         tokens.accessToken,
         post.content,
         mediaIds.length > 0 ? mediaIds : undefined,
-        // Pass location if both lat and lng are available
-        post.locationLat && post.locationLng
-          ? {
-              lat: post.locationLat,
-              lng: post.locationLng,
-            }
-          : undefined,
       );
 
       // Get the tweet ID from the response

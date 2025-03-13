@@ -29,13 +29,19 @@ class NotificationService {
   // Callback for notification taps
   NotificationCallback? _onNotificationTap;
 
+  // Set to track processed message IDs
+  final Set<String> _processedMessageIds = {};
+
   // Singleton pattern
   static final NotificationService _singleton = NotificationService._internal();
+
   factory NotificationService() => _singleton;
+
   NotificationService._internal();
 
   // Stream for notification clicks when app is in background/terminated
-  Stream<RemoteMessage> get onNotificationOpen => FirebaseMessaging.onMessageOpenedApp;
+  Stream<RemoteMessage> get onNotificationOpen =>
+      FirebaseMessaging.onMessageOpenedApp;
 
   // Set callback for notification taps
   void setNotificationTapCallback(NotificationCallback callback) {
@@ -95,14 +101,16 @@ class NotificationService {
     await _createNotificationChannels();
 
     // Set foreground notification presentation options
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
       sound: true,
     );
 
     // Handle background/terminated notifications
-    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+    FirebaseMessaging.instance.getInitialMessage().then((
+        RemoteMessage? message) {
       if (message != null) {
         debugPrint('App opened from terminated state via notification');
         _handleRemoteMessage(message);
@@ -119,8 +127,26 @@ class NotificationService {
       debugPrint('Got a message in foreground!');
       debugPrint('Message data: ${message.data}');
 
+      // Check if this message has already been processed
+      final messageId = message.messageId;
+      if (messageId != null && _processedMessageIds.contains(messageId)) {
+        debugPrint('Duplicate message detected, ignoring');
+        return;
+      }
+
+      // Add to processed messages set
+      if (messageId != null) {
+        _processedMessageIds.add(messageId);
+        // Limit the size of the set to avoid memory issues
+        if (_processedMessageIds.length > 100) {
+          _processedMessageIds.remove(_processedMessageIds.first);
+        }
+      }
+
       if (message.notification != null) {
-        debugPrint('Message notification: ${message.notification!.title} - ${message.notification!.body}');
+        debugPrint(
+            'Message notification: ${message.notification!.title} - ${message
+                .notification!.body}');
         // For foreground, we need to manually show the notification
         _showLocalNotification(
           title: message.notification!.title ?? 'Vouse',
@@ -164,7 +190,8 @@ class NotificationService {
       );
 
       await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(postPublishedChannel);
     }
   }
@@ -181,6 +208,9 @@ class NotificationService {
       debugPrint('Notifications are disabled, not showing notification');
       return;
     }
+
+    // Generate a consistent notification ID for deduplication
+    final notificationId = _generateUniqueNotificationId(payload);
 
     final AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
       _postPublishedChannelId,
@@ -205,14 +235,28 @@ class NotificationService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000), // unique notification id
+      notificationId, // Use consistent ID instead of random timestamp
       title,
       body,
       platformChannelSpecifics,
       payload: jsonEncode(payload),
     );
 
-    debugPrint('Local notification shown: $title');
+    debugPrint('Local notification shown: $title, ID: $notificationId');
+  }
+
+  // Generate a consistent notification ID based on payload content
+  int _generateUniqueNotificationId(Map<String, dynamic> payload) {
+    // Use postIdLocal or another unique identifier if available
+    final postIdLocal = payload['postIdLocal'];
+    if (postIdLocal != null) {
+      return postIdLocal.hashCode;
+    }
+
+    // Fallback to a hashcode of the entire payload
+    return payload
+        .toString()
+        .hashCode;
   }
 
   // Handle incoming message data/notification
@@ -240,7 +284,8 @@ class NotificationService {
 
     switch (notificationType) {
       case 'post_published':
-        debugPrint('User tapped on post published notification: ${payload['postIdLocal']}');
+        debugPrint(
+            'User tapped on post published notification: ${payload['postIdLocal']}');
         break;
       default:
         debugPrint('Tapped unknown notification type: $notificationType');
@@ -267,7 +312,8 @@ class NotificationService {
   Future<void> setNotificationsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notificationEnabledKey, enabled);
-    debugPrint('Notifications ${enabled ? 'enabled' : 'disabled'} in preferences');
+    debugPrint(
+        'Notifications ${enabled ? 'enabled' : 'disabled'} in preferences');
   }
 }
 

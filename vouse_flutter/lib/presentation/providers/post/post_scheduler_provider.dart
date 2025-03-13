@@ -73,8 +73,8 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
     try {
       state = state.copyWith(state: SchedulingState.scheduling);
 
-      // Post with updated cloud URLs (if any)
-      PostEntity updatedPost = post;
+      // Create a mutable copy of the post's cloud URLs
+      List<String> updatedCloudUrls = List.from(post.cloudImageUrls);
 
       // When updating, check if we need to delete old images
       if (isUpdating) {
@@ -100,9 +100,17 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
           if (imagesToDelete.isNotEmpty) {
             final imagesRepo = _ref.read(imagesRepositoryProvider);
             await imagesRepo.deleteImagesFromFirebase(imagesToDelete);
+
+            // Remove deleted URLs from our updated list
+            updatedCloudUrls = updatedCloudUrls
+                .where((url) => !imagesToDelete.contains(url))
+                .toList();
           }
         }
       }
+
+      // Create a new post with the updated cloud URLs
+      PostEntity updatedPost = post.copyWith(cloudImageUrls: updatedCloudUrls);
 
       // Check if there are local images that need uploading
       if (post.localImagePaths.isNotEmpty) {
@@ -112,7 +120,7 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
 
         final params = SavePostWithUploadParams(
           userUid: userId,
-          postEntity: post,
+          postEntity: updatedPost,
           localImageFiles:
               post.localImagePaths.map((path) => File(path)).toList(),
         );
@@ -137,7 +145,7 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
       } else if (saveLocally) {
         // No images to upload, just save locally
         await _savePostUseCase.call(
-          params: SavePostParams(post, userId),
+          params: SavePostParams(updatedPost, userId),
         );
       }
 
@@ -151,14 +159,13 @@ class PostSchedulerNotifier extends StateNotifier<PostSchedulerState> {
                   params: GetServerPostByLocalIdParams(post.postIdLocal),
                 );
 
-        // Fix the DioException? error by proper type handling
         if (serverPostResult is DataSuccess && serverPostResult.data != null) {
           // Update the post on the server
           final updateResult = await _ref
               .read(updateServerPostUseCaseProvider)
               .call(
                 params: UpdateServerPostParams(
-                  serverPostResult.data!.postIdLocal, // This is the server's ID
+                  serverPostResult.data!.postIdLocal,
                   updatedPost,
                 ),
               );

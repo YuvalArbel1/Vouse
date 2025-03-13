@@ -27,9 +27,8 @@ import '../../../domain/usecases/server/get_server_post_by_local_id_usecase.dart
 import '../../../domain/usecases/server/refresh_batch_engagements_usecase.dart';
 import '../../../domain/usecases/server/update_server_post_usecase.dart';
 
-
 final serverUrlProvider = Provider<String>((ref) {
-  return 'https://88a9-2a0d-6fc0-eb1-2400-7dae-fe50-e75d-45f2.ngrok-free.app';
+  return 'https://eec2-2a0d-6fc0-eb1-2400-51d-63e3-e1b8-750f.ngrok-free.app';
 });
 
 /// Dio provider for server API client with auth token interceptor

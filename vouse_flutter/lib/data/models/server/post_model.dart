@@ -15,12 +15,18 @@ enum ServerPostStatus {
 extension ServerPostStatusExt on String {
   ServerPostStatus toServerPostStatus() {
     switch (this) {
-      case 'draft': return ServerPostStatus.draft;
-      case 'scheduled': return ServerPostStatus.scheduled;
-      case 'publishing': return ServerPostStatus.publishing;
-      case 'published': return ServerPostStatus.published;
-      case 'failed': return ServerPostStatus.failed;
-      default: throw Exception('Unknown post status: $this');
+      case 'draft':
+        return ServerPostStatus.draft;
+      case 'scheduled':
+        return ServerPostStatus.scheduled;
+      case 'publishing':
+        return ServerPostStatus.publishing;
+      case 'published':
+        return ServerPostStatus.published;
+      case 'failed':
+        return ServerPostStatus.failed;
+      default:
+        throw Exception('Unknown post status: $this');
     }
   }
 }
@@ -29,11 +35,16 @@ extension ServerPostStatusExt on String {
 extension ServerPostStatusValue on ServerPostStatus {
   String toValue() {
     switch (this) {
-      case ServerPostStatus.draft: return 'draft';
-      case ServerPostStatus.scheduled: return 'scheduled';
-      case ServerPostStatus.publishing: return 'publishing';
-      case ServerPostStatus.published: return 'published';
-      case ServerPostStatus.failed: return 'failed';
+      case ServerPostStatus.draft:
+        return 'draft';
+      case ServerPostStatus.scheduled:
+        return 'scheduled';
+      case ServerPostStatus.publishing:
+        return 'publishing';
+      case ServerPostStatus.published:
+        return 'published';
+      case ServerPostStatus.failed:
+        return 'failed';
     }
   }
 }
@@ -118,7 +129,7 @@ class ServerPostModel {
     }
     if (status != null) data['status'] = status!.toValue();
     if (visibility != null) data['visibility'] = visibility;
-    if (cloudImageUrls.isNotEmpty) data['cloudImageUrls'] = cloudImageUrls;
+    data['cloudImageUrls'] = cloudImageUrls;
     if (locationLat != null) data['locationLat'] = locationLat;
     if (locationLng != null) data['locationLng'] = locationLng;
     if (locationAddress != null) data['locationAddress'] = locationAddress;
@@ -153,7 +164,8 @@ class ServerPostModel {
       updatedAt: publishedAt,
       scheduledAt: scheduledAt,
       visibility: visibility,
-      localImagePaths: const [], // Server doesn't store local paths
+      localImagePaths: const [],
+      // Server doesn't store local paths
       cloudImageUrls: cloudImageUrls,
       locationLat: locationLat,
       locationLng: locationLng,

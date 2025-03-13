@@ -8,6 +8,8 @@ import {
   IsEnum,
   MaxLength,
   ValidateIf,
+  Min,
+  Max,
 } from 'class-validator';
 import { PostStatus } from '../entities/post.entity';
 import { Transform } from 'class-transformer';
@@ -144,6 +146,8 @@ export class UpdatePostDto {
   @Transform(({ value }) =>
     typeof value === 'string' ? parseFloat(value) : value,
   )
+  @Min(-90, { message: 'Latitude must be between -90 and 90 degrees' })
+  @Max(90, { message: 'Latitude must be between -90 and 90 degrees' })
   locationLat?: number;
 
   /**
@@ -154,6 +158,8 @@ export class UpdatePostDto {
   @Transform(({ value }) =>
     typeof value === 'string' ? parseFloat(value) : value,
   )
+  @Min(-180, { message: 'Longitude must be between -180 and 180 degrees' })
+  @Max(180, { message: 'Longitude must be between -180 and 180 degrees' })
   @ValidateIf((o) => o.locationLat !== undefined)
   locationLng?: number;
 

@@ -471,7 +471,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
 
         // Show success message
         final BuildContext currentContext = context;
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(currentContext).showSnackBar(
             SnackBar(
               content: Row(
@@ -799,7 +799,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen>
             icon: Icon(Icons.arrow_back, color: context.iconColor),
             onPressed: () async {
               final shouldPop = await _onWillPop();
-              if (shouldPop && mounted) {
+              if (shouldPop && context.mounted) {
                 final BuildContext currentContext = context;
                 ref
                     .read(navigationServiceProvider)

@@ -77,13 +77,14 @@ class _NotificationSettingsSectionState
         await ref
             .read(notificationStatusProvider.notifier)
             .disableNotifications(userId);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Notifications disabled'),
-            backgroundColor: Colors.grey,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notifications disabled'),
+              backgroundColor: Colors.grey,
+            ),
+          );
+        }
       } else {
         // Enable notifications
         await notificationService.initialize();
@@ -105,12 +106,14 @@ class _NotificationSettingsSectionState
       }
     } catch (e) {
       debugPrint('Error toggling notifications: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

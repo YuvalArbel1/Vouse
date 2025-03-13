@@ -290,7 +290,7 @@ class _SchedulePostBottomSheetState
           cloudImageUrls = [];
         }
       } else if (widget.editingDraft != null) {
-        cloudImageUrls = widget.editingDraft!.cloudImageUrls ?? [];
+        cloudImageUrls = widget.editingDraft!.cloudImageUrls;
       }
 
       // Create post entity, using existing ID if editing

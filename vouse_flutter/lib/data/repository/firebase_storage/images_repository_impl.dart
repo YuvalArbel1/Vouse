@@ -1,6 +1,8 @@
 // lib/data/repository/firebase_storage/images_repository_impl.dart
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+
 import '../../../domain/repository/firebase_storage/images_repository.dart';
 import '../../data_sources/remote/firebase_storage/images_remote_data_source.dart';
 
@@ -41,7 +43,9 @@ class ImagesRepositoryImpl implements ImagesRepository {
         await _dataSource.deleteImageByUrl(url);
       } catch (e) {
         // Log error but continue deleting other images
-        print('Error deleting image: $e');
+        if (kDebugMode) {
+          print('Error deleting image: $e');
+        }
       }
     }
   }

@@ -461,7 +461,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// Builds the recent posts section with Consumer for reactive updates
   Widget _buildRecentPostsSection() {
     return SizedBox(
-      height: 350,
+      height: 370,
       child: Consumer(
         builder: (context, ref, child) {
           final recentPosts = ref
@@ -497,7 +497,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// Builds the upcoming posts section with Consumer for reactive updates
   Widget _buildUpcomingPostsSection() {
     return SizedBox(
-      height: 350,
+      height: 370,
       child: Consumer(
         builder: (context, ref, child) {
           final upcomingPosts = ref.watch(

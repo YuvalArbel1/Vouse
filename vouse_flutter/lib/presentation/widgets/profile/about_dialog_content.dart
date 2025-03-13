@@ -149,9 +149,8 @@ Our mission is to help you share your voice effectively in the noisy world of so
   /// Returns the contact information text
   String _getAboutVouseContact() {
     return '''
-Email: support@vouse.app
-Website: www.vouse.app
-Twitter: @vouseapp
+Email: vouse1studio@gmail.com
+Twitter: @Vouse1Studio
 
 We value your feedback and are constantly working to improve Vouse. Let us know how we can make it better for you!
 ''';

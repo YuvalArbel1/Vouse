@@ -211,7 +211,7 @@ export class EngagementService {
         throw new Error(`No data in Twitter response for tweet ${postIdX}`);
       }
 
-      // Extract metrics from the response - handle all possible sources
+      // Initialize metrics with default values
       let likes = 0,
         retweets = 0,
         quotes = 0,
@@ -227,27 +227,47 @@ export class EngagementService {
         retweets = metrics.retweet_count || 0;
         quotes = metrics.quote_count || 0;
         replies = metrics.reply_count || 0;
+        impressions = metrics.impression_count || 0;
       }
 
-      // Try to get non-public metrics if available
+      // Try to get non-public metrics and use if higher
       if (response.data.non_public_metrics) {
         const metrics = response.data.non_public_metrics;
         this.logger.log(`Non-public metrics: ${JSON.stringify(metrics)}`);
 
-        impressions = metrics.impression_count || 0;
+        // Use the higher value for impressions
+        if (
+          metrics.impression_count &&
+          metrics.impression_count > impressions
+        ) {
+          impressions = metrics.impression_count;
+        }
       }
 
-      // Also try organic metrics
+      // Also try organic metrics and use if higher
       if (response.data.organic_metrics) {
         const metrics = response.data.organic_metrics;
         this.logger.log(`Organic metrics: ${JSON.stringify(metrics)}`);
 
-        // Only use these if we don't have values yet
-        if (likes === 0) likes = metrics.like_count || 0;
-        if (retweets === 0) retweets = metrics.retweet_count || 0;
-        if (quotes === 0) quotes = metrics.quote_count || 0;
-        if (replies === 0) replies = metrics.reply_count || 0;
-        if (impressions === 0) impressions = metrics.impression_count || 0;
+        // Use higher values for all metrics
+        if (metrics.like_count && metrics.like_count > likes) {
+          likes = metrics.like_count;
+        }
+        if (metrics.retweet_count && metrics.retweet_count > retweets) {
+          retweets = metrics.retweet_count;
+        }
+        if (metrics.quote_count && metrics.quote_count > quotes) {
+          quotes = metrics.quote_count;
+        }
+        if (metrics.reply_count && metrics.reply_count > replies) {
+          replies = metrics.reply_count;
+        }
+        if (
+          metrics.impression_count &&
+          metrics.impression_count > impressions
+        ) {
+          impressions = metrics.impression_count;
+        }
       }
 
       // Log the metrics we're about to save
@@ -281,62 +301,5 @@ export class EngagementService {
       );
       throw error;
     }
-  }
-
-  /**
-   * Collect fresh metrics for multiple posts at once
-   * This helps batch process metrics collection to minimize API calls
-   *
-   * @param postIds Array of Twitter post IDs
-   * @param accessToken User's Twitter access token
-   * @param userId User's Firebase ID (for token refresh)
-   * @returns Object mapping post IDs to their engagement data
-   */
-  async batchCollectFreshMetrics(
-    postIds: string[],
-    accessToken: string,
-    userId?: string,
-  ): Promise<{ [key: string]: PostEngagement }> {
-    const results: { [key: string]: PostEngagement } = {};
-
-    // Process each post ID in sequence to avoid rate limits
-    for (const postIdX of postIds) {
-      try {
-        const engagement = await this.collectFreshMetrics(
-          postIdX,
-          accessToken,
-          userId,
-        );
-        results[postIdX] = engagement;
-      } catch (error) {
-        this.logger.error(
-          `Failed to collect metrics for post ${postIdX}: ${error.message}`,
-          error.stack,
-        );
-        // Continue with next post
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Get all Twitter IDs for a user's published posts
-   * Useful for bulk operations on all of a user's posts
-   *
-   * @param userId User's Firebase ID
-   * @returns Array of Twitter post IDs
-   */
-  async getPublishedPostIds(userId: string): Promise<string[]> {
-    const posts = await this.postRepository.find({
-      where: {
-        userId,
-        status: PostStatus.PUBLISHED,
-        postIdX: Not(IsNull()),
-      },
-      select: ['postIdX'],
-    });
-
-    return posts.map((post) => post.postIdX).filter((id) => id !== null);
   }
 }

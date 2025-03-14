@@ -22,7 +22,6 @@ import '../../../providers/engagement/post_engagement_provider.dart';
 import '../../../providers/server/server_providers.dart';
 
 /// A post card that:
-/// - If it's a draft, shows a "Draft" green button at the bottom.
 /// - If scheduled, shows a green button with the scheduled time.
 /// - If posted, shows normal posted time + action icons.
 ///
@@ -33,7 +32,7 @@ class PostCard extends ConsumerWidget {
 
   /// Standard dimensions for consistent card layout
   static const double cardWidth = 320;
-  static const double cardHeight = 350;
+  static const double cardHeight = 370;
 
   /// Creates a [PostCard] for displaying a [post].
   const PostCard({super.key, required this.post});

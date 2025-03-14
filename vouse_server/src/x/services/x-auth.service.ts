@@ -233,25 +233,31 @@ export class XAuthService {
       // Twitter OAuth 2.0 token endpoint
       const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
 
-      // Twitter client ID is required for OAuth 2.0
+      // Get client credentials - BOTH are required for token refresh
       const clientId = process.env.TWITTER_API_KEY;
-      if (!clientId) {
-        this.logger.error(
-          'Twitter API key not configured in environment variables',
-        );
+      const clientSecret = process.env.TWITTER_API_SECRET;
+
+      if (!clientId || !clientSecret) {
+        this.logger.error('Twitter API credentials not properly configured');
         return null;
       }
+
+      // Create Basic Auth header for client authentication
+      // This is required by Twitter for token refresh
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
+        'base64',
+      );
 
       // Create form data for token refresh request
       const formData = new URLSearchParams();
       formData.append('refresh_token', tokens.refreshToken);
       formData.append('grant_type', 'refresh_token');
-      formData.append('client_id', clientId);
 
-      // Make the request to refresh the token
+      // Make the request to refresh the token with proper authentication
       const response = await axios.post(tokenUrl, formData.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${basicAuth}`,
         },
       });
 

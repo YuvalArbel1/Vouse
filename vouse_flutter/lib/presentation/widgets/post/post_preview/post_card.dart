@@ -32,7 +32,7 @@ class PostCard extends ConsumerWidget {
 
   /// Standard dimensions for consistent card layout
   static const double cardWidth = 320;
-  static const double cardHeight = 370;
+  static const double cardHeight = 390;
 
   /// Creates a [PostCard] for displaying a [post].
   const PostCard({super.key, required this.post});
@@ -418,7 +418,7 @@ class PostCard extends ConsumerWidget {
   //--------------------------------------------------------------------------
   /// Builds a fixed-height container for post content, showing up to 6 lines.
   Widget _buildFixedHeightText(BuildContext context) {
-    const double lineHeightPx = 18.0;
+    const double lineHeightPx = 16.0;
     const double totalHeightPx = lineHeightPx * 6;
 
     return Container(

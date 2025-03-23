@@ -5,53 +5,54 @@ import {
   PrimaryColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 /**
- * User entity for storing user data and Twitter tokens
+ * User entity for storing user information
+ * Includes Twitter/X integration data
  */
 @Entity('users')
 export class User {
   /**
-   * User ID from Firebase Authentication
-   * This serves as our primary key
+   * Primary key - Firebase user ID
    */
-  @PrimaryColumn()
+  @PrimaryColumn({ name: 'user_id', type: 'text' })
   userId: string;
 
   /**
-   * Encrypted Twitter OAuth access token
+   * X/Twitter access token - stored as encrypted text
    */
-  @Column({ nullable: true, type: 'varchar' })
-  accessToken: string | null;
+  @Column({ name: 'access_token', type: 'text', nullable: true })
+  accessToken: string | null = null;
 
   /**
-   * Encrypted Twitter OAuth refresh token
+   * X/Twitter refresh token - stored as encrypted text
    */
-  @Column({ nullable: true, type: 'varchar' })
-  refreshToken: string | null;
+  @Column({ name: 'refresh_token', type: 'text', nullable: true })
+  refreshToken: string | null = null;
 
   /**
-   * Timestamp when the access token expires
+   * X/Twitter token expiration date
    */
-  @Column({ nullable: true, type: 'timestamp' })
-  tokenExpiresAt: Date | null;
+  @Column({ name: 'token_expires_at', type: 'timestamp', nullable: true })
+  tokenExpiresAt: Date | null = null;
 
   /**
-   * Flag indicating if the user has connected their Twitter account
+   * Whether the user is connected to X/Twitter
    */
-  @Column({ default: false })
-  isConnected: boolean;
+  @Column({ name: 'is_connected', type: 'boolean', default: false })
+  isConnected: boolean = false;
 
   /**
-   * When the user record was created
+   * Creation timestamp
    */
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
 
   /**
-   * When the user record was last updated
+   * Last update timestamp
    */
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 }

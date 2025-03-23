@@ -5,9 +5,11 @@ import { XAuthService } from './services/x-auth.service';
 import { XAuthController } from './controllers/x-auth.controller';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
+import { CommonModule } from '../common/common.module';
 
 @Module({
-  imports: [AuthModule, UsersModule],
+  /* This module provides services for its domain */
+  imports: [AuthModule, UsersModule, CommonModule],
   providers: [XClientService, XAuthService],
   controllers: [XAuthController],
   exports: [XClientService, XAuthService],

@@ -17,7 +17,6 @@ interface TwitterAuthTokens {
 @Injectable()
 export class XAuthService {
   private readonly logger = new Logger(XAuthService.name);
-  private readonly tokenEncryption: TokenEncryption;
 
   // Add a cache for verified users to reduce API calls
   private readonly verifiedTokensCache: Map<
@@ -35,9 +34,8 @@ export class XAuthService {
     private readonly userService: UserService,
     @Inject(forwardRef(() => XClientService))
     private readonly xClientService: XClientService,
-  ) {
-    this.tokenEncryption = new TokenEncryption();
-  }
+    private readonly tokenEncryption: TokenEncryption,
+  ) {}
 
   /**
    * Connect a Twitter account by storing encrypted tokens

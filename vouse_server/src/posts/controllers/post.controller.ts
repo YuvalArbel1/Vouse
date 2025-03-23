@@ -29,6 +29,52 @@ export class PostController {
   ) {}
 
   /**
+   * Force immediate publishing of a scheduled post
+   * This is useful when the queue system isn't working properly
+   */
+  @Post('immediate/:postId')
+  @UseGuards(FirebaseAuthGuard)
+  async publishImmediately(
+    @Param('postId') postId: string,
+    @CurrentUser() user: DecodedIdToken,
+  ) {
+    try {
+      // Check if user has connected their Twitter account
+      const isConnected = await this.xAuthService.isAccountConnected(user.uid);
+      if (!isConnected) {
+        throw new HttpException(
+          'Twitter account not connected',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Attempt to publish immediately
+      const post = await this.postService.publishImmediately(postId, user.uid);
+      
+      return {
+        success: true,
+        data: post,
+        message: 'Post publishing initiated. Check status shortly.'
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const status =
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.BAD_REQUEST;
+
+      throw new HttpException(
+        {
+          success: false,
+          message: errorMessage || 'Failed to publish post',
+        },
+        status,
+      );
+    }
+  }
+
+  /**
    * Create a new post
    *
    * Note: This endpoint only handles scheduled posts (including immediate posts).

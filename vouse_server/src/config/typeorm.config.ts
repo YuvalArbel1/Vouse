@@ -3,7 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 import { User } from '../users/entities/user.entity';
 import { Post } from '../posts/entities/post.entity';
-import { PostEngagement } from '../posts/entities/engagement.entity';
+import { Engagement } from '../posts/entities/engagement.entity';
 import { DeviceToken } from '../notifications/entities/device-token.entity';
 
 dotenv.config();
@@ -15,10 +15,10 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
   url:
     process.env.DATABASE_URL ||
-    'postgres://neondb_owner:npg_A7F3RgEXxDYT@ep-super-queen-a22rxr8q-pooler.eu-central-1.aws.neon.tech:5432/vouse',
-  entities: [User, Post, PostEngagement, DeviceToken],
-  synchronize: true, // Be careful with this in production!
-  dropSchema: false, // Set to true only if you want to completely reset your database
+    'postgresql://neondb_owner:npg_A7F3RgEXxDYT@ep-super-queen-a22rxr8q-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require',
+  entities: [User, Post, Engagement, DeviceToken],
+  synchronize: true, // Enable to automatically create database tables if needed
+  dropSchema: false, // Set back to false to preserve data between restarts
   ssl: {
     rejectUnauthorized: false,
   },

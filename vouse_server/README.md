@@ -1,98 +1,122 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Vouse Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS backend server for managing social media posts, metrics collection, and user authentication.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Project Architecture
 
-## Description
+The application is structured as a modular NestJS application with the following components:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+src/
+├── auth/                  # Firebase authentication
+├── common/                # Shared utilities and middleware
+├── config/                # App configuration
+├── notifications/         # Push notifications service
+├── posts/                 # Post management and metrics
+├── users/                 # User profile management
+└── x/                     # Twitter API integration
 ```
 
-## Compile and run the project
+### Core Modules
 
-```bash
-# development
-$ npm run start
+- **Auth Module**: Firebase authentication integration with guards and decorators
+- **Common Module**: Shared utilities, middleware, and types
+- **Users Module**: User profile management and connections
+- **Posts Module**: Social media post scheduling and metrics tracking
+- **Notifications Module**: Push notification service
+- **X Module**: Twitter API v2 integration for posting and metrics collection
 
-# watch mode
-$ npm run start:dev
+## Getting Started
 
-# production mode
-$ npm run start:prod
-```
+### Prerequisites
 
-## Run tests
+- Node.js (v16+)
+- PostgreSQL
+- Redis (for queues and caching)
+- Firebase project (for authentication)
 
-```bash
-# unit tests
-$ npm run test
+### Installation
 
-# e2e tests
-$ npm run test:e2e
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd vouse-server
+   ```
 
-# test coverage
-$ npm run test:cov
-```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Deployment
+3. Configure environment variables in the existing `.env` file
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+5. Start the development server:
+   ```bash
+   npm run start:dev
+   ```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Recent Improvements
 
-```bash
-$ npm install -g mau
-$ mau deploy
-```
+### Type Safety Enhancements
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- Enabled TypeScript strict mode with proper type checking
+- Added comprehensive type definitions for API responses
+- Implemented type guards for safe type checking
+- Enhanced error handling with proper typing
 
-## Resources
+### Security Improvements
 
-Check out a few resources that may come in handy when working with NestJS:
+- Updated Firebase authentication with proper environment validation
+- Enhanced token validation with claims verification
+- Added AES-256-GCM encryption for sensitive data
+- Implemented secure request logging with PII redaction
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Architecture Refinements
 
-## Support
+- Created a Common module for shared functionality
+- Improved middleware organization
+- Enhanced error handling patterns
+- Added graceful shutdown handling
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Code Quality Tools
 
-## Stay in touch
+- **ESLint**: Enhanced typescript-eslint configuration
+- **TypeScript**: Strict mode enabled
+- **Helper Scripts**: Added utilities for type improvement
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Development Scripts
+
+- `npm run start:dev`: Start development server with hot-reload
+- `npm run lint`: Run ESLint checks
+- `npm run test`: Run Jest tests
+- `./scripts/update-typings.sh`: Identify and fix typing issues
+
+## Ongoing Improvements
+
+The following areas require further attention:
+
+1. **Type Safety**: Replace remaining `any` types with proper interfaces
+2. **API Documentation**: Add OpenAPI/Swagger documentation
+3. **Error Handling**: Implement global exception filters
+4. **Testing**: Increase unit and integration test coverage
+5. **Performance**: Add response caching where appropriate
+
+## Troubleshooting
+
+If you encounter TypeScript errors after upgrading to strict mode:
+
+1. Run the update-typings script:
+   ```bash
+   ./scripts/update-typings.sh
+   ```
+
+2. Address the most common issues:
+   - Replace `any` types with specific interfaces from `common/types`
+   - Add proper return types to all controller methods
+   - Fix template literal expressions with proper type assertions
+   - Use `asApiError` utility for error handling
+   - Fix promise handling with proper async/await or void operator
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED

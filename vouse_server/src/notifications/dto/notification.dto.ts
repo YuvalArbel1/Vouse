@@ -1,14 +1,21 @@
 // src/notifications/dto/notification.dto.ts
+import { IsNotEmpty, IsString } from 'class-validator';
 
-import { IsString, IsNotEmpty, IsIn } from 'class-validator';
-
+/**
+ * DTO for registering a device token for push notifications
+ */
 export class RegisterDeviceTokenDto {
-  @IsString()
+  /**
+   * Device token for push notifications
+   */
   @IsNotEmpty()
-  token: string;
+  @IsString()
+  token: string = '';
 
-  @IsString()
+  /**
+   * Platform (iOS, Android, web)
+   */
   @IsNotEmpty()
-  @IsIn(['ios', 'android', 'web'])
-  platform: string;
+  @IsString()
+  platform: string = '';
 }

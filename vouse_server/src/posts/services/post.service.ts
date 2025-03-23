@@ -19,41 +19,115 @@ export class PostService {
 
   constructor(
     @InjectRepository(Post)
-    private postRepository: Repository<Post>,
+    private readonly postRepository: Repository<Post>,
     @InjectQueue('post-publish')
-    private postPublishQueue: Queue,
+    private readonly postPublishQueue: Queue,
   ) {}
 
   /**
    * Create a new post for a user
+   * 
+   * By default, posts are scheduled according to their scheduledAt date.
+   * Setting immediatePublish to true will bypass the queue and publish immediately.
    */
-  async create(userId: string, createPostDto: CreatePostDto): Promise<Post> {
-    // Create post entity from DTO
-    const post = this.postRepository.create({
-      ...createPostDto,
-      userId,
-      status: PostStatus.SCHEDULED, // All posts start as scheduled
-      // Convert scheduledAt string to Date if provided
-      scheduledAt: createPostDto.scheduledAt
-        ? new Date(createPostDto.scheduledAt)
-        : null,
-      // Parse arrays from strings if needed
-      cloudImageUrls: Array.isArray(createPostDto.cloudImageUrls)
-        ? createPostDto.cloudImageUrls
-        : createPostDto.cloudImageUrls
-          ? JSON.parse(createPostDto.cloudImageUrls as unknown as string)
-          : [],
-    });
+  async create(
+    userId: string, 
+    createPostDto: CreatePostDto, 
+    immediatePublish: boolean = false
+  ): Promise<Post> {
+    // Validate userId is not empty
+    if (!userId || userId.trim() === '') {
+      this.logger.error('Attempted to create post with empty userId');
+      throw new Error('User ID cannot be empty');
+    }
 
-    // Save post to database
-    const savedPost = await this.postRepository.save(post);
+    this.logger.log(`Creating post for user ${userId}`);
+
+    try {
+      // Create post entity from DTO
+      const post = this.postRepository.create({
+        ...createPostDto,
+        userId,
+        status: PostStatus.SCHEDULED, // All posts start as scheduled
+        // Convert scheduledAt string to Date if provided
+        scheduledAt: createPostDto.scheduledAt
+          ? new Date(createPostDto.scheduledAt)
+          : null,
+        // Parse arrays from strings if needed
+        cloudImageUrls: Array.isArray(createPostDto.cloudImageUrls)
+          ? createPostDto.cloudImageUrls
+          : createPostDto.cloudImageUrls
+            ? JSON.parse(createPostDto.cloudImageUrls as unknown as string)
+            : [],
+      });
+
+      // Double-check that userId is properly set
+      if (post.userId !== userId) {
+        this.logger.warn(`userId mismatch after creation: ${post.userId} vs expected ${userId}`);
+        // Force set it again to ensure it's correct
+        post.userId = userId;
+      }
+
+      // Log the post we're about to save
+      this.logger.log(`Saving post with userId: ${post.userId}, postIdLocal: ${post.postIdLocal}`);
+
+      // Save post to database
+      const savedPost = await this.postRepository.save(post);
 
     // If post is scheduled, add it to the publishing queue
     if (savedPost.status === PostStatus.SCHEDULED) {
-      await this.schedulePost(savedPost);
+      if (immediatePublish) {
+        // Bypass the queue and publish immediately
+        this.logger.log(`Immediate publishing requested for post ${savedPost.id}`);
+        
+        try {
+          // Import and use the post publish processor directly
+          const { PostPublishProcessor } = await import('../processors/post-publish.processor');
+          const xAuthService = await import('../../x/services/x-auth.service').then(m => m.XAuthService);
+          const xClientService = await import('../../x/services/x-client.service').then(m => m.XClientService);
+          const engagementService = await import('../services/engagement.service').then(m => m.EngagementService);
+          const notificationService = await import('../../notifications/services/notification.service').then(m => m.NotificationService);
+          
+          // Create a temporary processor instance
+          const processor = new PostPublishProcessor(
+            this,
+            new engagementService['__proto__.constructor'](),
+            new xClientService['__proto__.constructor'](),
+            new xAuthService['__proto__.constructor'](),
+            new notificationService['__proto__.constructor']()
+          );
+          
+          // Create a mock job
+          const mockJob = {
+            id: `immediate-${savedPost.id}`,
+            data: {
+              postId: savedPost.id,
+              userId: userId
+            }
+          };
+          
+          // Process the job
+          await processor.handlePublish(mockJob as any);
+          this.logger.log(`Post ${savedPost.id} published immediately`);
+          
+          // Refresh post data
+          return this.findOne(savedPost.id, userId);
+        } catch (error) {
+          this.logger.error(`Failed to publish post immediately: ${error.message}`, error.stack);
+          // Fall back to queue method
+          await this.schedulePost(savedPost);
+        }
+      } else {
+        // Normal queue-based scheduling
+        await this.schedulePost(savedPost);
+      }
     }
 
     return savedPost;
+    } catch (error) {
+      this.logger.error(`Failed to create post: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   /**
@@ -68,6 +142,53 @@ export class PostService {
    *
    * @param post The post entity to be scheduled
    * @returns Promise<void>
+   */
+  /**
+   * Manually publish a post immediately, bypassing the queue
+   * Useful for testing and for users when the queue isn't working
+   */
+  async publishImmediately(postId: string, userId: string): Promise<Post> {
+    this.logger.log(`Manual immediate publish requested for post ${postId}`);
+    
+    // Get the post
+    const post = await this.findOne(postId, userId);
+    
+    // Verify it's not already published
+    if (post.status === PostStatus.PUBLISHED) {
+      throw new Error('Post is already published');
+    }
+    
+    // Add to queue with no delay and high priority
+    await this.postPublishQueue.add(
+      'publish',
+      {
+        postId: post.id,
+        userId: post.userId,
+      },
+      {
+        jobId: `immediate-${post.id}`,
+        delay: 0,
+        priority: 1, // Higher priority
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 10000, // Short delay between retries
+        },
+        removeOnComplete: true,
+      },
+    );
+    
+    this.logger.log(`Post ${post.id} added to publishing queue for immediate publication`);
+    
+    // Update status to indicate it's being processed
+    await this.update(post.id, userId, { status: PostStatus.SCHEDULED });
+    
+    // Get and return the updated post
+    return this.findOne(post.id, userId);
+  }
+
+  /**
+   * Schedule a post for publishing using the Bull queue
    */
   private async schedulePost(post: Post): Promise<void> {
     // Get current time in UTC for consistent comparison

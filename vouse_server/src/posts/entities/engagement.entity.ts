@@ -2,7 +2,7 @@
 import {
   Entity,
   Column,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
@@ -11,82 +11,91 @@ import {
 import { Post } from './post.entity';
 
 /**
- * Entity for storing engagement metrics for published posts
+ * Post engagement entity for storing engagement metrics for posts
  */
 @Entity('post_engagements')
-export class PostEngagement {
+export class Engagement {
   /**
-   * Twitter post ID as primary key
+   * X/Twitter post ID that this engagement data is for
    */
-  @PrimaryColumn({ type: 'varchar' })
+  @Column({ name: 'post_id_x', type: 'text', primary: true })
   postIdX: string;
 
   /**
-   * Reference to the local post ID
+   * Client-generated unique ID for the post
+   * Used for tracking the post across client and server
    */
-  @Column({ type: 'varchar' })
+  @Column({ name: 'post_id_local', type: 'text' })
   postIdLocal: string;
 
   /**
-   * Many-to-one relationship with the Post entity
-   * Changed from one-to-one to many-to-one to avoid unique constraint issues
+   * Relation to Post entity
    */
-  @ManyToOne(() => Post)
-  @JoinColumn({ name: 'postIdLocal', referencedColumnName: 'postIdLocal' })
+  @ManyToOne(() => Post, { eager: true })
+  @JoinColumn({ name: 'post_id_local', referencedColumnName: 'postIdLocal' })
   post: Post;
 
   /**
-   * User who owns this post
+   * User ID who owns this post
    */
-  @Column({ type: 'varchar' })
+  @Column({ name: 'user_id', type: 'text' })
   userId: string;
 
   /**
    * Number of likes the post has received
    */
-  @Column({ default: 0 })
-  likes: number;
+  @Column({ type: 'integer', default: 0 })
+  likes: number = 0;
 
   /**
    * Number of retweets the post has received
    */
-  @Column({ default: 0 })
-  retweets: number;
+  @Column({ type: 'integer', default: 0 })
+  retweets: number = 0;
 
   /**
    * Number of quotes the post has received
    */
-  @Column({ default: 0 })
-  quotes: number;
+  @Column({ type: 'integer', default: 0 })
+  quotes: number = 0;
 
   /**
    * Number of replies the post has received
    */
-  @Column({ default: 0 })
-  replies: number;
+  @Column({ type: 'integer', default: 0 })
+  replies: number = 0;
 
   /**
-   * Number of impressions (views) the post has received
+   * Number of impressions the post has received
    */
-  @Column({ default: 0 })
-  impressions: number;
+  @Column({ type: 'integer', default: 0 })
+  impressions: number = 0;
 
   /**
-   * Detailed hourly metrics stored as JSON
-   * Format: { timestamp: ISO string, metrics: { likes, retweets, etc. } }
+   * Hourly metrics data
+   * Stores time series data for engagement metrics
    */
-  @Column({ type: 'json', default: '[]' })
-  hourlyMetrics: any[];
+  @Column('jsonb', { name: 'hourly_metrics', default: [] })
+  hourlyMetrics: {
+    timestamp: string;
+    metrics: {
+      likes: number;
+      retweets: number;
+      quotes: number;
+      replies: number;
+      impressions: number;
+    };
+  }[] = [];
 
   /**
-   * When this engagement record was created
+   * Creation timestamp
    */
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
 
   /**
-   * When metrics were last updated
+   * Last update timestamp
    */
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 }

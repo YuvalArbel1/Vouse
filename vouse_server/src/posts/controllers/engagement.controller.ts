@@ -24,7 +24,7 @@ import { XAuthService } from '../../x/services/x-auth.service';
 @Controller('engagements')
 export class EngagementController {
   // Cache for storing metrics data to avoid excessive API calls
-  private metricsCache: Map<string, { data: any; timestamp: number }> =
+  private readonly metricsCache: Map<string, { data: any; timestamp: number }> =
     new Map();
   // Cache expiration time - 5 minutes
   private readonly CACHE_TTL = 5 * 60 * 1000;

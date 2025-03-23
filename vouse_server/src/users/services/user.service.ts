@@ -16,7 +16,7 @@ import {
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private readonly userRepository: Repository<User>,
   ) {}
 
   /**
@@ -69,7 +69,8 @@ export class UserService {
 
     // Set token values
     user.accessToken = connectTwitterDto.accessToken;
-    user.refreshToken = connectTwitterDto.refreshToken;
+    // Handle optional refreshToken
+    user.refreshToken = connectTwitterDto.refreshToken ?? user.refreshToken;
     user.isConnected = true;
 
     if (connectTwitterDto.tokenExpiresAt) {

@@ -4,134 +4,139 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  Index,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-/**
- * Post status enum
- */
+// Post status enum
 export enum PostStatus {
   DRAFT = 'draft',
   SCHEDULED = 'scheduled',
-  PUBLISHING = 'publishing',
   PUBLISHED = 'published',
   FAILED = 'failed',
 }
 
 /**
- * Post entity for storing scheduled and published posts
+ * Post entity for storing social media posts
+ * Includes scheduling, content, and metadata
  */
 @Entity('posts')
 export class Post {
   /**
-   * Auto-generated UUID for the post
+   * Primary key UUID
    */
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   /**
-   * Local post ID from the Flutter app
-   * Adding a unique constraint to fix the foreign key issue
+   * Client-generated unique ID for the post
+   * Used for tracking the post across client and server
    */
-  @Column({ nullable: false, type: 'varchar', unique: true })
-  @Index('IDX_POST_ID_LOCAL', { unique: true })
+  @Column({ name: 'post_id_local', type: 'text', unique: true })
   postIdLocal: string;
 
   /**
-   * Twitter post ID, null until published
+   * X/Twitter post ID for published posts
    */
-  @Column({ nullable: true, type: 'varchar' })
-  postIdX: string | null;
+  @Column({ name: 'post_id_x', type: 'text', nullable: true })
+  postIdX: string | null = null;
 
   /**
-   * Foreign key to the user who created this post
+   * User ID who created the post
    */
-  @Column({ type: 'varchar' })
+  @Column({ name: 'user_id', type: 'text' })
   userId: string;
 
   /**
-   * Relationship to the User entity
+   * Relation to User entity
    */
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { eager: true })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   /**
-   * The post content (tweet text)
+   * Post content/message
    */
   @Column({ type: 'text' })
   content: string;
 
   /**
-   * A title for organizing posts in the app (not published to Twitter)
+   * Optional post title
    */
-  @Column({ nullable: true, type: 'varchar' })
-  title: string | null;
+  @Column({ type: 'text', nullable: true })
+  title: string | null = null;
 
   /**
-   * When the post should be published
+   * Scheduled publication date for the post
    */
-  @Column({ type: 'timestamp', nullable: true })
-  scheduledAt: Date | null;
+  @Column({ name: 'scheduled_at', type: 'timestamp', nullable: true })
+  scheduledAt: Date | null = null;
 
   /**
-   * When the post was actually published
+   * Actual publication date for the post
    */
-  @Column({ type: 'timestamp', nullable: true })
-  publishedAt: Date | null;
+  @Column({ name: 'published_at', type: 'timestamp', nullable: true })
+  publishedAt: Date | null = null;
 
   /**
    * Current status of the post
+   * draft, scheduled, published, or failed
    */
   @Column({
     type: 'enum',
     enum: PostStatus,
     default: PostStatus.DRAFT,
   })
-  status: PostStatus;
+  status: PostStatus = PostStatus.DRAFT;
 
   /**
-   * If the post failed to publish, store the reason
+   * Reason for failure if status is 'failed'
+   */
+  @Column({ name: 'failure_reason', type: 'text', nullable: true })
+  failureReason: string | null = null;
+
+  /**
+   * Visibility setting (public, private, etc.)
    */
   @Column({ type: 'text', nullable: true })
-  failureReason: string | null;
+  visibility: string | null = null;
 
   /**
-   * Visibility setting (for Twitter's reply control)
+   * URLs for images to include with the post
    */
-  @Column({ nullable: true, type: 'varchar' })
-  visibility: string | null;
+  @Column('simple-array', { name: 'cloud_image_urls', default: [] })
+  cloudImageUrls: string[] = [];
 
   /**
-   * URLs to images stored in cloud storage
+   * Optional location latitude
    */
-  @Column({ type: 'json', default: '[]' })
-  cloudImageUrls: string[];
+  @Column({ name: 'location_lat', type: 'float', nullable: true })
+  locationLat: number | null = null;
 
   /**
-   * Latitude for location-based posts
+   * Optional location longitude
    */
-  @Column({ type: 'float', nullable: true })
-  locationLat: number | null;
+  @Column({ name: 'location_lng', type: 'float', nullable: true })
+  locationLng: number | null = null;
 
   /**
-   * Longitude for location-based posts
+   * Optional location address or name
    */
-  @Column({ type: 'float', nullable: true })
-  locationLng: number | null;
+  @Column({ name: 'location_address', type: 'text', nullable: true })
+  locationAddress: string | null = null;
 
   /**
-   * Human-readable location address
+   * Creation timestamp
    */
-  @Column({ nullable: true, type: 'varchar' })
-  locationAddress: string | null;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
 
   /**
-   * When the post record was created
+   * Last update timestamp
    */
-  @CreateDateColumn()
-  createdAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 }

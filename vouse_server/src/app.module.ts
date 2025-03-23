@@ -8,7 +8,8 @@ import { PostsModule } from './posts/posts.module';
 import { typeOrmConfig } from './config/typeorm.config';
 import { redisConfig } from './config/redis.config';
 import { NotificationsModule } from './notifications/notifications.module';
-import { RequestLoggerMiddleware } from './httpRequestMiddleware';
+import { CommonModule } from './common/common.module';
+import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 
 @Module({
@@ -26,6 +27,9 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
       },
     }),
 
+    // Core modules
+    CommonModule, // Common utilities and services
+
     // Feature modules
     AuthModule, // Firebase authentication
     UsersModule, // User management
@@ -37,7 +41,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
   providers: [],
 })
 export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
+  configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestLoggerMiddleware).forRoutes('*');
   }
 }

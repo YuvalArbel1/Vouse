@@ -1,5 +1,5 @@
-// src/notifications/entities/device-token.entity.ts
 
+// src/notifications/entities/device-token.entity.ts
 import {
   Entity,
   Column,
@@ -8,32 +8,54 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+/**
+ * Device token entity for storing push notification tokens
+ */
 @Entity('device_tokens')
 export class DeviceToken {
+  /**
+   * Primary key UUID
+   */
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: false })
+  /**
+   * User ID the device token belongs to
+   */
+  @Column({ name: 'user_id', type: 'text' })
   userId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  /**
+   * Relation to User entity
+   */
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ nullable: false })
-  @Index()
+  /**
+   * The device token string for push notifications
+   */
+  @Column({ type: 'text' })
   token: string;
 
-  @Column({ nullable: false })
+  /**
+   * The platform the token is for (iOS, Android, web)
+   */
+  @Column({ type: 'text' })
   platform: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  /**
+   * Creation timestamp
+   */
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date = new Date();
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  /**
+   * Last update timestamp
+   */
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date = new Date();
 }

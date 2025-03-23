@@ -3,7 +3,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
 
-import { PostEngagement } from '../entities/engagement.entity';
+import { Engagement } from '../entities/engagement.entity';
 import { Post } from '../entities/post.entity';
 import { PostStatus } from '../entities/post.entity';
 import { XClientService } from '../../x/services/x-client.service';
@@ -17,11 +17,11 @@ export class EngagementService {
   public readonly logger = new Logger(EngagementService.name);
 
   constructor(
-    @InjectRepository(PostEngagement)
-    private engagementRepository: Repository<PostEngagement>,
+    @InjectRepository(Engagement)
+    private readonly engagementRepository: Repository<Engagement>,
     @InjectRepository(Post)
-    private postRepository: Repository<Post>,
-    private xClientService: XClientService,
+    private readonly postRepository: Repository<Post>,
+    private readonly xClientService: XClientService,
   ) {}
 
   /**
@@ -37,25 +37,56 @@ export class EngagementService {
     postIdX: string,
     postIdLocal: string,
     userId: string,
-  ): Promise<PostEngagement> {
-    // Create a new engagement record
-    const engagement = this.engagementRepository.create({
-      postIdX,
-      postIdLocal,
-      userId,
-      likes: 0,
-      retweets: 0,
-      quotes: 0,
-      replies: 0,
-      impressions: 0,
-      hourlyMetrics: [],
-    });
-
-    // Save the record
-    const savedEngagement = await this.engagementRepository.save(engagement);
-
-    // No automatic scheduling of metrics collection
-    return savedEngagement;
+  ): Promise<Engagement> {
+    this.logger.log(`Initializing engagement for tweet ${postIdX}, local ID: ${postIdLocal}, user: ${userId}`);
+    
+    // Verify all parameters are valid
+    if (!postIdX || !postIdLocal || !userId) {
+      this.logger.error(`Invalid parameters for engagement initialization: postIdX=${postIdX}, postIdLocal=${postIdLocal}, userId=${userId}`);
+      throw new Error('All engagement parameters are required');
+    }
+    
+    try {
+      // Use a direct query to ensure all fields are properly set
+      const result = await this.engagementRepository.query(
+        `INSERT INTO post_engagements(post_id_x, post_id_local, user_id, likes, retweets, quotes, replies, impressions, hourly_metrics, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING post_id_x, post_id_local, user_id`,
+        [
+          postIdX, 
+          postIdLocal, 
+          userId, 
+          0, 
+          0, 
+          0, 
+          0, 
+          0, 
+          '[]', 
+          new Date(), 
+          new Date()
+        ]
+      );
+      
+      if (!result || result.length === 0) {
+        throw new Error('Failed to insert engagement record');
+      }
+      
+      this.logger.log(`Successfully created engagement record: ${JSON.stringify(result[0])}`);
+      
+      // Fetch the complete record
+      const engagement = await this.engagementRepository.findOne({
+        where: { postIdX }
+      });
+      
+      if (!engagement) {
+        throw new Error(`Failed to fetch newly created engagement for ${postIdX}`);
+      }
+      
+      return engagement;
+    } catch (error) {
+      this.logger.error(`Failed to initialize engagement: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   /**
@@ -68,7 +99,7 @@ export class EngagementService {
   async getEngagement(
     postIdX: string,
     userId: string,
-  ): Promise<PostEngagement> {
+  ): Promise<Engagement> {
     const engagement = await this.engagementRepository.findOne({
       where: { postIdX, userId },
     });
@@ -92,7 +123,7 @@ export class EngagementService {
   async getEngagementByLocalId(
     postIdLocal: string,
     userId: string,
-  ): Promise<PostEngagement> {
+  ): Promise<Engagement> {
     const engagement = await this.engagementRepository.findOne({
       where: { postIdLocal, userId },
     });
@@ -116,7 +147,7 @@ export class EngagementService {
   async getAllUserEngagements(
     userId: string,
     limit?: number,
-  ): Promise<PostEngagement[]> {
+  ): Promise<Engagement[]> {
     const query = this.engagementRepository
       .createQueryBuilder('engagement')
       .where('engagement.userId = :userId', { userId })
@@ -145,7 +176,7 @@ export class EngagementService {
       replies?: number;
       impressions?: number;
     },
-  ): Promise<PostEngagement> {
+  ): Promise<Engagement> {
     const engagement = await this.engagementRepository.findOne({
       where: { postIdX },
     });
@@ -192,7 +223,7 @@ export class EngagementService {
     postIdX: string,
     accessToken: string,
     userId?: string,
-  ): Promise<PostEngagement> {
+  ): Promise<Engagement> {
     try {
       this.logger.log(`Collecting fresh metrics for tweet ${postIdX}`);
 

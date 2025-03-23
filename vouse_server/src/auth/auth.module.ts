@@ -5,6 +5,7 @@ import { FirebaseAdminService } from './services/firebase-admin';
 import { FirebaseAuthGuard } from './guards/firebase-auth';
 
 @Module({
+  /* This module provides services for its domain */
   providers: [FirebaseAdminService, FirebaseAuthGuard],
   exports: [FirebaseAdminService, FirebaseAuthGuard],
 })

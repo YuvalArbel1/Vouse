@@ -4,23 +4,24 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 
 import { Post } from './entities/post.entity';
-import { PostEngagement } from './entities/engagement.entity';
+import { Engagement } from './entities/engagement.entity';
 import { PostService } from './services/post.service';
 import { EngagementService } from './services/engagement.service';
 import { PostController } from './controllers/post.controller';
 import { EngagementController } from './controllers/engagement.controller';
+import { QueueHealthController } from './controllers/queue-health.controller';
 import { PostPublishProcessor } from './processors/post-publish.processor';
+import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
 
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { XModule } from '../x/x.module';
-import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
 import { NotificationsModule } from '../notifications/notifications.module';
 
-// Re-add the processor that was previously removed
 @Module({
+  /* This module provides services for its domain */
   imports: [
-    TypeOrmModule.forFeature([Post, PostEngagement]),
+    TypeOrmModule.forFeature([Post, Engagement]),
     BullModule.registerQueue({
       name: 'post-publish',
     }),
@@ -38,7 +39,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     PostPublishProcessor,
     MetricsCollectorProcessor,
   ],
-  controllers: [PostController, EngagementController],
+  controllers: [PostController, EngagementController, QueueHealthController],
   exports: [PostService, EngagementService],
 })
 export class PostsModule {}

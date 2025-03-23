@@ -7,6 +7,7 @@ import { UserController } from './controllers/user.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
+  /* This module provides services for its domain */
   imports: [
     TypeOrmModule.forFeature([User]),
     AuthModule, // Import the Auth module

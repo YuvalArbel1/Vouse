@@ -1,21 +1,34 @@
-// src/common/utils/token-encryption.util.ts
+// src/common/utils/token_encryption.util.ts
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
-import { Logger } from '@nestjs/common';
-
-dotenv.config();
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * Utility for encrypting and decrypting sensitive tokens
+ * Utility for encrypting and decrypting sensitive tokens using AES-256-GCM
+ * Uses environment variable ENCRYPTION_KEY for the encryption key
  */
+@Injectable()
 export class TokenEncryption {
   private readonly algorithm = 'aes-256-gcm';
   private readonly key: Buffer;
   private readonly logger = new Logger(TokenEncryption.name);
 
+  /**
+   * Initialize the encryption utility with the key from environment variables
+   * @throws Error if encryption key environment variable is missing
+   */
   constructor() {
+    // Ensure environment variables are loaded
+    dotenv.config();
+
     // Get the encryption key from environment variables
-    const encryptionKey = process.env.ENCRYPTION_KEY || '';
+    const encryptionKey = process.env.ENCRYPTION_KEY;
+
+    if (!encryptionKey) {
+      const errorMessage = 'ENCRYPTION_KEY environment variable is required';
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
 
     // Log the key length to verify it's correct
     this.logger.debug(`Encryption key length: ${encryptionKey.length}`);
@@ -26,7 +39,7 @@ export class TokenEncryption {
       );
       // Create a SHA-256 hash for consistent key length
       const hash = crypto.createHash('sha256');
-      hash.update(encryptionKey || 'default-encryption-key');
+      hash.update(encryptionKey);
       const derivedKey = hash.digest('hex').substring(0, 32);
       this.key = Buffer.from(derivedKey, 'utf8');
     } else {
@@ -35,10 +48,15 @@ export class TokenEncryption {
   }
 
   /**
-   * Encrypt a token string
+   * Encrypt a token string using AES-256-GCM
+   *
+   * @param token - The token to encrypt
+   * @returns The encrypted token or null if encryption fails
    */
   encrypt(token: string | null): string | null {
-    if (!token) return null;
+    if (!token) {
+      return null;
+    }
 
     try {
       // Generate a random initialization vector
@@ -59,18 +77,25 @@ export class TokenEncryption {
         iv.toString('hex') + ':' + encrypted + ':' + authTag.toString('hex')
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`Encryption error: ${errorMessage}`);
+      const typedError = error as Error;
+      this.logger.error(
+        `Encryption error: ${typedError.message}`,
+        typedError.stack,
+      );
       return null;
     }
   }
 
   /**
    * Decrypt an encrypted token string
+   *
+   * @param encryptedToken - The encrypted token to decrypt
+   * @returns The decrypted token or null if decryption fails
    */
   decrypt(encryptedToken: string | null): string | null {
-    if (!encryptedToken) return null;
+    if (!encryptedToken) {
+      return null;
+    }
 
     try {
       // Split the encrypted token into its components
@@ -93,9 +118,11 @@ export class TokenEncryption {
 
       return decrypted;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`Decryption error: ${errorMessage}`);
+      const typedError = error as Error;
+      this.logger.error(
+        `Decryption error: ${typedError.message}`,
+        typedError.stack,
+      );
       return null;
     }
   }

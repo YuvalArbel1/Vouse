@@ -184,9 +184,10 @@ export class XClientService {
       // Endpoint for tweet lookup with metrics
       const endpoint = `/tweets/${tweetId}`;
       
-      // Request parameters for metrics
+      // Request parameters for metrics - only request accessible metrics
+      // Removed promoted_metrics which causes errors for non-promoted tweets
       const params = {
-        'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics,promoted_metrics',
+        'tweet.fields': 'public_metrics,non_public_metrics,organic_metrics',
       };
       
       // If userId is provided, use the user's own token via the get method
@@ -381,16 +382,27 @@ export class XClientService {
       }
       
       // Call Twitter API to refresh token
+      // Create Basic auth header with client ID and secret (required for OAuth 2.0)
+      const clientId = process.env.TWITTER_API_KEY || '';
+      const clientSecret = process.env.TWITTER_API_SECRET || '';
+      
+      if (!clientId || !clientSecret) {
+        throw new Error('Twitter API key and secret are required for token refresh');
+      }
+      
+      // Base64 encode for Basic auth
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      
       const response = await axios.post(
         'https://api.twitter.com/2/oauth2/token',
         new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: refreshTokenValue,
-          client_id: process.env.TWITTER_API_KEY || '',
         }).toString(),
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${basicAuth}`,
           },
         },
       );

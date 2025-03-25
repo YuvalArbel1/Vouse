@@ -237,17 +237,50 @@ export class EngagementService {
       // Log the full response for debugging
       this.logger.log(`Full Twitter response: ${JSON.stringify(response)}`);
 
-      // Check if we have data in the response
-      if (!response.data) {
-        throw new Error(`No data in Twitter response for tweet ${postIdX}`);
+      // Get the current engagement record as a fallback
+      // This way we'll keep existing metrics even if Twitter API errors
+      const existingEngagement = await this.engagementRepository.findOne({
+        where: { postIdX },
+      });
+
+      if (!existingEngagement) {
+        throw new NotFoundException(`Engagement record for tweet ${postIdX} not found`);
       }
 
-      // Initialize metrics with default values
-      let likes = 0,
-        retweets = 0,
-        quotes = 0,
-        replies = 0,
-        impressions = 0;
+      // Initialize metrics with current values as defaults
+      let likes = existingEngagement.likes || 0,
+          retweets = existingEngagement.retweets || 0,
+          quotes = existingEngagement.quotes || 0,
+          replies = existingEngagement.replies || 0,
+          impressions = existingEngagement.impressions || 0;
+
+      // If response has errors but no data, we'll use existing metrics
+      // This handles partial API failures or permission issues gracefully
+      if (!response.data) {
+        // Log that we're using existing metrics
+        this.logger.warn(`No data in Twitter response for tweet ${postIdX}, using existing metrics`);
+        
+        // Just add a new hourly metrics entry with current values
+        existingEngagement.hourlyMetrics.push({
+          timestamp: new Date().toISOString(),
+          metrics: {
+            likes,
+            retweets,
+            quotes,
+            replies,
+            impressions,
+          },
+        });
+        
+        return this.engagementRepository.save(existingEngagement);
+      }
+
+      // Reset metrics to 0 before updating from response
+      likes = 0;
+      retweets = 0;
+      quotes = 0;
+      replies = 0;
+      impressions = 0;
 
       // Extract from public_metrics (always available)
       if (response.data.public_metrics) {

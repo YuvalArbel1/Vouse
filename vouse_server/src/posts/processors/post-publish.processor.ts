@@ -71,14 +71,16 @@ export class PostPublishProcessor {
   async handlePublish(job: Job<{ postId: string; userId: string }>) {
     const { postId, userId } = job.data;
     this.logger.log(`Starting to publish post ${postId} for user ${userId}`);
-    
+
     // Enhanced debugging for queue processing
-    this.logger.log(`Job received: ${JSON.stringify({
-      id: job.id,
-      name: job.name, 
-      data: job.data,
-      opts: job.opts
-    })}`);
+    this.logger.log(
+      `Job received: ${JSON.stringify({
+        id: job.id,
+        name: job.name,
+        data: job.data,
+        opts: job.opts,
+      })}`,
+    );
 
     try {
       // Get the post from the database with error handling
@@ -111,21 +113,29 @@ export class PostPublishProcessor {
       // Handle media uploads if present
       const mediaIds: string[] = [];
       let mediaUploadFailed = false;
-      
+
       if (post.cloudImageUrls && post.cloudImageUrls.length > 0) {
-        this.logger.log(`Post has ${post.cloudImageUrls.length} images to upload`);
-        
+        this.logger.log(
+          `Post has ${post.cloudImageUrls.length} images to upload`,
+        );
+
         for (const imageUrl of post.cloudImageUrls) {
           try {
             // Download the image from Firebase Storage URL
-            this.logger.log(`Downloading image from ${imageUrl.substring(0, 50)}...`);
+            this.logger.log(
+              `Downloading image from ${imageUrl.substring(0, 50)}...`,
+            );
             const { base64Image, contentType } =
               await this.downloadImageFromUrl(imageUrl);
-            
-            this.logger.log(`Successfully downloaded image, content type: ${contentType}, size: ${base64Image.length} bytes`);
+
+            this.logger.log(
+              `Successfully downloaded image, content type: ${contentType}, size: ${base64Image.length} bytes`,
+            );
 
             // Upload to Twitter using v1.1 API
-            this.logger.log(`Uploading media to Twitter using v1.1 API for user ${userId}`);
+            this.logger.log(
+              `Uploading media to Twitter using v1.1 API for user ${userId}`,
+            );
             const mediaId = await this.xClientService.uploadMedia(
               userId,
               base64Image,
@@ -136,7 +146,9 @@ export class PostPublishProcessor {
               mediaIds.push(mediaId);
               this.logger.log(`Successfully uploaded media: ${mediaId}`);
             } else {
-              this.logger.warn(`Twitter returned null media ID for image ${imageUrl.substring(0, 20)}...`);
+              this.logger.warn(
+                `Twitter returned null media ID for image ${imageUrl.substring(0, 20)}...`,
+              );
               mediaUploadFailed = true;
             }
           } catch (error) {
@@ -151,11 +163,15 @@ export class PostPublishProcessor {
           }
         }
       }
-      
+
       if (mediaUploadFailed && mediaIds.length === 0) {
-        this.logger.warn(`All image uploads failed, proceeding with text-only post`);
+        this.logger.warn(
+          `All image uploads failed, proceeding with text-only post`,
+        );
       } else if (mediaUploadFailed) {
-        this.logger.warn(`Some image uploads failed, proceeding with ${mediaIds.length} images`);
+        this.logger.warn(
+          `Some image uploads failed, proceeding with ${mediaIds.length} images`,
+        );
       }
 
       // Check for location data and log it if present
@@ -174,7 +190,9 @@ export class PostPublishProcessor {
       }
 
       // Publish the post to Twitter
-      this.logger.log(`Posting tweet with text: "${tweetText.substring(0, 30)}..." and ${mediaIds.length} media items`);
+      this.logger.log(
+        `Posting tweet with text: "${tweetText.substring(0, 30)}..." and ${mediaIds.length} media items`,
+      );
       const result = await this.xClientService.postTweet(
         userId,
         tweetText,
@@ -188,7 +206,9 @@ export class PostPublishProcessor {
       }
 
       // Update post status to PUBLISHED
-      this.logger.log(`Updating post status to PUBLISHED, tweet ID: ${tweetId}`);
+      this.logger.log(
+        `Updating post status to PUBLISHED, tweet ID: ${tweetId}`,
+      );
       const updatedPost = await this.postService.updateAfterPublishing(
         postId,
         tweetId,
@@ -197,7 +217,9 @@ export class PostPublishProcessor {
 
       // Initialize engagement tracking without collecting initial metrics
       try {
-        this.logger.log(`Initializing engagement tracking for tweet ${tweetId}, local ID: ${post.postIdLocal}`);
+        this.logger.log(
+          `Initializing engagement tracking for tweet ${tweetId}, local ID: ${post.postIdLocal}`,
+        );
         await this.engagementService.initializeEngagement(
           tweetId,
           post.postIdLocal,

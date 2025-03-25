@@ -55,7 +55,9 @@ export class NotificationController {
       });
 
       if (!userExists) {
-        this.logger.warn(`User ${userId} not found in database when registering device token`);
+        this.logger.warn(
+          `User ${userId} not found in database when registering device token`,
+        );
         throw new HttpException(
           {
             success: false,
@@ -65,7 +67,9 @@ export class NotificationController {
         );
       }
 
-      this.logger.log(`User ${userId} found, proceeding with device token registration`);
+      this.logger.log(
+        `User ${userId} found, proceeding with device token registration`,
+      );
 
       await this.notificationService.registerDeviceToken(
         userId,
@@ -78,7 +82,10 @@ export class NotificationController {
         message: 'Device token registered successfully',
       };
     } catch (error) {
-      this.logger.error(`Error registering device token: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error registering device token: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         {
           success: false,

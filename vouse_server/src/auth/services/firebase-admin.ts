@@ -53,30 +53,62 @@ export class FirebaseAdminService implements OnModuleInit {
     // Check if Firebase is already initialized to prevent multiple initializations
     if (!admin.apps.length) {
       try {
-        this.logger.log(
-          `Loading Firebase credentials from: ${this.config.serviceAccountPath}`,
-        );
-
-        // Check if the file exists
-        if (!fs.existsSync(this.config.serviceAccountPath)) {
-          this.logger.error(
-            `Service account file not found at: ${this.config.serviceAccountPath}`,
+        // Check if we have environment variables for Firebase
+        if (
+          process.env.FIREBASE_PRIVATE_KEY &&
+          process.env.FIREBASE_CLIENT_EMAIL &&
+          process.env.FIREBASE_PROJECT_ID
+        ) {
+          this.logger.log(
+            'Initializing Firebase Admin SDK using environment variables',
           );
-          throw new Error('Firebase service account file not found');
+
+          // Initialize Firebase Admin with environment variables
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              // The private key comes as a string with "\n" characters
+              // We need to replace them with actual newlines
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(
+                /\\n/g,
+                '\n',
+              ),
+            }),
+          });
+
+          this.logger.log(
+            'Firebase Admin SDK initialized successfully with environment variables',
+          );
         }
+        // Fallback to file-based initialization if service account path is provided
+        else if (
+          this.config.serviceAccountPath &&
+          fs.existsSync(this.config.serviceAccountPath)
+        ) {
+          this.logger.log(
+            `Loading Firebase credentials from: ${this.config.serviceAccountPath}`,
+          );
 
-        // Load the service account file
-        const serviceAccount = JSON.parse(
-          fs.readFileSync(this.config.serviceAccountPath, 'utf8'),
-        ) as admin.ServiceAccount;
+          // Load the service account file
+          const serviceAccount = JSON.parse(
+            fs.readFileSync(this.config.serviceAccountPath, 'utf8'),
+          ) as admin.ServiceAccount;
 
-        // Initialize Firebase Admin with the service account
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          projectId: this.config.projectId,
-        });
+          // Initialize Firebase Admin with the service account
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: this.config.projectId,
+          });
 
-        this.logger.log('Firebase Admin SDK initialized successfully');
+          this.logger.log(
+            'Firebase Admin SDK initialized successfully with service account file',
+          );
+        } else {
+          throw new Error(
+            'Firebase credentials not found in environment variables or service account file',
+          );
+        }
       } catch (error) {
         const typedError = error as Error;
         this.logger.error(

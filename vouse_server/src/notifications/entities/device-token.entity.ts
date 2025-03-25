@@ -1,4 +1,3 @@
-
 // src/notifications/entities/device-token.entity.ts
 import {
   Entity,

@@ -50,11 +50,11 @@ export class PostController {
 
       // Attempt to publish immediately
       const post = await this.postService.publishImmediately(postId, user.uid);
-      
+
       return {
         success: true,
         data: post,
-        message: 'Post publishing initiated. Check status shortly.'
+        message: 'Post publishing initiated. Check status shortly.',
       };
     } catch (error) {
       const errorMessage =

@@ -38,7 +38,7 @@ export class QueueHealthController {
     try {
       // Check if Redis is connected
       const isReady = this.postPublishQueue.client.status === 'ready';
-      
+
       // Get job counts
       const [waiting, active, completed, failed, delayed] = await Promise.all([
         this.postPublishQueue.getWaitingCount(),
@@ -47,10 +47,10 @@ export class QueueHealthController {
         this.postPublishQueue.getFailedCount(),
         this.postPublishQueue.getDelayedCount(),
       ]);
-      
+
       // Get delayed jobs
       const delayedJobs = await this.postPublishQueue.getJobs(['delayed']);
-      
+
       return {
         success: true,
         data: {
@@ -62,7 +62,7 @@ export class QueueHealthController {
             failed,
             delayed,
           },
-          delayedJobs: delayedJobs.map(job => ({
+          delayedJobs: delayedJobs.map((job) => ({
             id: job.id,
             name: job.name,
             data: job.data,
@@ -73,7 +73,10 @@ export class QueueHealthController {
         },
       };
     } catch (error) {
-      this.logger.error(`Error checking queue health: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error checking queue health: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         {
           success: false,
@@ -96,7 +99,7 @@ export class QueueHealthController {
     try {
       // Verify the post exists and belongs to the user
       const post = await this.postService.findOne(postId, user.uid);
-      
+
       // Add job to queue with no delay for immediate processing
       await this.postPublishQueue.add(
         'publish',
@@ -111,15 +114,20 @@ export class QueueHealthController {
           removeOnComplete: true,
         },
       );
-      
-      this.logger.log(`Force added post ${postId} to publishing queue for immediate processing`);
-      
+
+      this.logger.log(
+        `Force added post ${postId} to publishing queue for immediate processing`,
+      );
+
       return {
         success: true,
         message: 'Post processing job added to queue',
       };
     } catch (error) {
-      this.logger.error(`Error forcing post process: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error forcing post process: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         {
           success: false,
@@ -142,15 +150,20 @@ export class QueueHealthController {
         this.postPublishQueue.clean(0, 'failed'),
         this.postPublishQueue.clean(0, 'delayed'),
       ]);
-      
-      this.logger.log(`Cleared ${clearedFailed.length} failed jobs and ${clearedStalled.length} stalled jobs`);
-      
+
+      this.logger.log(
+        `Cleared ${clearedFailed.length} failed jobs and ${clearedStalled.length} stalled jobs`,
+      );
+
       return {
         success: true,
         message: `Cleared ${clearedFailed.length} failed jobs and ${clearedStalled.length} stalled jobs`,
       };
     } catch (error) {
-      this.logger.error(`Error clearing stuck jobs: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error clearing stuck jobs: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         {
           success: false,

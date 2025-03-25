@@ -1,5 +1,14 @@
 // src/posts/dto/post.dto.ts
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsDateString, IsArray, IsBoolean, IsEnum } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsDateString,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator';
 import { PostStatus } from '../entities/post.entity';
 import { Type } from 'class-transformer';
 

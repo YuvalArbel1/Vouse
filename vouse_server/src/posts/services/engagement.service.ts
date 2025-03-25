@@ -38,14 +38,18 @@ export class EngagementService {
     postIdLocal: string,
     userId: string,
   ): Promise<Engagement> {
-    this.logger.log(`Initializing engagement for tweet ${postIdX}, local ID: ${postIdLocal}, user: ${userId}`);
-    
+    this.logger.log(
+      `Initializing engagement for tweet ${postIdX}, local ID: ${postIdLocal}, user: ${userId}`,
+    );
+
     // Verify all parameters are valid
     if (!postIdX || !postIdLocal || !userId) {
-      this.logger.error(`Invalid parameters for engagement initialization: postIdX=${postIdX}, postIdLocal=${postIdLocal}, userId=${userId}`);
+      this.logger.error(
+        `Invalid parameters for engagement initialization: postIdX=${postIdX}, postIdLocal=${postIdLocal}, userId=${userId}`,
+      );
       throw new Error('All engagement parameters are required');
     }
-    
+
     try {
       // Use a direct query to ensure all fields are properly set
       const result = await this.engagementRepository.query(
@@ -53,38 +57,45 @@ export class EngagementService {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
          RETURNING post_id_x, post_id_local, user_id`,
         [
-          postIdX, 
-          postIdLocal, 
-          userId, 
-          0, 
-          0, 
-          0, 
-          0, 
-          0, 
-          '[]', 
-          new Date(), 
-          new Date()
-        ]
+          postIdX,
+          postIdLocal,
+          userId,
+          0,
+          0,
+          0,
+          0,
+          0,
+          '[]',
+          new Date(),
+          new Date(),
+        ],
       );
-      
+
       if (!result || result.length === 0) {
         throw new Error('Failed to insert engagement record');
       }
-      
-      this.logger.log(`Successfully created engagement record: ${JSON.stringify(result[0])}`);
-      
+
+      this.logger.log(
+        `Successfully created engagement record: ${JSON.stringify(result[0])}`,
+      );
+
       // Fetch the complete record
       const engagement = await this.engagementRepository.findOne({
-        where: { postIdX }
+        where: { postIdX },
       });
-      
+
       if (!engagement) {
-        throw new Error(`Failed to fetch newly created engagement for ${postIdX}`);
+        throw new Error(
+          `Failed to fetch newly created engagement for ${postIdX}`,
+        );
       }
-      
+
       return engagement;
     } catch (error) {
-      this.logger.error(`Failed to initialize engagement: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to initialize engagement: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -96,10 +107,7 @@ export class EngagementService {
    * @param userId User who owns the post
    * @returns The engagement record
    */
-  async getEngagement(
-    postIdX: string,
-    userId: string,
-  ): Promise<Engagement> {
+  async getEngagement(postIdX: string, userId: string): Promise<Engagement> {
     const engagement = await this.engagementRepository.findOne({
       where: { postIdX, userId },
     });
@@ -244,22 +252,26 @@ export class EngagementService {
       });
 
       if (!existingEngagement) {
-        throw new NotFoundException(`Engagement record for tweet ${postIdX} not found`);
+        throw new NotFoundException(
+          `Engagement record for tweet ${postIdX} not found`,
+        );
       }
 
       // Initialize metrics with current values as defaults
       let likes = existingEngagement.likes || 0,
-          retweets = existingEngagement.retweets || 0,
-          quotes = existingEngagement.quotes || 0,
-          replies = existingEngagement.replies || 0,
-          impressions = existingEngagement.impressions || 0;
+        retweets = existingEngagement.retweets || 0,
+        quotes = existingEngagement.quotes || 0,
+        replies = existingEngagement.replies || 0,
+        impressions = existingEngagement.impressions || 0;
 
       // If response has errors but no data, we'll use existing metrics
       // This handles partial API failures or permission issues gracefully
       if (!response.data) {
         // Log that we're using existing metrics
-        this.logger.warn(`No data in Twitter response for tweet ${postIdX}, using existing metrics`);
-        
+        this.logger.warn(
+          `No data in Twitter response for tweet ${postIdX}, using existing metrics`,
+        );
+
         // Just add a new hourly metrics entry with current values
         existingEngagement.hourlyMetrics.push({
           timestamp: new Date().toISOString(),
@@ -271,7 +283,7 @@ export class EngagementService {
             impressions,
           },
         });
-        
+
         return this.engagementRepository.save(existingEngagement);
       }
 

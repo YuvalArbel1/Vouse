@@ -23,7 +23,13 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
         host: redisConfig.host,
         port: redisConfig.port,
         password: redisConfig.password,
-        db: redisConfig.db,
+        tls: redisConfig.tls,
+        enableReadyCheck: false,
+        maxRetriesPerRequest: null,
+        disconnectTimeout: 5000,
+        retryStrategy: (times) => {
+          return Math.min(times * 100, 3000);
+        },
       },
     }),
 

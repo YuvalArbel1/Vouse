@@ -215,6 +215,11 @@ export class PostService {
     // Get current time in UTC for consistent comparison
     const now = new Date();
 
+    this.logger.log(`schedulePost raw scheduledAt value: ${post.scheduledAt}`);
+    this.logger.log(
+      `schedulePost raw scheduledAt type: ${typeof post.scheduledAt}`,
+    );
+
     // Check if scheduledAt is null, which means post immediately
     if (!post.scheduledAt) {
       this.logger.log(
@@ -251,14 +256,29 @@ export class PostService {
       return;
     }
 
-    // Convert to proper Date object if it's a string
-    const scheduledAt =
-      post.scheduledAt instanceof Date
-        ? post.scheduledAt
-        : new Date(post.scheduledAt as unknown as string);
+    // Convert to proper Date object if it's a string, ensuring UTC interpretation
+    let scheduledAt: Date;
+    if (post.scheduledAt instanceof Date) {
+      // Keep as is - it should already be in UTC from client
+      scheduledAt = post.scheduledAt;
+      this.logger.log(
+        `schedulePost scheduledAt as ISO: ${scheduledAt.toISOString()}`,
+      );
+      this.logger.log(
+        `schedulePost scheduledAt timestamp: ${scheduledAt.getTime()}`,
+      );
+    } else {
+      // Parse the string as UTC
+      scheduledAt = new Date(post.scheduledAt as unknown as string);
+    }
 
     // Calculate delay in milliseconds
     const delayMs = Math.max(0, scheduledAt.getTime() - now.getTime());
+
+    // Log both times for debugging
+    this.logger.log(
+      `Scheduling with times - Server now: ${now.toISOString()}, Scheduled time (UTC): ${scheduledAt.toISOString()}`,
+    );
 
     // If scheduled time is in the past or very close (within 2 minutes), post immediately
     if (delayMs < 120000) {
@@ -416,6 +436,12 @@ export class PostService {
         : undefined,
     };
 
+    if (updatePostDto.scheduledAt) {
+      this.logger.log(
+        `Update received scheduledAt: ${updatePostDto.scheduledAt}`,
+      );
+    }
+
     // Handle JSON fields
     if (updatePostDto.cloudImageUrls) {
       updateData.cloudImageUrls = Array.isArray(updatePostDto.cloudImageUrls)
@@ -432,6 +458,11 @@ export class PostService {
             ? post.scheduledAt.getTime()
             : new Date(post.scheduledAt as unknown as string).getTime()))
     ) {
+      // Log both times for debugging
+      this.logger.log(
+        `Update comparing dates - Old: ${post.scheduledAt?.toISOString()}, New: ${new Date(updatePostDto.scheduledAt).toISOString()}`,
+      );
+
       // Update status to SCHEDULED if it was a draft
       if (post.status === PostStatus.DRAFT) {
         updateData.status = PostStatus.SCHEDULED;

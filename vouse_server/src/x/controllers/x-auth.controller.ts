@@ -10,8 +10,10 @@ import {
   NotFoundException,
   HttpException,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { XAuthService } from '../services/x-auth.service';
+import { XClientService } from '../services/x-client.service';
 import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
 import { CurrentUser } from '../../auth/decorators/current-user';
 import { DecodedIdToken } from 'firebase-admin/auth';
@@ -19,7 +21,43 @@ import { ConnectTwitterDto } from '../dto/x-auth.dto';
 
 @Controller('x/auth')
 export class XAuthController {
-  constructor(private readonly xAuthService: XAuthService) {}
+  constructor(
+    private readonly xAuthService: XAuthService,
+    private readonly xClientService: XClientService,
+  ) {}
+
+  /**
+   * Generate an OAuth 2.0 authorization URL with the proper scopes
+   * IMPORTANT: This includes the 'offline.access' scope to enable refresh tokens
+   */
+  @Get('authorize')
+  generateAuthUrl(@Query('redirect_uri') redirectUri: string) {
+    try {
+      // Generate random state for CSRF protection
+      const state = require('crypto').randomBytes(16).toString('hex');
+
+      // Generate the authorization URL
+      const authUrl = this.xClientService.generateAuthorizationUrl(
+        redirectUri || 'http://localhost:3000/auth/callback',
+        state,
+      );
+
+      return {
+        success: true,
+        url: authUrl,
+        state,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to generate authorization URL',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   /**
    * Connect a Twitter account by storing OAuth tokens
@@ -37,6 +75,20 @@ export class XAuthController {
     }
 
     try {
+      // Log the incoming tokens for debugging
+      console.log(
+        'Received tokens - accessToken exists:',
+        !!connectTwitterDto.accessToken,
+      );
+      console.log(
+        'Received tokens - refreshToken exists:',
+        !!connectTwitterDto.refreshToken,
+      );
+      console.log(
+        'Received tokens - tokenExpiresAt:',
+        connectTwitterDto.tokenExpiresAt,
+      );
+
       await this.xAuthService.connectAccount(userId, {
         accessToken: connectTwitterDto.accessToken,
         refreshToken: connectTwitterDto.refreshToken,

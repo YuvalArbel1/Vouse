@@ -500,6 +500,55 @@ export class XClientService {
   }
 
   /**
+   * Generate an OAuth 2.0 authorization URL for Twitter with the required scopes
+   *
+   * @param redirectUri The callback URL registered in your Twitter application
+   * @param state Optional state parameter for CSRF protection
+   * @param pkceChallenge Optional PKCE challenge code
+   * @param pkceMethod The PKCE challenge method (plain or S256)
+   * @returns The authorization URL to redirect users to
+   */
+  generateAuthorizationUrl(
+    redirectUri: string,
+    state: string = crypto.randomBytes(16).toString('hex'),
+    pkceChallenge: string = 'challenge',
+    pkceMethod: 'plain' | 'S256' = 'plain',
+  ): string {
+    // Get client ID from environment
+    const clientId = process.env.TWITTER_API_KEY;
+
+    if (!clientId) {
+      throw new Error('TWITTER_API_KEY environment variable is required');
+    }
+
+    // Base Twitter OAuth 2.0 authorization URL
+    const baseUrl = 'https://x.com/i/oauth2/authorize';
+
+    // Define required scopes for our application
+    // IMPORTANT: Include offline.access to get refresh tokens
+    const scopes = [
+      'tweet.read',
+      'tweet.write',
+      'users.read',
+      'offline.access', // This is crucial for getting refresh tokens
+    ];
+
+    // Build the query parameters
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      state: state,
+      scope: scopes.join(' '),
+      code_challenge: pkceChallenge,
+      code_challenge_method: pkceMethod,
+    });
+
+    // Return the fully constructed URL
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+  /**
    * Create an OAuth 1.0a helper for Twitter API authentication
    * Required for some Twitter API endpoints that don't support OAuth 2.0
    *

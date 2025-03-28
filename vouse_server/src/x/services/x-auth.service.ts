@@ -228,6 +228,8 @@ export class XAuthService {
         return null;
       }
 
+      this.logger.debug(`Refresh token exists for user ${userId}`);
+
       // Twitter OAuth 2.0 token endpoint
       const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
 
@@ -250,6 +252,9 @@ export class XAuthService {
       const formData = new URLSearchParams();
       formData.append('refresh_token', tokens.refreshToken);
       formData.append('grant_type', 'refresh_token');
+      formData.append('client_id', clientId);
+
+      this.logger.debug('Sending refresh token request to Twitter API');
 
       // Make the request to refresh the token with proper authentication
       const response = await axios.post(tokenUrl, formData.toString(), {
@@ -258,6 +263,11 @@ export class XAuthService {
           Authorization: `Basic ${basicAuth}`,
         },
       });
+
+      // Log response for debugging
+      this.logger.debug(
+        `Token refresh response: ${JSON.stringify(response.data)}`,
+      );
 
       // Extract new tokens from response
       const newAccessToken = response.data.access_token;

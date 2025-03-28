@@ -18,6 +18,7 @@ import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
 import { CurrentUser } from '../../auth/decorators/current-user';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { ConnectTwitterDto } from '../dto/x-auth.dto';
+import * as crypto from 'crypto';
 
 @Controller('x/auth')
 export class XAuthController {
@@ -34,7 +35,7 @@ export class XAuthController {
   generateAuthUrl(@Query('redirect_uri') redirectUri: string) {
     try {
       // Generate random state for CSRF protection
-      const state = require('crypto').randomBytes(16).toString('hex');
+      const state = crypto.randomBytes(16).toString('hex');
 
       // Generate the authorization URL
       const authUrl = this.xClientService.generateAuthorizationUrl(
@@ -76,18 +77,9 @@ export class XAuthController {
 
     try {
       // Log the incoming tokens for debugging
-      console.log(
-        'Received tokens - accessToken exists:',
-        !!connectTwitterDto.accessToken,
-      );
-      console.log(
-        'Received tokens - refreshToken exists:',
-        !!connectTwitterDto.refreshToken,
-      );
-      console.log(
-        'Received tokens - tokenExpiresAt:',
-        connectTwitterDto.tokenExpiresAt,
-      );
+      console.log('Received tokens - accessToken exists:', !!connectTwitterDto.accessToken);
+      console.log('Received tokens - refreshToken exists:', !!connectTwitterDto.refreshToken);
+      console.log('Received tokens - tokenExpiresAt:', connectTwitterDto.tokenExpiresAt);
 
       await this.xAuthService.connectAccount(userId, {
         accessToken: connectTwitterDto.accessToken,

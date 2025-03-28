@@ -28,7 +28,7 @@ import '../../../domain/usecases/server/refresh_batch_engagements_usecase.dart';
 import '../../../domain/usecases/server/update_server_post_usecase.dart';
 
 final serverUrlProvider = Provider<String>((ref) {
-  return 'https://eec2-2a0d-6fc0-eb1-2400-51d-63e3-e1b8-750f.ngrok-free.app';
+  return 'https://vouse.onrender.com';
 });
 
 /// Dio provider for server API client with auth token interceptor
@@ -76,7 +76,6 @@ final serverRepositoryProvider = Provider<ServerRepository>((ref) {
   return ServerRepositoryImpl(apiClient);
 });
 
-// Use case providers
 
 /// Schedule post use case provider
 final schedulePostUseCaseProvider = Provider<SchedulePostUseCase>((ref) {

@@ -77,9 +77,18 @@ export class XAuthController {
 
     try {
       // Log the incoming tokens for debugging
-      console.log('Received tokens - accessToken exists:', !!connectTwitterDto.accessToken);
-      console.log('Received tokens - refreshToken exists:', !!connectTwitterDto.refreshToken);
-      console.log('Received tokens - tokenExpiresAt:', connectTwitterDto.tokenExpiresAt);
+      console.log(
+        'Received tokens - accessToken exists:',
+        !!connectTwitterDto.accessToken,
+      );
+      console.log(
+        'Received tokens - refreshToken exists:',
+        !!connectTwitterDto.refreshToken,
+      );
+      console.log(
+        'Received tokens - tokenExpiresAt:',
+        connectTwitterDto.tokenExpiresAt,
+      );
 
       await this.xAuthService.connectAccount(userId, {
         accessToken: connectTwitterDto.accessToken,

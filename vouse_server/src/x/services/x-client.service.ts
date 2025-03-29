@@ -1,8 +1,9 @@
 // src/x/services/x-client.service.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'; // Added Inject, forwardRef
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { UserService } from '../../users/services/user.service';
 import { ConnectTwitterDto } from '../../users/dto/user.dto';
+import { XAuthService } from './x-auth.service'; // Added XAuthService import
 import * as crypto from 'crypto';
 import * as OAuth from 'oauth-1.0a';
 import { TokenEncryption } from '../../common/utils/token_encryption.util';
@@ -27,6 +28,9 @@ export class XClientService {
   constructor(
     private readonly userService: UserService,
     private readonly tokenEncryption: TokenEncryption,
+    // Inject XAuthService - forwardRef might be needed if circular dependency exists
+    @Inject(forwardRef(() => XAuthService))
+    private readonly xAuthService: XAuthService,
   ) {
     // Initialize Axios client with default config
     this.axiosInstance = axios.create({
@@ -38,13 +42,14 @@ export class XClientService {
   }
 
   /**
-   * Make an authenticated GET request to the X/Twitter v2 API
+   * Make an authenticated GET request to the X/Twitter v2 API.
+   * Handles automatic token refresh on 401 errors.
    *
-   * @param endpoint - The API endpoint to call
+   * @param endpoint - The API endpoint to call (e.g., '/users/me')
    * @param userId - The user ID for authentication
    * @param params - Optional query parameters
-   * @param isRetry - Whether this is a retry attempt after token refresh
-   * @returns The API response
+   * @param isRetry - Internal flag to prevent infinite retry loops on refresh failure
+   * @returns The API response data
    */
   async get<T>(
     endpoint: string,
@@ -79,13 +84,22 @@ export class XClientService {
       const error = asApiError(err);
 
       // Handle 401 Unauthorized errors by refreshing the token
+      // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
       if (error.response?.status === 401 && userId && !isRetry) {
+        this.logger.warn(`Received 401 for GET ${endpoint}. Attempting token refresh for user ${userId}.`);
         try {
-          // Try to refresh the token
-          await this.refreshToken(userId);
+          // Try to refresh the token using the centralized service
+          const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
-          // Retry the request with new token
-          return this.get<T>(endpoint, userId, params, true);
+          if (newAccessToken) {
+            this.logger.log(`Token refresh successful for user ${userId}. Retrying GET ${endpoint}.`);
+            // Retry the request with the updated token (implicitly stored by xAuthService)
+            return this.get<T>(endpoint, userId, params, true); // Pass isRetry=true
+          } else {
+            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry GET ${endpoint}.`);
+            // If refresh failed, throw the original error or a specific refresh error
+            throw new Error('Token refresh failed');
+          }
         } catch (refreshErr) {
           const refreshError = asApiError(refreshErr);
           this.logger.error(`Token refresh failed: ${refreshError.message}`);
@@ -117,19 +131,22 @@ export class XClientService {
   }
 
   /**
-   * Make an authenticated POST request to the X/Twitter v2 API
+   * Make an authenticated POST request to the X/Twitter v2 API.
+   * Handles automatic token refresh on 401 errors.
    *
-   * @param endpoint - The API endpoint to call
+   * @param endpoint - The API endpoint to call (e.g., '/tweets')
    * @param userId - The user ID for authentication
    * @param data - Request body data
    * @param params - Optional query parameters
-   * @returns The API response
+   * @param isRetry - Internal flag to prevent infinite retry loops on refresh failure
+   * @returns The API response data
    */
   async post<T>(
     endpoint: string,
     userId: string,
     data: Record<string, any>,
     params: Record<string, any> = {},
+    isRetry = false, // Added isRetry parameter
   ): Promise<T> {
     try {
       const url = `${this.apiV2BaseUrl}${endpoint}`;
@@ -157,21 +174,50 @@ export class XClientService {
     } catch (err) {
       const error = asApiError(err);
 
-      // Handle 401 Unauthorized errors by attempting to refresh the token
-      if (error.response?.status === 401 && userId) {
+      // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
+      if (error.response?.status === 401 && userId && !isRetry) {
+        this.logger.warn(`Received 401 for POST ${endpoint}. Attempting token refresh for user ${userId}.`);
         try {
-          // Try to refresh the token
-          await this.refreshToken(userId);
+          // Try to refresh the token using the centralized service
+          const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
-          // Retry the request with new token
-          return this.post<T>(endpoint, userId, data, params);
+          if (newAccessToken) {
+            this.logger.log(`Token refresh successful for user ${userId}. Retrying POST ${endpoint}.`);
+            // Retry the request with the updated token (implicitly stored by xAuthService)
+            return this.post<T>(endpoint, userId, data, params, true); // Pass isRetry=true
+          } else {
+            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry POST ${endpoint}.`);
+            // If refresh failed, throw the original error or a specific refresh error
+            throw new Error('Token refresh failed');
+          }
         } catch (refreshErr) {
           const refreshError = asApiError(refreshErr);
-          this.logger.error('Token refresh failed:', refreshError.message);
+          this.logger.error(`Token refresh failed during POST retry: ${refreshError.message}`);
+          // Throw the refresh error to prevent falling through to throw the original 401
+          throw refreshError;
         }
       }
 
-      throw error;
+      // Handle rate limit errors
+      if (error.response?.status === 429) {
+        const resetTime = error.response?.headers
+          ? error.response.headers['x-rate-limit-reset']
+          : undefined;
+        error.isRateLimit = true;
+        error.resetTime = resetTime
+          ? new Date(parseInt(resetTime.toString()) * 1000)
+          : new Date(Date.now() + 15 * 60 * 1000);
+      }
+
+      // Handle other 401 errors (e.g., if retry failed or wasn't attempted)
+      if (error.response?.status === 401) {
+        // Mark user as disconnected in case of persistent auth issues
+        await this.userService.updateConnectionStatus(userId, {
+          isConnected: false,
+        });
+      }
+
+      throw error; // Throw original or modified error
     }
   }
 
@@ -234,17 +280,21 @@ export class XClientService {
    * @returns The media ID from Twitter
    */
   /**
-   * Upload media to Twitter using v1.1 API
+   * Upload media to Twitter using v1.1 API.
+   * Handles automatic token refresh on 401 errors (though v1.1 uses different auth).
+   * Note: Token refresh logic might need adjustment if v1.1 auth fails differently.
    *
    * @param userId The user ID for authentication
    * @param mediaBase64 The base64-encoded media content
    * @param mediaType The media MIME type (e.g., "image/jpeg")
-   * @returns The media ID from Twitter
+   * @param isRetry Internal flag to prevent infinite retry loops on refresh failure
+   * @returns The media ID string from Twitter
    */
   async uploadMedia(
     userId: string,
     mediaBase64: string,
     mediaType: string,
+    isRetry = false, // Added isRetry parameter
   ): Promise<string> {
     try {
       this.logger.log(`Starting v1.1 media upload for user ${userId}`);
@@ -325,20 +375,31 @@ export class XClientService {
         );
       }
 
-      // Handle 401 Unauthorized by attempting to refresh the token
-      if (error.response?.status === 401 && userId) {
+      // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
+      // Note: V1.1 API might return different error codes for auth issues. This assumes 401 for simplicity.
+      if (error.response?.status === 401 && userId && !isRetry) {
+        this.logger.warn(`Received 401 during media upload. Attempting token refresh for user ${userId}.`);
         try {
-          // Try to refresh the token
-          await this.refreshToken(userId);
+          // Try to refresh the token using the centralized service
+          const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
-          // Try the upload again
-          return this.uploadMedia(userId, mediaBase64, mediaType);
+          if (newAccessToken) {
+            this.logger.log(`Token refresh successful for user ${userId}. Retrying media upload.`);
+            // Retry the upload with the updated token (implicitly stored by xAuthService)
+            return this.uploadMedia(userId, mediaBase64, mediaType, true); // Pass isRetry=true
+          } else {
+            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry media upload.`);
+            // If refresh failed, throw the original error or a specific refresh error
+            throw new Error('Token refresh failed');
+          }
         } catch (refreshErr) {
           const refreshError = asApiError(refreshErr);
-          this.logger.error('Token refresh failed:', refreshError.message);
+          this.logger.error(`Token refresh failed during media upload retry: ${refreshError.message}`);
+          // Throw the refresh error to prevent falling through to throw the original 401
+          throw refreshError;
         }
       }
-
+      // Handle other errors or re-throw if refresh wasn't attempted/failed
       throw error;
     }
   }
@@ -369,111 +430,16 @@ export class XClientService {
     }
 
     // Make the API request
+    // Make the API request using the centralized post method which handles refresh
     return this.post('/tweets', userId, tweetData);
   }
 
-  /**
-   * Refresh a user's X/Twitter access token
-   *
-   * @param userId - The user ID to refresh the token for
-   * @returns True if successful
-   */
-  async refreshToken(userId: string): Promise<boolean> {
-    try {
-      const user = await this.userService.findOneOrFail(userId);
-
-      if (!user.refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      // Decrypt the refresh token
-      const refreshTokenValue = this.tokenEncryption.decrypt(user.refreshToken);
-      if (!refreshTokenValue) {
-        throw new Error('Failed to decrypt refresh token');
-      }
-
-      // Call Twitter API to refresh token
-      // Create Basic auth header with client ID and secret (required for OAuth 2.0)
-      const clientId = process.env.TWITTER_API_KEY || '';
-      const clientSecret = process.env.TWITTER_API_SECRET || '';
-
-      if (!clientId || !clientSecret) {
-        throw new Error(
-          'Twitter API key and secret are required for token refresh',
-        );
-      }
-
-      // Base64 encode for Basic auth
-      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
-        'base64',
-      );
-
-      const response = await axios.post(
-        'https://api.twitter.com/2/oauth2/token',
-        new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshTokenValue,
-        }).toString(),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Authorization: `Basic ${basicAuth}`,
-          },
-        },
-      );
-
-      // Process the response
-      const data = response.data;
-
-      // Update user with new tokens
-      const newAccessToken = this.tokenEncryption.encrypt(data.access_token);
-      if (!newAccessToken) {
-        throw new Error('Failed to encrypt new access token');
-      }
-
-      // Calculate expiration date
-      const expiresIn = data.expires_in;
-      const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-      // Create connect Twitter DTO
-      const connectDto: ConnectTwitterDto = {
-        accessToken: newAccessToken,
-        tokenExpiresAt: expiresAt.toISOString(),
-      };
-
-      // Add refresh token if available
-      if (data.refresh_token) {
-        const encryptedRefreshToken = this.tokenEncryption.encrypt(
-          data.refresh_token,
-        );
-        if (encryptedRefreshToken) {
-          connectDto.refreshToken = encryptedRefreshToken;
-        }
-      }
-
-      // Update user record using connectTwitter
-      await this.userService.connectTwitter(userId, connectDto);
-
-      return true;
-    } catch (err) {
-      const error = asApiError(err);
-      if (error.response) {
-        this.logger.error('Error response:', error.response.data);
-        this.logger.error('Error status:', error.response.status);
-      }
-      this.logger.error(`Failed to refresh token: ${error.message}`);
-
-      // Mark user as disconnected
-      await this.userService.updateConnectionStatus(userId, {
-        isConnected: false,
-      });
-
-      throw error;
-    }
-  }
+  // Removed internal refreshToken method - logic is now centralized in XAuthService
 
   /**
-   * Verify user credentials with Twitter API
+   * Verify user credentials with Twitter API using the user's current token.
+   * This method does NOT handle token refresh itself, relying on the underlying
+   * `get` method to trigger refresh if needed.
    *
    * @param accessToken - Access token to verify
    * @returns User information if token is valid
@@ -525,12 +491,11 @@ export class XClientService {
     const baseUrl = 'https://x.com/i/oauth2/authorize';
 
     // Define required scopes for our application
-    // IMPORTANT: Include offline.access to get refresh tokens
     const scopes = [
       'tweet.read',
       'tweet.write',
       'users.read',
-      'offline.access', // This is crucial for getting refresh tokens
+      'offline.access',
     ];
 
     // Build the query parameters

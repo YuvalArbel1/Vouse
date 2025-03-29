@@ -212,10 +212,11 @@ export class XAuthService {
   }
 
   /**
-   * Refresh an expired access token using the refresh token
+   * Obtains a new access token using the stored refresh token.
+   * This is typically called when an API request fails due to an expired access token.
    *
-   * @param userId Firebase user ID
-   * @returns A new access token or null if refresh failed
+   * @param userId The user ID for whom to refresh the tokens.
+   * @returns A new access token if successful, otherwise null.
    */
   async refreshTokens(userId: string): Promise<string | null> {
     try {
@@ -252,7 +253,7 @@ export class XAuthService {
       const formData = new URLSearchParams();
       formData.append('refresh_token', tokens.refreshToken);
       formData.append('grant_type', 'refresh_token');
-      formData.append('client_id', clientId);
+      // client_id is sent via Basic Auth header for confidential clients, not in the body.
 
       this.logger.debug('Sending refresh token request to Twitter API');
 

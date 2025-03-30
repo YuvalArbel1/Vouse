@@ -29,11 +29,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     XModule,
     NotificationsModule,
   ],
-  providers: [
-    PostService,
-    EngagementService,
-    PostPublishProcessor,
-  ],
+  providers: [PostService, EngagementService, PostPublishProcessor],
   controllers: [PostController, EngagementController, QueueHealthController],
   exports: [PostService, EngagementService],
 })

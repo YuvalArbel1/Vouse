@@ -11,6 +11,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { CommonModule } from './common/common.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
     PostsModule, // Post scheduling and metrics
     NotificationsModule, // Notification
   ],
-  controllers: [],
+  controllers: [AppController], // Register the AppController
   providers: [],
 })
 export class AppModule implements NestModule {

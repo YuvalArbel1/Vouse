@@ -44,6 +44,7 @@ Vouse Server provides the core API infrastructure for the Vouse platform, enabli
 *   **Queue System:** [BullMQ](https://bullmq.io/)
 *   **Cache/Queue Broker:** [Redis](https://redis.io/)
 *   **Authentication:** [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
+*   **Cloud Storage:** [Firebase Storage](https://firebase.google.com/docs/storage) (Used by client, URLs consumed by server)
 *   **Social Media API:** [Twitter API v2](https://developer.twitter.com/en/docs/twitter-api/early-access) & v1.1 (for media uploads)
 *   **HTTP Client:** [Axios](https://axios-http.com/)
 *   **Validation:** [class-validator](https://github.com/typestack/class-validator), [class-transformer](https://github.com/typestack/class-transformer)
@@ -58,6 +59,37 @@ The server follows a standard NestJS modular architecture:
 *   **API Layer:** Controllers expose RESTful endpoints, protected by Guards (`FirebaseAuthGuard`). DTOs define the shape of request/response data.
 *   **Configuration:** Uses `.env` files and dedicated config services (`typeorm.config`, `redis.config`, `twitter.config`).
 *   **Security:** Firebase ID tokens are used for authentication. Sensitive tokens (e.g., Twitter refresh tokens) are encrypted before database storage.
+*   **Image Handling:** Client uploads images to Firebase Storage; server receives and stores the URLs, then downloads images from these URLs when publishing to Twitter.
+
+```mermaid
+graph TD
+    A[Flutter App] --> C;
+    A --> S[Firebase Storage];
+
+    subgraph Vouse API
+        direction LR
+        C{Controllers};
+        C -- Uses --> D{Services};
+        D -- Interacts --> E[TypeORM];
+        D -- Interacts --> F[BullMQ];
+        D -- Interacts --> G[Firebase Admin];
+        D -- Interacts --> H[Twitter API Client];
+        D -- Downloads From --> S;
+    end
+
+    E --> I[(PostgreSQL)]; 
+    F --> J[(Redis)]; 
+    G --> K[Firebase Auth];
+    G --> L[FCM];
+    H --> M[Twitter API];
+
+    style I fill:#c55,stroke:#333,color:#000 
+style J fill:#c55,stroke:#333,color:#000 
+style K fill:#f80,stroke:#333,color:#000 
+style L fill:#f80,stroke:#333,color:#000 
+style M fill:#1DA1F2,stroke:#333,color:#000 
+style S fill:#f80,stroke:#333,color:#000 
+```
 
 ```
 src/

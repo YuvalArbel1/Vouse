@@ -21,6 +21,9 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TypeOrmModule.forFeature([Post, Engagement]),
     BullModule.registerQueue({
       name: 'post-publish',
+      settings: {
+        stalledInterval: 900000,
+      },
     }),
 
     AuthModule,

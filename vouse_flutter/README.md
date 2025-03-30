@@ -1,181 +1,115 @@
-# Vouse Flutter Client
+# Vouse Flutter Client 📱
 
 <div align="center">
-  <img src="assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150">
-  <h3>A modern social media management app built with Flutter</h3>
+  <img src="https://raw.githubusercontent.com/YuvalArbel1/Vouse/main/vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
+  <br/>
+  <strong>A modern, cross-platform social media management app built with Flutter.</strong>
+  <br/>
+  <br/>
+  <!-- Badges -->
+  <img src="https://img.shields.io/badge/framework-Flutter-blue?style=for-the-badge&logo=flutter" alt="Flutter">
+  <img src="https://img.shields.io/badge/language-Dart-blue?style=for-the-badge&logo=dart" alt="Dart">
+  <img src="https://img.shields.io/badge/state-Riverpod-purple?style=for-the-badge&logo=riverpod" alt="Riverpod">
+  <img src="https://img.shields.io/badge/auth-Firebase-orange?style=for-the-badge&logo=firebase" alt="Firebase">
+  <img src="https://img.shields.io/badge/API Client-Retrofit-brightgreen?style=for-the-badge" alt="Retrofit">
+  <!-- Add build status, license, etc. badges here if applicable -->
 </div>
 
-## Overview
+## ✨ Overview
 
-The Vouse Flutter client is a cross-platform mobile application that provides an intuitive interface for managing social media accounts. It connects to the Vouse backend server to provide seamless social media integration, AI-powered content creation, and analytics.
+The Vouse Flutter client provides an intuitive and seamless experience for managing social media accounts on the go. Built using Flutter for cross-platform compatibility (Android & iOS), it connects securely to the Vouse backend API to offer features like post scheduling, media management, engagement tracking, and AI-assisted content creation.
 
-## Features
+## 🚀 Key Features
 
-- **User Authentication**: Secure login with Firebase Authentication
-- **Social Media Integration**: Connect and manage Twitter/X accounts
-- **Content Creation**: Create and edit posts with AI assistance
-- **Media Management**: Upload and manage images for posts
-- **Post Scheduling**: Schedule posts for automated publishing
-- **Analytics Dashboard**: Track engagement metrics
-- **Location Features**: Location-based posting and discovery
-- **Push Notifications**: Real-time updates on account activities
+*   🔒 **Secure Authentication:** Smooth login/signup flow using Firebase Authentication (Email, Google Sign-In) integrated with the Vouse backend.
+*   📱 **Cross-Platform:** Single codebase for both Android and iOS using Flutter.
+*   ✍️ **Post Creation & Scheduling:** Compose posts with text, images, and location tags. Schedule them for automatic publishing via the Vouse server.
+*   🖼️ **Media Handling:** Select and preview images for your posts.
+*   📊 **Engagement Tracking:** View performance metrics for your published posts.
+*   🔔 **Push Notifications:** Receive real-time updates about your account and published posts via FCM.
+*   🗺️ **Location Services:** Tag posts with location data using Google Maps integration.
+*   🤖 **AI Assistance (via Backend):** Leverage backend AI features for content suggestions (details implemented server-side).
+*   🏛️ **Clean Architecture:** Organized codebase following clean architecture principles for maintainability and testability.
+*   💡 **State Management:** Efficient and scalable state management using Riverpod.
 
-## Project Structure
+## 📸 Screenshots / Demo
 
-The project follows a clean architecture approach with the following organization:
+*(Placeholders - Replace with actual screenshots or GIFs)*
+
+| Login Screen                                     | Home Dashboard                                   | Post Creation                                      |
+| :-----------------------------------------------: | :----------------------------------------------: | :------------------------------------------------: |
+| ![Login Screen](placeholder_login.png)           | ![Home Screen](placeholder_home.png)             | ![Post Creation](placeholder_create.gif)           |
+| **Post History**                                 | **Engagement View**                              | **Profile/Settings**                             |
+| ![Post History Screen](placeholder_history.png) | ![Engagement Screen](placeholder_engagement.png) | ![Profile Screen](placeholder_profile.png)         |
+
+## 🛠️ Tech Stack
+
+*   **Framework:** [Flutter](https://flutter.dev/)
+*   **Language:** [Dart](https://dart.dev/)
+*   **State Management:** [Riverpod](https://riverpod.dev/)
+*   **API Client:** [Retrofit](https://pub.dev/packages/retrofit) / [Dio](https://pub.dev/packages/dio)
+*   **Authentication:** [Firebase Auth](https://pub.dev/packages/firebase_auth), [Google Sign-In](https://pub.dev/packages/google_sign_in), [Flutter AppAuth](https://pub.dev/packages/flutter_appauth) (for Twitter OAuth flow)
+*   **Local Storage:** [SQFlite](https://pub.dev/packages/sqflite)
+*   **Secure Storage:** [Flutter Secure Storage](https://pub.dev/packages/flutter_secure_storage)
+*   **Cloud Storage:** [Firebase Storage](https://pub.dev/packages/firebase_storage)
+*   **Mapping/Location:** [Google Maps Flutter](https://pub.dev/packages/google_maps_flutter), [Geocoding](https://pub.dev/packages/geocoding), [Location](https://pub.dev/packages/location)
+*   **Push Notifications:** [Firebase Messaging](https://pub.dev/packages/firebase_messaging), [Flutter Local Notifications](https://pub.dev/packages/flutter_local_notifications)
+*   **Image Handling:** [Image Picker](https://pub.dev/packages/image_picker), [Photo Manager](https://pub.dev/packages/photo_manager)
+*   **Utilities:** [intl](https://pub.dev/packages/intl), [path_provider](https://pub.dev/packages/path_provider), [Logger](https://pub.dev/packages/logger), [nb_utils](https://pub.dev/packages/nb_utils)
+
+## 🏛️ Architecture Overview
+
+The app follows Clean Architecture principles, separating concerns into distinct layers:
+
+*   **Presentation Layer:** Contains UI elements (Screens, Widgets), state management (Riverpod Providers), and navigation logic.
+*   **Domain Layer:** Defines core business logic, including Entities (business objects), Use Cases (specific operations like `SchedulePostUseCase`), and Repository interfaces (contracts for data access).
+*   **Data Layer:** Implements the Repository interfaces, interacting with data sources like the Vouse backend API (via Retrofit `ServerApiClient`), local SQLite database (`LocalDbRepository`), Firebase services (Auth, Storage), and secure storage. Uses `DataState` to handle operation outcomes.
+*   **Core Layer:** Provides shared utilities, configuration (`AppSecrets`), base classes (`UseCase`), and resources used across layers.
 
 ```
 lib/
-├── core/               # Core utilities and constants
-├── data/               # Data layer (repositories, data sources)
-├── domain/             # Domain layer (entities, use cases)
-├── presentation/       # UI layer (screens, widgets, state management)
-└── main.dart           # Application entry point
+├── core/          # Shared utilities, config, base usecase
+├── data/          # Repository implementations, API clients, data models, data sources
+├── domain/        # Core business logic: Entities, Repository interfaces, Use Cases
+├── presentation/  # UI: Screens, Widgets, Riverpod Providers, Theme, Navigation
+└── main.dart      # App entry point & initialization
 ```
 
-### Key Directories
-
-- **core**: Contains common utilities, constants, and helper classes
-- **data**: Implements data repositories and API clients
-- **domain**: Contains business logic models and entities
-- **presentation**: UI components organized by feature
-
-## Technology Stack
-
-- **Flutter SDK**: ^3.6.1
-- **State Management**: flutter_riverpod ^2.6.1
-- **Networking**: retrofit ^4.4.2, dio ^5.8.0+1
-- **Authentication**: firebase_auth ^5.4.2, google_sign_in ^6.2.2
-- **Database**: sqflite ^2.4.1 (for local storage)
-- **Location Services**: google_maps_flutter ^2.10.0, geocoding ^3.0.0
-- **AI Integration**: firebase_vertexai ^1.2.0
-- **Storage**: firebase_storage ^12.4.3
-- **Push Notifications**: firebase_messaging, flutter_local_notifications
-
-## Getting Started
+## ⚙️ Getting Started
 
 ### Prerequisites
 
-- Flutter SDK 3.6.1 or higher
-- Dart SDK 3.0.0 or higher
-- Android Studio / VS Code
-- Firebase project configured
-- Google Maps API key
+*   Flutter SDK (check `pubspec.yaml` for specific version)
+*   Dart SDK
+*   Android Studio / VS Code with Flutter plugins
+*   Firebase project configured (Auth, Storage, FCM)
+*   Google Maps API Key (configured in `lib/core/config/app_secrets.dart`)
+*   Vouse Server running and accessible
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/YuvalArbel1/Vouse.git
-   cd Vouse/vouse_flutter
-   ```
+1.  **Clone:** `git clone https://github.com/YuvalArbel1/Vouse.git && cd Vouse/vouse_flutter`
+2.  **Install:** `flutter pub get`
+3.  **Configure:**
+   *   Ensure your Firebase project's `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are correctly placed.
+   *   Update API keys in `lib/core/config/app_secrets.dart` if necessary.
+   *   Ensure the Vouse Server API base URL is correctly configured (likely within the Dio setup in the data layer).
+4.  **Run:** `flutter run`
 
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+## 🙏 Contributing
 
-3. Create a `.env` file (or use Firebase configuration):
-   ```
-   API_BASE_URL=your_api_url
-   GOOGLE_MAPS_API_KEY=your_api_key
-   ```
+Contributions are welcome! Please follow standard fork-and-pull-request workflow.
 
-4. Run the app:
-   ```bash
-   flutter run
-   ```
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-## Architecture
-
-The app follows the principles of Clean Architecture with Riverpod for state management:
-
-### Layers
-
-1. **Presentation Layer**:
-   - Screens/Pages: UI components that display content
-   - Widgets: Reusable UI components
-   - Providers: Riverpod state management
-
-2. **Domain Layer**:
-   - Entities: Core business objects
-   - Use Cases: Business logic operations
-
-3. **Data Layer**:
-   - Repositories: Abstract data operations
-   - Data Sources: API clients and local storage
-
-## Key Features Implementation
-
-### Authentication Flow
-
-The app uses Firebase Authentication with custom token integration for the backend. The authentication flow includes:
-
-1. Firebase sign-in (Email, Google)
-2. Token retrieval and validation
-3. User profile setup and management
-
-### Social Media Integration
-
-Twitter/X integration is handled through:
-1. OAuth authentication
-2. API client implementation
-3. Tweet composition and scheduling
-
-### AI Content Generation
-
-AI features leverage Firebase VertexAI:
-1. Content suggestions
-2. Hashtag recommendations
-3. Post optimization
-
-## Development Guidelines
-
-### Code Style
-
-- Follow the [Flutter style guide](https://flutter.dev/docs/development/tools/formatting)
-- Use meaningful variable and function names
-- Document public APIs with dartdoc comments
-
-### State Management
-
-- Use Riverpod providers for state management
-- Separate UI logic from business logic
-- Use immutable state objects
-
-### Testing
-
-Run tests with:
-```bash
-flutter test
-```
-
-## Building for Production
-
-### Android
-
-```bash
-flutter build apk --release
-```
-
-### iOS
-
-```bash
-flutter build ios --release
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
+## 📄 License
 
 All rights reserved. This project and its contents are proprietary.
 
 ---
 
-For backend documentation, see the [vouse_server README](../vouse_server/README.md).
+⬅️ Go to [Vouse Server README](../vouse_server/README.md)

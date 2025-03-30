@@ -11,7 +11,6 @@ import { PostController } from './controllers/post.controller';
 import { EngagementController } from './controllers/engagement.controller';
 import { QueueHealthController } from './controllers/queue-health.controller';
 import { PostPublishProcessor } from './processors/post-publish.processor';
-import { MetricsCollectorProcessor } from './processors/metrics-collector.processor';
 
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
@@ -25,9 +24,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     BullModule.registerQueue({
       name: 'post-publish',
     }),
-    BullModule.registerQueue({
-      name: 'metrics-collector', // Ensure this queue is registered
-    }),
     AuthModule,
     UsersModule,
     XModule,
@@ -37,7 +33,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     PostService,
     EngagementService,
     PostPublishProcessor,
-    MetricsCollectorProcessor,
   ],
   controllers: [PostController, EngagementController, QueueHealthController],
   exports: [PostService, EngagementService],

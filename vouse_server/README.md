@@ -1,7 +1,7 @@
 # Vouse Server 🚀
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/YuvalArbel1/Vouse/main/vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
+  <img src="../vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
   <br/>
   <strong>The robust NestJS backend powering the Vouse social media management platform.</strong>
   <br/>
@@ -77,18 +77,18 @@ graph TD
         D -- Downloads From --> S;
     end
 
-    E --> I[(PostgreSQL)]; 
-    F --> J[(Redis)]; 
+    E --> I[(PostgreSQL)];
+    F --> J[(Redis)];
     G --> K[Firebase Auth];
     G --> L[FCM];
     H --> M[Twitter API];
 
     style I fill:#c55,stroke:#333,color:#000 
-style J fill:#c55,stroke:#333,color:#000 
-style K fill:#f80,stroke:#333,color:#000 
-style L fill:#f80,stroke:#333,color:#000 
-style M fill:#1DA1F2,stroke:#333,color:#000 
-style S fill:#f80,stroke:#333,color:#000 
+    style J fill:#c55,stroke:#333,color:#000 
+    style K fill:#f80,stroke:#333,color:#000 
+    style L fill:#f80,stroke:#333,color:#000 
+    style M fill:#1DA1F2,stroke:#333,color:#000 
+    style S fill:#f80,stroke:#333,color:#000 
 ```
 
 ```

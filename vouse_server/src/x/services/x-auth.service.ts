@@ -20,21 +20,21 @@ export class XAuthService {
 
   // Add a cache for verified users to reduce API calls
   private readonly verifiedTokensCache: Map<
-    string,
-    {
-      timestamp: number;
-      username: string;
-    }
+      string,
+      {
+        timestamp: number;
+        username: string;
+      }
   > = new Map();
 
   // Cache expiration time - 1 hour
   private readonly CACHE_EXPIRATION_MS = 60 * 60 * 1000;
 
   constructor(
-    private readonly userService: UserService,
-    @Inject(forwardRef(() => XClientService))
-    private readonly xClientService: XClientService,
-    private readonly tokenEncryption: TokenEncryption,
+      private readonly userService: UserService,
+      @Inject(forwardRef(() => XClientService))
+      private readonly xClientService: XClientService,
+      private readonly tokenEncryption: TokenEncryption,
   ) {}
 
   /**
@@ -46,8 +46,8 @@ export class XAuthService {
    * @returns Updated user record
    */
   async connectAccount(
-    userId: string,
-    tokens: TwitterAuthTokens,
+      userId: string,
+      tokens: TwitterAuthTokens,
   ): Promise<any> {
     try {
       if (!tokens.accessToken || !tokens.refreshToken) {
@@ -56,10 +56,10 @@ export class XAuthService {
 
       // Encrypt tokens before storage
       const encryptedAccessToken = this.tokenEncryption.encrypt(
-        tokens.accessToken,
+          tokens.accessToken,
       );
       const encryptedRefreshToken = this.tokenEncryption.encrypt(
-        tokens.refreshToken,
+          tokens.refreshToken,
       );
 
       try {
@@ -78,7 +78,7 @@ export class XAuthService {
         // but log the issue
         if (error.isRateLimit) {
           this.logger.warn(
-            `Rate limited during token verification. Proceeding with token storage anyway.`,
+              `Rate limited during token verification. Proceeding with token storage anyway.`,
           );
         } else {
           // For other errors, reject the connection
@@ -95,14 +95,14 @@ export class XAuthService {
       return this.userService.connectTwitter(userId, {
         accessToken: encryptedAccessToken !== null ? encryptedAccessToken : '',
         refreshToken:
-          encryptedRefreshToken !== null ? encryptedRefreshToken : '',
+            encryptedRefreshToken !== null ? encryptedRefreshToken : '',
         // Convert null to undefined for tokenExpiresAt
         tokenExpiresAt:
-          tokens.tokenExpiresAt === null ? undefined : tokens.tokenExpiresAt,
+            tokens.tokenExpiresAt === null ? undefined : tokens.tokenExpiresAt,
       });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+          error instanceof Error ? error.message : String(error);
       this.logger.error(`Error connecting Twitter account: ${errorMessage}`);
       throw error;
     }
@@ -117,7 +117,7 @@ export class XAuthService {
   async verifyTokens(accessToken: string): Promise<any> {
     try {
       const credentials =
-        await this.xClientService.verifyCredentials(accessToken);
+          await this.xClientService.verifyCredentials(accessToken);
       return {
         success: true,
         data: {
@@ -128,7 +128,7 @@ export class XAuthService {
       };
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+          error instanceof Error ? error.message : String(error);
       this.logger.error(`Token verification failed: ${errorMessage}`);
 
       // Pass through the error with rate limit info if present
@@ -176,9 +176,9 @@ export class XAuthService {
       };
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+          error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to decrypt tokens for user ${userId}: ${errorMessage}`,
+          `Failed to decrypt tokens for user ${userId}: ${errorMessage}`,
       );
       // If decryption fails, update connection status to false
       await this.updateConnectionStatus(userId, false);
@@ -205,8 +205,8 @@ export class XAuthService {
    * @returns Updated user record
    */
   async updateConnectionStatus(
-    userId: string,
-    isConnected: boolean,
+      userId: string,
+      isConnected: boolean,
   ): Promise<any> {
     return this.userService.updateConnectionStatus(userId, { isConnected });
   }
@@ -246,14 +246,14 @@ export class XAuthService {
       // Create Basic Auth header for client authentication
       // This is required by Twitter for token refresh
       const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
-        'base64',
+          'base64',
       );
 
       // Create form data for token refresh request
       const formData = new URLSearchParams();
       formData.append('refresh_token', tokens.refreshToken);
       formData.append('grant_type', 'refresh_token');
-      // client_id is sent via Basic Auth header for confidential clients, not in the body.
+      formData.append('client_id', clientId);
 
       this.logger.debug('Sending refresh token request to Twitter API');
 
@@ -267,13 +267,13 @@ export class XAuthService {
 
       // Log response for debugging
       this.logger.debug(
-        `Token refresh response: ${JSON.stringify(response.data)}`,
+          `Token refresh response: ${JSON.stringify(response.data)}`,
       );
 
       // Extract new tokens from response
       const newAccessToken = response.data.access_token;
       const newRefreshToken =
-        response.data.refresh_token || tokens.refreshToken;
+          response.data.refresh_token || tokens.refreshToken;
       const expiresIn = response.data.expires_in || 7200;
 
       // Calculate token expiration time
@@ -283,7 +283,7 @@ export class XAuthService {
       // Encrypt the new tokens
       const encryptedAccessToken = this.tokenEncryption.encrypt(newAccessToken);
       const encryptedRefreshToken =
-        this.tokenEncryption.encrypt(newRefreshToken);
+          this.tokenEncryption.encrypt(newRefreshToken);
 
       // Update the tokens in the database
       await this.userService.connectTwitter(userId, {
@@ -293,22 +293,22 @@ export class XAuthService {
       });
 
       this.logger.log(
-        `Successfully refreshed tokens for user ${userId}, expires at ${tokenExpiresAt.toISOString()}`,
+          `Successfully refreshed tokens for user ${userId}, expires at ${tokenExpiresAt.toISOString()}`,
       );
 
       // Return the new access token for immediate use
       return newAccessToken;
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : String(error);
+          error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to refresh tokens for user ${userId}: ${errorMessage}`,
+          `Failed to refresh tokens for user ${userId}: ${errorMessage}`,
       );
 
       // If the refresh token is invalid, update connection status
       if (error.response?.status === 400 || error.response?.status === 401) {
         this.logger.warn(
-          `Invalid refresh token for user ${userId}, disconnecting account`,
+            `Invalid refresh token for user ${userId}, disconnecting account`,
         );
         await this.updateConnectionStatus(userId, false);
       }

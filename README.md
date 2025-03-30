@@ -1,65 +1,86 @@
-# Vouse - Social Media Management Platform
+# Vouse - Social Media Management Platform 🚀
 
 <div align="center">
-  <img src="vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="200">
-  <h3>Manage your social presence with AI-powered simplicity</h3>
+  <img src="vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="200"> 
+  <br/>
+  <strong>Manage your social presence with AI-powered simplicity.</strong>
+  <br/>
+  <br/>
+  <!-- Add relevant badges here: Build Status, License, etc. -->
+  <!-- Example: <img src="https://img.shields.io/badge/License-Proprietary-red" alt="License"> -->
+  <img src="https://img.shields.io/badge/Client-Flutter-blue?logo=flutter" alt="Flutter Client">
+  <img src="https://img.shields.io/badge/Server-NestJS-red?logo=nestjs" alt="NestJS Server">
+  <img src="https://img.shields.io/badge/Database-PostgreSQL-blue?logo=postgresql" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Infra-Firebase-orange?logo=firebase" alt="Firebase">
 </div>
 
-## About Vouse
+## ✨ About Vouse
 
-Vouse is an integrated social media management platform that helps users streamline their content creation and publication across multiple social networks. Built with a modern tech stack, Vouse provides an intuitive mobile interface through Flutter and a robust backend using NestJS.
+Vouse is an integrated social media management platform designed to streamline content creation, scheduling, and analysis across multiple social networks (starting with Twitter/X). It combines an intuitive mobile experience built with **Flutter** and a powerful, scalable backend powered by **NestJS**. Simplify your social media workflow and gain insights into your performance with Vouse!
 
-### Key Features
+<!-- Optional: Add a compelling GIF/Screenshot here -->
+<!-- <p align="center"><img src="path/to/your/demo.gif" alt="Vouse Demo"></p> -->
 
-- **Cross-Platform Social Media Integration**: Seamlessly manage content across Twitter/X
-- **AI-Assisted Content Creation**: Leverage Firebase VertexAI for smart content generation
-- **Scheduled Posting**: Plan and schedule your social media content in advance
-- **Analytics Dashboard**: Track engagement and performance metrics
-- **Notification System**: Stay updated with real-time alerts
-- **Location-Based Content**: Create and share location-tagged posts
+## 🚀 Key Features
 
-## Repository Structure
+*   📱 **Cross-Platform Mobile App:** Manage your accounts anywhere using the Flutter app (iOS & Android).
+*   🔗 **Twitter/X Integration:** Securely connect and manage your Twitter presence.
+*   🤖 **AI-Assisted Content:** Leverage Firebase Vertex AI SDK directly in the client app for smarter content suggestions.
+*   ⏰ **Advanced Scheduling:** Plan and automate your posts with a reliable queue system.
+*   📊 **Performance Analytics:** Track key engagement metrics for your published content.
+*   🔔 **Real-time Notifications:** Stay informed with push notifications.
+*   🗺️ **Location Tagging:** Add geographical context to your posts.
 
-This repository is organized into two main components:
+## 🛠️ Core Technologies
 
-1. **[vouse_flutter](vouse_flutter/)** - The mobile client application built with Flutter
-2. **[vouse_server](vouse_server/)** - The backend server built with NestJS
+![Flutter](https://img.shields.io/badge/-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/-Dart-0175C2?style=flat-square&logo=dart&logoColor=white)
+![NestJS](https://img.shields.io/badge/-NestJS-E0234E?style=flat-square&logo=nestjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/-Node.js-339933?style=flat-square&logo=node.js&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/-Redis-DC382D?style=flat-square&logo=redis&logoColor=white)
+![Firebase](https://img.shields.io/badge/-Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
+<!-- Add others if desired -->
 
-## Tech Stack
+## 📂 Repository Structure
 
-### Frontend (Flutter)
-- Flutter SDK
-- Riverpod for state management
-- Firebase Authentication
-- Google Maps integration
-- Retrofit for API communication
+This repository contains the two main components of the Vouse platform:
 
-### Backend (NestJS)
-- NestJS framework
-- TypeORM for database operations
-- PostgreSQL database
-- Redis for caching
-- Bull for queue processing
-- Firebase Admin SDK
+*   **`vouse_flutter/`**: The cross-platform mobile client built with Flutter.
+    *   ➡️ [**Go to Flutter Client README**](vouse_flutter/README.md)
+*   **`vouse_server/`**: The backend API server built with NestJS.
+    *   ➡️ [**Go to Server README**](vouse_server/README.md)
 
-## Getting Started
+## 🏛️ Architecture
 
-For detailed installation and setup instructions, please refer to the individual READMEs:
+Vouse employs a client-server architecture:
+*   The **Flutter client** provides the user interface, leveraging **Riverpod** for state management and following **Clean Architecture** principles (Domain, Data, Presentation layers). It interacts with the backend API via a **Retrofit/Dio** client and handles local data persistence and secure storage.
+*   The **NestJS server** handles core business logic, data persistence (PostgreSQL via **TypeORM**), background jobs (Redis via **BullMQ**), and communication with external services (Firebase, Twitter API). It uses a **modular design** based on NestJS conventions.
 
-- [Flutter Client Setup Guide](vouse_flutter/README.md)
-- [Backend Server Setup Guide](vouse_server/README.md)
+*(See individual READMEs for more detailed architecture information)*
 
-## Architecture
+## ⚙️ Getting Started
 
-Vouse follows a clean architecture pattern with separation of concerns:
+To get started with development, please refer to the specific setup instructions within each component's directory:
 
-- **Frontend**: Feature-based organization with Riverpod for state management
-- **Backend**: Modular architecture with domain-specific modules
+*   ➡️ [**Flutter Client Setup Guide**](vouse_flutter/README.md#⚙️-getting-started)
+*   ➡️ [**Backend Server Setup Guide**](vouse_server/README.md#⚙️-getting-started)
 
-## License
+## 🙏 Contributing
 
-All rights reserved. This project and its contents are protected under copyright law.
+Contributions are welcome! Please follow standard fork-and-pull-request workflow.
 
-## Contact
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-For any inquiries about Vouse, please reach out through GitHub issues.
+## 📄 License
+
+All rights reserved. This project and its contents are proprietary.
+
+## 📞 Contact
+
+For inquiries, please open an issue on this GitHub repository.

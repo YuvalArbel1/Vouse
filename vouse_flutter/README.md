@@ -1,7 +1,7 @@
 # Vouse Flutter Client 📱
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/YuvalArbel1/Vouse/main/vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
+  <img src="assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
   <br/>
   <strong>A modern, cross-platform social media management app built with Flutter.</strong>
   <br/>
@@ -9,9 +9,12 @@
   <!-- Badges -->
   <img src="https://img.shields.io/badge/framework-Flutter-blue?style=for-the-badge&logo=flutter" alt="Flutter">
   <img src="https://img.shields.io/badge/language-Dart-blue?style=for-the-badge&logo=dart" alt="Dart">
-  <img src="https://img.shields.io/badge/state-Riverpod-purple?style=for-the-badge&logo=riverpod" alt="Riverpod">
   <img src="https://img.shields.io/badge/auth-Firebase-orange?style=for-the-badge&logo=firebase" alt="Firebase">
-  <img src="https://img.shields.io/badge/API Client-Retrofit-brightgreen?style=for-the-badge" alt="Retrofit">
+  <img src="https://img.shields.io/badge/Mapping-Google_Maps-4285F4?style=for-the-badge&logo=googlemaps" alt="Google Maps">
+  <img src="https://img.shields.io/badge/Local_DB-SQFlite-007ACC?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQFlite">
+  <img src="https://img.shields.io/badge/state-Riverpod-purple?style=for-the-badge" alt="Riverpod">
+  <img src="https://img.shields.io/badge/API_Client-Retrofit-brightgreen?style=for-the-badge" alt="Retrofit">
+  <img src="https://img.shields.io/badge/Secure_Storage-flutter_secure_storage-blueviolet?style=for-the-badge" alt="Flutter Secure Storage">
   <!-- Add build status, license, etc. badges here if applicable -->
 </div>
 
@@ -21,14 +24,14 @@ The Vouse Flutter client provides an intuitive and seamless experience for manag
 
 ## 🚀 Key Features
 
-*   🔒 **Secure Authentication:** Smooth login/signup flow using Firebase Authentication (Email, Google Sign-In) integrated with the Vouse backend.
+*   🔒 **Secure Authentication:** Smooth login/signup flow using **Firebase Authentication SDK** (Email, Google Sign-In) directly within the app. Backend verifies Firebase ID tokens.
 *   📱 **Cross-Platform:** Single codebase for both Android and iOS using Flutter.
 *   ✍️ **Post Creation & Scheduling:** Compose posts with text, images, and location tags. Schedule them for automatic publishing via the Vouse server.
 *   🖼️ **Media Handling:** Select and preview images for your posts.
 *   📊 **Engagement Tracking:** View performance metrics for your published posts.
 *   🔔 **Push Notifications:** Receive real-time updates about your account and published posts via FCM.
 *   🗺️ **Location Services:** Tag posts with location data using Google Maps integration.
-*   🤖 **AI Assistance (via Backend):** Leverage backend AI features for content suggestions (details implemented server-side).
+*   🤖 **AI Assistance:** Leverage **Firebase Vertex AI SDK** directly in the app for smart content suggestions.
 *   🏛️ **Clean Architecture:** Organized codebase following clean architecture principles for maintainability and testability.
 *   💡 **State Management:** Efficient and scalable state management using Riverpod.
 
@@ -49,6 +52,7 @@ The Vouse Flutter client provides an intuitive and seamless experience for manag
 *   **State Management:** [Riverpod](https://riverpod.dev/)
 *   **API Client:** [Retrofit](https://pub.dev/packages/retrofit) / [Dio](https://pub.dev/packages/dio)
 *   **Authentication:** [Firebase Auth](https://pub.dev/packages/firebase_auth), [Google Sign-In](https://pub.dev/packages/google_sign_in), [Flutter AppAuth](https://pub.dev/packages/flutter_appauth) (for Twitter OAuth flow)
+*   **AI:** [Firebase Vertex AI](https://pub.dev/packages/firebase_vertexai)
 *   **Local Storage:** [SQFlite](https://pub.dev/packages/sqflite)
 *   **Secure Storage:** [Flutter Secure Storage](https://pub.dev/packages/flutter_secure_storage)
 *   **Cloud Storage:** [Firebase Storage](https://pub.dev/packages/firebase_storage)
@@ -91,9 +95,9 @@ lib/
 1.  **Clone:** `git clone https://github.com/YuvalArbel1/Vouse.git && cd Vouse/vouse_flutter`
 2.  **Install:** `flutter pub get`
 3.  **Configure:**
-   *   Ensure your Firebase project's `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are correctly placed.
-   *   Update API keys in `lib/core/config/app_secrets.dart` if necessary.
-   *   Ensure the Vouse Server API base URL is correctly configured (likely within the Dio setup in the data layer).
+    *   Ensure your Firebase project's `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are correctly placed.
+    *   Update API keys in `lib/core/config/app_secrets.dart` if necessary.
+    *   Ensure the Vouse Server API base URL is correctly configured (likely within the Dio setup in the data layer).
 4.  **Run:** `flutter run`
 
 ## 🙏 Contributing

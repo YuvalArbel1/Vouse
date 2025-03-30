@@ -287,8 +287,8 @@ export class XAuthService {
 
       // Update the tokens in the database
       await this.userService.connectTwitter(userId, {
-        accessToken: encryptedAccessToken || '', // Convert null to empty string
-        refreshToken: encryptedRefreshToken || '', // Convert null to empty string
+        accessToken: encryptedAccessToken || '',
+        refreshToken: encryptedRefreshToken || '',
         tokenExpiresAt: tokenExpiresAt.toISOString(),
       });
 

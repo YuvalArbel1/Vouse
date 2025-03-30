@@ -12,6 +12,14 @@ import {
   HttpStatus,
   Query,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { XAuthService } from '../services/x-auth.service';
 import { XClientService } from '../services/x-client.service';
 import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth';
@@ -20,6 +28,7 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 import { ConnectTwitterDto } from '../dto/x-auth.dto';
 import * as crypto from 'crypto';
 
+@ApiTags('X / Twitter Auth')
 @Controller('x/auth')
 export class XAuthController {
   constructor(
@@ -28,10 +37,24 @@ export class XAuthController {
   ) {}
 
   /**
-   * Generate an OAuth 2.0 authorization URL with the proper scopes
-   * IMPORTANT: This includes the 'offline.access' scope to enable refresh tokens
+   * Generate an OAuth 2.0 authorization URL for Twitter
    */
   @Get('authorize')
+  @ApiOperation({ summary: 'Generate Twitter OAuth 2.0 authorization URL' })
+  @ApiQuery({
+    name: 'redirect_uri',
+    required: true,
+    description: "Your application's callback URL registered with Twitter",
+    example: 'vouseflutter://callback',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the authorization URL and state parameter.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Failed to generate URL (e.g., missing Twitter API Key).',
+  })
   generateAuthUrl(@Query('redirect_uri') redirectUri: string) {
     try {
       // Generate random state for CSRF protection
@@ -39,7 +62,7 @@ export class XAuthController {
 
       // Generate the authorization URL
       const authUrl = this.xClientService.generateAuthorizationUrl(
-        redirectUri || 'http://localhost:3000/auth/callback',
+        redirectUri || 'http://localhost:3000/auth/callback', // Default might need adjustment
         state,
       );
 
@@ -65,6 +88,27 @@ export class XAuthController {
    */
   @Post(':userId/connect')
   @UseGuards(FirebaseAuthGuard)
+  @ApiBearerAuth() // Indicate Bearer token auth is required
+  @ApiOperation({ summary: 'Connect Twitter account by storing OAuth tokens' })
+  @ApiParam({
+    name: 'userId',
+    description: 'The Firebase UID of the user',
+    example: 'firebaseUid123',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Twitter account connected successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (e.g., invalid tokens, missing tokens).',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded during token verification.',
+  })
   async connectTwitterAccount(
     @Param('userId') userId: string,
     @Body() connectTwitterDto: ConnectTwitterDto,
@@ -135,6 +179,19 @@ export class XAuthController {
    */
   @Delete(':userId/disconnect')
   @UseGuards(FirebaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disconnect Twitter account and remove tokens' })
+  @ApiParam({
+    name: 'userId',
+    description: 'The Firebase UID of the user',
+    example: 'firebaseUid123',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Twitter account disconnected successfully.',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
   async disconnectTwitterAccount(
     @Param('userId') userId: string,
     @CurrentUser() user: DecodedIdToken,
@@ -164,10 +221,24 @@ export class XAuthController {
   }
 
   /**
-   * Check if a Twitter account is connected
+   * Check if the current user's Twitter account is connected
    */
   @Get(':userId/status')
   @UseGuards(FirebaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Check if user's Twitter account is connected" })
+  @ApiParam({
+    name: 'userId',
+    description: 'The Firebase UID of the user',
+    example: 'firebaseUid123',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns connection status.',
+    schema: { properties: { isConnected: { type: 'boolean' } } },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
   async checkConnectionStatus(
     @Param('userId') userId: string,
     @CurrentUser() user: DecodedIdToken,
@@ -185,10 +256,38 @@ export class XAuthController {
   }
 
   /**
-   * Verify Twitter tokens are valid
+   * Verify if the stored Twitter tokens for the user are still valid
    */
   @Post(':userId/verify')
   @UseGuards(FirebaseAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify if stored Twitter tokens are valid' })
+  @ApiParam({
+    name: 'userId',
+    description: 'The Firebase UID of the user',
+    example: 'firebaseUid123',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Tokens are valid.',
+    schema: {
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        username: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request (e.g., tokens not found or invalid).',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded during verification.',
+  })
   async verifyTokens(
     @Param('userId') userId: string,
     @CurrentUser() user: DecodedIdToken,

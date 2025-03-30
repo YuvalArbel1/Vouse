@@ -86,17 +86,23 @@ export class XClientService {
       // Handle 401 Unauthorized errors by refreshing the token
       // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
       if (error.response?.status === 401 && userId && !isRetry) {
-        this.logger.warn(`Received 401 for GET ${endpoint}. Attempting token refresh for user ${userId}.`);
+        this.logger.warn(
+          `Received 401 for GET ${endpoint}. Attempting token refresh for user ${userId}.`,
+        );
         try {
           // Try to refresh the token using the centralized service
           const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
           if (newAccessToken) {
-            this.logger.log(`Token refresh successful for user ${userId}. Retrying GET ${endpoint}.`);
+            this.logger.log(
+              `Token refresh successful for user ${userId}. Retrying GET ${endpoint}.`,
+            );
             // Retry the request with the updated token (implicitly stored by xAuthService)
             return this.get<T>(endpoint, userId, params, true); // Pass isRetry=true
           } else {
-            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry GET ${endpoint}.`);
+            this.logger.error(
+              `Token refresh failed for user ${userId}. Cannot retry GET ${endpoint}.`,
+            );
             // If refresh failed, throw the original error or a specific refresh error
             throw new Error('Token refresh failed');
           }
@@ -176,23 +182,31 @@ export class XClientService {
 
       // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
       if (error.response?.status === 401 && userId && !isRetry) {
-        this.logger.warn(`Received 401 for POST ${endpoint}. Attempting token refresh for user ${userId}.`);
+        this.logger.warn(
+          `Received 401 for POST ${endpoint}. Attempting token refresh for user ${userId}.`,
+        );
         try {
           // Try to refresh the token using the centralized service
           const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
           if (newAccessToken) {
-            this.logger.log(`Token refresh successful for user ${userId}. Retrying POST ${endpoint}.`);
+            this.logger.log(
+              `Token refresh successful for user ${userId}. Retrying POST ${endpoint}.`,
+            );
             // Retry the request with the updated token (implicitly stored by xAuthService)
             return this.post<T>(endpoint, userId, data, params, true); // Pass isRetry=true
           } else {
-            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry POST ${endpoint}.`);
+            this.logger.error(
+              `Token refresh failed for user ${userId}. Cannot retry POST ${endpoint}.`,
+            );
             // If refresh failed, throw the original error or a specific refresh error
             throw new Error('Token refresh failed');
           }
         } catch (refreshErr) {
           const refreshError = asApiError(refreshErr);
-          this.logger.error(`Token refresh failed during POST retry: ${refreshError.message}`);
+          this.logger.error(
+            `Token refresh failed during POST retry: ${refreshError.message}`,
+          );
           // Throw the refresh error to prevent falling through to throw the original 401
           throw refreshError;
         }
@@ -378,23 +392,31 @@ export class XClientService {
       // Handle 401 Unauthorized: Attempt token refresh via XAuthService and retry ONCE.
       // Note: V1.1 API might return different error codes for auth issues. This assumes 401 for simplicity.
       if (error.response?.status === 401 && userId && !isRetry) {
-        this.logger.warn(`Received 401 during media upload. Attempting token refresh for user ${userId}.`);
+        this.logger.warn(
+          `Received 401 during media upload. Attempting token refresh for user ${userId}.`,
+        );
         try {
           // Try to refresh the token using the centralized service
           const newAccessToken = await this.xAuthService.refreshTokens(userId);
 
           if (newAccessToken) {
-            this.logger.log(`Token refresh successful for user ${userId}. Retrying media upload.`);
+            this.logger.log(
+              `Token refresh successful for user ${userId}. Retrying media upload.`,
+            );
             // Retry the upload with the updated token (implicitly stored by xAuthService)
             return this.uploadMedia(userId, mediaBase64, mediaType, true); // Pass isRetry=true
           } else {
-            this.logger.error(`Token refresh failed for user ${userId}. Cannot retry media upload.`);
+            this.logger.error(
+              `Token refresh failed for user ${userId}. Cannot retry media upload.`,
+            );
             // If refresh failed, throw the original error or a specific refresh error
             throw new Error('Token refresh failed');
           }
         } catch (refreshErr) {
           const refreshError = asApiError(refreshErr);
-          this.logger.error(`Token refresh failed during media upload retry: ${refreshError.message}`);
+          this.logger.error(
+            `Token refresh failed during media upload retry: ${refreshError.message}`,
+          );
           // Throw the refresh error to prevent falling through to throw the original 401
           throw refreshError;
         }

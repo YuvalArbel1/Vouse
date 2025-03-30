@@ -2,6 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger, INestApplication } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
 import helmet from 'helmet';
 
@@ -57,6 +58,24 @@ async function bootstrap(): Promise<void> {
  *
  * @param app - The NestJS application instance
  */
+function configureSwagger(app: INestApplication): void {
+  const config = new DocumentBuilder()
+    .setTitle('Vouse API')
+    .setDescription(
+      'API documentation for the Vouse social media management platform',
+    )
+    .setVersion('1.0')
+    // Add more configuration like tags, auth, etc. if needed
+    .build();
+  const document = SwaggerModule.createDocument(app as any, config);
+  SwaggerModule.setup('api-docs', app as any, document); // Cast app to any
+}
+
+/**
+ * Configure the NestJS application with middleware and pipes
+ *
+ * @param app - The NestJS application instance
+ */
 function configureApp(app: INestApplication): void {
   // Security headers
   app.use(helmet());
@@ -79,6 +98,9 @@ function configureApp(app: INestApplication): void {
       },
     }),
   );
+
+  // Setup Swagger
+  configureSwagger(app);
 }
 
 /**

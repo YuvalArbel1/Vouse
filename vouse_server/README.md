@@ -1,270 +1,149 @@
-# Vouse Server
+# Vouse Server 🚀
 
 <div align="center">
-  <h1>Vouse Backend API</h1>
-  <p>A modern NestJS backend for the Vouse social media management platform</p>
+  <img src="https://raw.githubusercontent.com/YuvalArbel1/Vouse/main/vouse_flutter/assets/images/vouse_app_logo.png" alt="Vouse Logo" width="150"> 
+  <br/>
+  <strong>The robust NestJS backend powering the Vouse social media management platform.</strong>
+  <br/>
+  <br/>
+  <!-- Badges -->
+  <img src="https://img.shields.io/badge/framework-NestJS-red?style=for-the-badge&logo=nestjs" alt="NestJS">
+  <img src="https://img.shields.io/badge/language-TypeScript-blue?style=for-the-badge&logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/database-PostgreSQL-blue?style=for-the-badge&logo=postgresql" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/queue-BullMQ-red?style=for-the-badge&logo=bull" alt="BullMQ">
+  <img src="https://img.shields.io/badge/cache-Redis-red?style=for-the-badge&logo=redis" alt="Redis">
+  <img src="https://img.shields.io/badge/auth-Firebase-orange?style=for-the-badge&logo=firebase" alt="Firebase">
+  <img src="https://img.shields.io/badge/deployment-Neon-brightgreen?style=for-the-badge&logo=neon" alt="Neon DB">
+  <img src="https://img.shields.io/badge/social-Twitter_API_v2-blue?style=for-the-badge&logo=twitter" alt="Twitter API v2">
+  <!-- Add build status, license, etc. badges here if applicable -->
 </div>
 
-## Overview
+## ✨ Overview
 
-The Vouse Server is a robust backend built with NestJS that powers the Vouse social media management platform. It provides RESTful APIs for user management, social media integration, post scheduling, analytics, and notifications.
+Vouse Server provides the core API infrastructure for the Vouse platform, enabling users to connect their social media accounts (starting with Twitter/X), schedule posts, upload media, track engagement, and receive notifications. Built with NestJS, it follows a modular architecture and leverages modern technologies for scalability and reliability.
 
-## Features
+## 🚀 Key Features
 
-- **Authentication**: Firebase-based authentication system
-- **User Management**: Profile creation, management, and preferences
-- **Social Media Integration**: Twitter/X API v2 integration
-- **Post Management**: Creation, scheduling, and publishing of social media content
-- **Queue Processing**: Background job processing with Bull and Redis
-- **Database**: TypeORM integration with PostgreSQL
-- **Push Notifications**: Firebase Cloud Messaging integration
+*   🛡️ **Secure Authentication:** Firebase-based authentication ensuring secure user access.
+*   🔗 **Twitter/X Integration:** Robust integration using Twitter API v2, including OAuth 2.0 with automatic token refresh.
+*   ✍️ **Post Management:** Create, update, and delete posts with text, images, and location data.
+*   ⏰ **Smart Scheduling:** Reliable post scheduling using BullMQ and Redis for background job processing.
+*   📊 **Engagement Tracking:** Collects and stores detailed tweet metrics (likes, retweets, impressions) including hourly time-series data.
+*   🔔 **Push Notifications:** Real-time updates via Firebase Cloud Messaging (FCM) when posts are published.
+*   🔒 **Token Encryption:** Securely encrypts sensitive API tokens stored in the database.
+*   🏗️ **Modular Architecture:** Cleanly organized codebase following NestJS best practices.
+*   ☁️ **Cloud-Native Database:** Utilizes Neon serverless PostgreSQL for efficient data storage.
 
-## Technology Stack
+## 🛠️ Tech Stack
 
-- **Framework**: NestJS ^11.0.11
-- **Runtime**: Node.js
-- **Language**: TypeScript
-- **Database**: PostgreSQL with TypeORM
-- **Queue**: Bull with Redis
-- **Authentication**: Firebase Admin SDK
-- **Social Media**: Twitter API v2
-- **Validation**: class-validator and class-transformer
-- **Testing**: Jest
+*   **Framework:** [NestJS](https://nestjs.com/)
+*   **Language:** [TypeScript](https://www.typescriptlang.org/)
+*   **Runtime:** [Node.js](https://nodejs.org/)
+*   **Database:** [PostgreSQL](https://www.postgresql.org/) with [TypeORM](https://typeorm.io/)
+*   **Database Hosting:** [Neon](https://neon.tech/) (Serverless Postgres)
+*   **Queue System:** [BullMQ](https://bullmq.io/)
+*   **Cache/Queue Broker:** [Redis](https://redis.io/)
+*   **Authentication:** [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
+*   **Social Media API:** [Twitter API v2](https://developer.twitter.com/en/docs/twitter-api/early-access) & v1.1 (for media uploads)
+*   **HTTP Client:** [Axios](https://axios-http.com/)
+*   **Validation:** [class-validator](https://github.com/typestack/class-validator), [class-transformer](https://github.com/typestack/class-transformer)
 
-## Project Structure
+## 🏛️ Architecture Overview
+
+The server follows a standard NestJS modular architecture:
+
+*   **Core Modules:** `Auth`, `Users`, `Posts`, `X` (Twitter), `Notifications`, `Common`.
+*   **Database Interaction:** Uses TypeORM repositories to interact with the PostgreSQL database (hosted on Neon). Entities define the data structure (`User`, `Post`, `Engagement`, `DeviceToken`).
+*   **Background Jobs:** BullMQ queues (`post-publish`, `metrics-collector`) backed by Redis handle asynchronous tasks like publishing scheduled posts and collecting metrics. Queue processors contain the business logic for these tasks.
+*   **API Layer:** Controllers expose RESTful endpoints, protected by Guards (`FirebaseAuthGuard`). DTOs define the shape of request/response data.
+*   **Configuration:** Uses `.env` files and dedicated config services (`typeorm.config`, `redis.config`, `twitter.config`).
+*   **Security:** Firebase ID tokens are used for authentication. Sensitive tokens (e.g., Twitter refresh tokens) are encrypted before database storage.
 
 ```
 src/
-├── auth/                # Authentication module
-├── common/              # Shared utilities and helpers
-├── config/              # Application configuration
-├── notifications/       # Push notification services
-├── posts/               # Post management module
-├── types/               # TypeScript type definitions
-├── users/               # User management module
-├── x/                   # Twitter API integration
-├── app.module.ts        # Main application module
-├── httpRequestMiddleware.ts # HTTP request logging
-└── main.ts              # Application entry point
+├── auth/           # Firebase Authentication (Guard, Service)
+├── common/         # Shared utilities (Middleware, Encryption)
+├── config/         # Environment/Service configurations
+├── notifications/  # FCM Push Notifications (Service, Controller, Entity)
+├── posts/          # Post Management & Scheduling (Service, Controller, Entity, Processor)
+├── types/          # Shared TypeScript types
+├── users/          # User Profile & Twitter Token Management (Service, Controller, Entity)
+├── x/              # Twitter API Interaction (Client Service, Auth Service, Controller)
+├── app.module.ts   # Root application module
+└── main.ts         # Application entry point
 ```
 
-## Core Modules
-
-### Auth Module
-
-Handles user authentication using Firebase:
-- Token validation
-- User registration
-- Session management
-
-### Users Module
-
-Manages user profiles and settings:
-- Profile CRUD operations
-- User preferences
-- Social account connections
-
-### Posts Module
-
-Handles post creation, scheduling, and analytics:
-- Post creation and editing
-- Scheduling mechanism
-- Engagement metrics
-
-### X Module
-
-Twitter API v2 integration:
-- OAuth authentication
-- Tweet management
-- Twitter metrics
-
-### Notifications Module
-
-Push notification management:
-- Firebase Cloud Messaging integration
-- Notification templates
-- Delivery tracking
-
-## API Endpoints
-
-### Authentication
-
-- `POST /auth/login`: Authenticate a user
-- `POST /auth/register`: Register a new user
-
-### Users
-
-- `GET /users/profile`: Get user profile
-- `PUT /users/profile`: Update user profile
-- `GET /users/me`: Get current user data
-
-### Posts
-
-- `GET /posts`: List user posts
-- `POST /posts`: Create a new post
-- `GET /posts/:id`: Get post details
-- `PUT /posts/:id`: Update a post
-- `DELETE /posts/:id`: Delete a post
-- `POST /posts/:id/schedule`: Schedule a post
-- `GET /posts/analytics`: Get post analytics
-
-### X (Twitter)
-
-- `POST /x/connect`: Connect Twitter account
-- `GET /x/profile`: Get Twitter profile
-- `POST /x/tweet`: Post a new tweet
-- `GET /x/analytics`: Get Twitter engagement metrics
-
-## Environment Configuration
-
-The application requires the following environment variables:
-
-```
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=password
-DB_DATABASE=vouse
-
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Firebase Configuration
-FIREBASE_PROJECT_ID=your-firebase-project
-FIREBASE_PRIVATE_KEY=your-private-key
-FIREBASE_CLIENT_EMAIL=your-client-email
-
-# Twitter API Configuration
-TWITTER_API_KEY=your-api-key
-TWITTER_API_SECRET=your-api-secret
-TWITTER_ACCESS_TOKEN=your-access-token
-TWITTER_ACCESS_SECRET=your-access-secret
-```
-
-## Setup and Installation
+## ⚙️ Getting Started
 
 ### Prerequisites
 
-- Node.js (v18+)
-- npm or yarn
-- PostgreSQL
-- Redis
+*   Node.js (v18+)
+*   npm or yarn
+*   PostgreSQL Instance (e.g., local or a Neon free tier)
+*   Redis Instance
+*   Firebase Project + Service Account Credentials
+*   Twitter Developer App Credentials (API Key/Secret)
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/YuvalArbel1/Vouse.git
-   cd Vouse/vouse_server
-   ```
+1.  **Clone:** `git clone https://github.com/YuvalArbel1/Vouse.git && cd Vouse/vouse_server`
+2.  **Install:** `npm install`
+3.  **Configure:** Create a `.env` file based on the environment variables listed below. Ensure Firebase service account JSON and Twitter API keys are correctly set.
+    ```env
+    # Server
+    PORT=3000
+    NODE_ENV=development
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+    # Database (Neon Example - replace with your details)
+    DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require 
 
-3. Set up environment variables by creating a `.env` file (see Environment Configuration section)
+    # Redis
+    REDIS_HOST=localhost
+    REDIS_PORT=6379
+    # REDIS_PASSWORD=
+    # REDIS_TLS_ENABLED=false
 
-4. Start the development server:
-   ```bash
-   npm run start:dev
-   ```
+    # Firebase (Use EITHER file path OR individual vars)
+    # FIREBASE_SERVICE_ACCOUNT_PATH=./path/to/your-service-account.json
+    FIREBASE_PROJECT_ID=your-firebase-project-id
+    FIREBASE_CLIENT_EMAIL=your-service-account-email@project-id.iam.gserviceaccount.com
+    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nYOUR_KEY_HERE\\n-----END PRIVATE KEY-----\\n" # Ensure newlines are escaped as \\n
 
-### Database Setup
+    # Twitter API v2 (Ensure your app has v2 access)
+    TWITTER_API_KEY=your_consumer_key
+    TWITTER_API_SECRET=your_consumer_secret
+    # TWITTER_BEARER_TOKEN=your_bearer_token (Optional, might be needed for some endpoints)
+    # Access Token/Secret are stored per user, not globally needed here
 
-1. Create a PostgreSQL database:
-   ```sql
-   CREATE DATABASE vouse;
-   ```
+    # Encryption Key (Generate a secure 32-byte key using e.g., openssl rand -base64 32)
+    ENCRYPTION_KEY=your_32_byte_random_encryption_key 
+    ```
+4.  **Run:** `npm run start:dev`
 
-2. The ORM will handle schema creation when you start the application with the proper configuration.
+The server will start, and TypeORM will synchronize the database schema if `synchronize: true` is set in `typeorm.config.ts`.
 
-## Running in Production
+## 📚 API Documentation (Swagger UI)
 
-### Build the application:
+Interactive API documentation is available via Swagger UI at the deployed server URL:
 
-```bash
-npm run build
-```
+[https://vouse.onrender.com/api-docs](https://vouse.onrender.com/api-docs)
 
-### Start in production mode:
+This interface allows you to explore all available API endpoints, view their request/response schemas, and even test them directly from your browser against the live API.
 
-```bash
-npm run start:prod
-```
+## 🙏 Contributing
 
-### Using Docker (Recommended)
+Contributions are welcome! Please follow standard fork-and-pull-request workflow.
 
-```bash
-docker-compose up -d
-```
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-## Testing
-
-### Unit Tests
-
-```bash
-npm run test
-```
-
-### End-to-End Tests
-
-```bash
-npm run test:e2e
-```
-
-### Test Coverage
-
-```bash
-npm run test:cov
-```
-
-## Deployment
-
-The application is designed to be deployed on:
-- Docker containers
-- Kubernetes clusters
-- Cloud platforms (AWS, GCP, Azure)
-
-## Development Guidelines
-
-### Code Style
-
-- Follow NestJS best practices
-- Use meaningful variable and function names
-- Document complex functions with JSDoc comments
-
-### Architecture Principles
-
-- Maintain a modular architecture
-- Separate business logic from infrastructure
-- Use dependency injection
-- Write testable code
-
-## Documentation
-
-API documentation is available at `/api-docs` when running the server with Swagger enabled.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
+## 📄 License
 
 All rights reserved. This project and its contents are proprietary.
 
 ---
 
-For frontend documentation, see the [vouse_flutter README](../vouse_flutter/README.md).
+➡️ Go to [Vouse Flutter Client README](../vouse_flutter/README.md)

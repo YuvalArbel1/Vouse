@@ -1,17 +1,12 @@
 // src/x/services/x-client.service.ts
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'; // Added Inject, forwardRef
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { UserService } from '../../users/services/user.service';
-import { ConnectTwitterDto } from '../../users/dto/user.dto';
 import { XAuthService } from './x-auth.service'; // Added XAuthService import
 import * as crypto from 'crypto';
 import * as OAuth from 'oauth-1.0a';
 import { TokenEncryption } from '../../common/utils/token_encryption.util';
-import {
-  asApiError,
-  ApiError,
-  TwitterMediaResponse,
-} from '../../common/types/api-response.types';
+import { asApiError } from '../../common/types/api-response.types';
 
 /**
  * Service for communicating with the X/Twitter API
@@ -460,29 +455,34 @@ export class XClientService {
 
   /**
    * Verify user credentials with Twitter API using the user's current token.
-   * This method does NOT handle token refresh itself, relying on the underlying
-   * `get` method to trigger refresh if needed.
+   * This method now leverages the internal `get` method, which handles
+   * automatic token refresh if the initially provided token is expired.
    *
-   * @param accessToken - Access token to verify
-   * @returns User information if token is valid
+   * @param userId - The user ID whose credentials need verification.
+   * @returns User information if tokens are valid (potentially after refresh).
    */
-  async verifyCredentials(accessToken: string): Promise<any> {
-    this.logger.log('Verifying Twitter credentials');
+  async verifyCredentials(userId: string): Promise<any> {
+    this.logger.log(`Verifying Twitter credentials for user ${userId}`);
 
     try {
-      // Call the Twitter API to verify credentials
-      const response = await axios.get(`${this.apiV2BaseUrl}/users/me`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
+      // Use the internal 'get' method which handles token refresh
+      const responseData = await this.get<any>(
+        '/users/me',
+        userId, // Pass userId to enable token fetching and refresh
+        {
           'user.fields': 'id,name,username,profile_image_url,verified',
         },
-      });
+      );
 
-      return response;
+      // The 'get' method returns the data directly, wrap it for consistency if needed
+      // or adjust the calling code (xAuthService.verifyTokens)
+      return { data: responseData }; // Wrap response data to match previous structure if necessary
     } catch (error) {
-      this.logger.error(`Failed to verify credentials: ${error.message}`);
+      // The 'get' method already logs errors and handles refresh failures
+      this.logger.error(
+        `Failed to verify credentials for user ${userId} after potential refresh attempt: ${error.message}`,
+      );
+      // Re-throw the error caught from the 'get' method
       throw error;
     }
   }

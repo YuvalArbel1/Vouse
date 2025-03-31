@@ -311,9 +311,8 @@ export class XAuthController {
       }
 
       try {
-        const userInfo = await this.xAuthService.verifyTokens(
-          tokens.accessToken,
-        );
+        // Pass userId to xAuthService.verifyTokens, which now expects it
+        const userInfo = await this.xAuthService.verifyTokens(userId);
 
         return {
           success: true,

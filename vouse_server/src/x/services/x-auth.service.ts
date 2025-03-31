@@ -111,13 +111,13 @@ export class XAuthService {
   /**
    * Verify that the tokens are valid by making a test API call
    *
-   * @param accessToken Twitter access token
-   * @returns User info if tokens are valid
+   * @param userId Firebase user ID whose tokens need verification
+   * @returns User info if tokens are valid (potentially after refresh)
    */
-  async verifyTokens(accessToken: string): Promise<any> {
+  async verifyTokens(userId: string): Promise<any> {
     try {
-      const credentials =
-        await this.xClientService.verifyCredentials(accessToken);
+      // Pass userId to verifyCredentials, which now handles token fetching & refresh
+      const credentials = await this.xClientService.verifyCredentials(userId);
       return {
         success: true,
         data: {

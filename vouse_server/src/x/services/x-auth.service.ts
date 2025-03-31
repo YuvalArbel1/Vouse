@@ -62,31 +62,11 @@ export class XAuthService {
         tokens.refreshToken,
       );
 
-      try {
-        // Verify the tokens by making a test API call
-        const verifyResult = await this.verifyTokens(tokens.accessToken);
+      // REMOVED: Verification during connect was causing issues.
+      // We will trust the tokens provided by the frontend during connect.
+      // Verification should happen via the /verify endpoint or implicitly during API calls.
 
-        // Add to verification cache
-        if (verifyResult?.data?.username) {
-          this.verifiedTokensCache.set(userId, {
-            timestamp: Date.now(),
-            username: verifyResult.data.username,
-          });
-        }
-      } catch (error) {
-        // If the error is due to rate limiting, still proceed with token storage
-        // but log the issue
-        if (error.isRateLimit) {
-          this.logger.warn(
-            `Rate limited during token verification. Proceeding with token storage anyway.`,
-          );
-        } else {
-          // For other errors, reject the connection
-          throw error;
-        }
-      }
-
-      // IMPORTANT FIX: Find or create the user before connecting
+      // Find or create the user before connecting
       // This ensures the user exists in our database
       const user = await this.userService.findOrCreate(userId);
       this.logger.log(`User found or created: ${user.userId}`);
@@ -111,13 +91,14 @@ export class XAuthService {
   /**
    * Verify that the tokens are valid by making a test API call
    *
-   * @param userId Firebase user ID whose tokens need verification
-   * @returns User info if tokens are valid (potentially after refresh)
+   * @param accessToken Twitter access token
+   * @returns User info if tokens are valid
    */
-  async verifyTokens(userId: string): Promise<any> {
+  async verifyTokens(accessToken: string): Promise<any> {
     try {
-      // Pass userId to verifyCredentials, which now handles token fetching & refresh
-      const credentials = await this.xClientService.verifyCredentials(userId);
+      // Call verifyCredentials with the provided access token
+      const credentials =
+        await this.xClientService.verifyCredentials(accessToken);
       return {
         success: true,
         data: {

@@ -120,6 +120,17 @@ export class XAuthController {
     }
 
     try {
+      // Enhanced logging for incoming tokens
+      this.xAuthService['logger'].log(
+        `[Connect Request - User: ${userId}] Received tokens - AccessToken provided: ${!!connectTwitterDto.accessToken}, RefreshToken provided: ${!!connectTwitterDto.refreshToken}, ExpiresAt: ${connectTwitterDto.tokenExpiresAt}`,
+      );
+      // Log the actual refresh token presence more clearly
+      if (!connectTwitterDto.refreshToken) {
+        this.xAuthService['logger'].warn(
+          `[Connect Request - User: ${userId}] Refresh token is MISSING from the request body.`,
+        );
+      }
+
       // Log the incoming tokens for debugging
       console.log(
         'Received tokens - accessToken exists:',
@@ -297,73 +308,51 @@ export class XAuthController {
       throw new NotFoundException('User not found');
     }
 
+    // Directly attempt to fetch user info using xClientService.get
+    // This method handles fetching stored tokens and refreshing them if necessary.
     try {
-      const tokens = await this.xAuthService.getUserTokens(userId);
+      const userInfo = await this.xClientService.get<any>('/users/me', userId, {
+        'user.fields': 'id,name,username', // Request necessary fields
+      });
 
-      if (!tokens || !tokens.accessToken) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'No Twitter tokens found',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      try {
-        // Pass userId to xAuthService.verifyTokens, which now expects it
-        const userInfo = await this.xAuthService.verifyTokens(userId);
-
-        return {
-          success: true,
-          message: 'Twitter tokens are valid',
-          username: userInfo.data.username,
-        };
-      } catch (error) {
-        // Special handling for rate limit errors
-        if (error.isRateLimit) {
-          const waitTime = error.resetTime
-            ? new Date(parseInt(error.resetTime) * 1000)
-            : 'unknown time';
-
-          throw new HttpException(
-            {
-              success: false,
-              message: `Twitter API rate limit exceeded. Please try again after ${waitTime}`,
-              error: 'RATE_LIMIT_EXCEEDED',
-              resetTime: error.resetTime,
-              isRateLimit: true,
-            },
-            HttpStatus.TOO_MANY_REQUESTS, // 429
-          );
-        }
-
-        // For non-rate-limit errors, update connection status
-        await this.xAuthService.updateConnectionStatus(userId, false);
-
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Twitter tokens are invalid',
-            error: error.message,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      // If the call succeeds (potentially after a refresh), tokens are valid
+      return {
+        success: true,
+        message: 'Twitter tokens are valid',
+        username: userInfo.data.username, // Access username from the response data
+      };
     } catch (error) {
-      // If the error is already an HttpException (like from the nested try/catch),
-      // just rethrow it
-      if (error instanceof HttpException) {
-        throw error;
+      // Handle errors from xClientService.get (which includes refresh failures)
+
+      // Special handling for rate limit errors passed through from xClientService
+      if (error.isRateLimit) {
+        const waitTime = error.resetTime
+          ? new Date(parseInt(error.resetTime) * 1000)
+          : 'unknown time';
+
+        throw new HttpException(
+          {
+            success: false,
+            message: `Twitter API rate limit exceeded. Please try again after ${waitTime}`,
+            error: 'RATE_LIMIT_EXCEEDED',
+            resetTime: error.resetTime,
+            isRateLimit: true,
+          },
+          HttpStatus.TOO_MANY_REQUESTS, // 429
+        );
       }
 
+      // If the error indicates a failed refresh or invalid initial tokens,
+      // the user's connection status might have already been set to false
+      // by the underlying services (xClientService.get -> xAuthService.refreshTokens).
+      // We return a 400 Bad Request indicating invalid/unusable tokens.
       throw new HttpException(
         {
           success: false,
-          message: 'Failed to verify Twitter tokens',
+          message: 'Twitter tokens are invalid or could not be refreshed',
           error: error.message,
         },
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.BAD_REQUEST, // 400
       );
     }
   }

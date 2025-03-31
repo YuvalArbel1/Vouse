@@ -1,5 +1,5 @@
 // src/users/services/user.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common'; // Import Logger
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -11,9 +11,20 @@ import {
 
 /**
  * Service for managing user operations
+ import { User } from '../entities/user.entity';
+ import {
+ CreateUserDto,
+ ConnectTwitterDto,
+ UpdateConnectionStatusDto,
+ } from '../dto/user.dto';
+
+ /**
+ * Service for managing user operations
  */
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name); // Add logger instance
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -41,18 +52,43 @@ export class UserService {
    * Create a new user
    */
   async create(createUserDto: CreateUserDto): Promise<User> {
+    this.logger.log(`Attempting to create user record for ${createUserDto.userId}`);
     const user = this.userRepository.create(createUserDto);
-    return this.userRepository.save(user);
+    try {
+      const savedUser = await this.userRepository.save(user);
+      this.logger.log(`Successfully created and saved user record for ${savedUser.userId}`);
+      return savedUser;
+    } catch (error) {
+      this.logger.error(`Failed to save new user record for ${createUserDto.userId}: ${error.message}`, error.stack);
+      throw error; // Re-throw the error to be handled upstream
+    }
   }
 
   /**
    * Create a user if they don't exist, or return the existing user
    */
   async findOrCreate(userId: string): Promise<User> {
+    this.logger.log(`findOrCreate called for user ${userId}`);
     let user = await this.findOne(userId);
 
     if (!user) {
-      user = await this.create({ userId });
+      this.logger.log(`User ${userId} not found, attempting to create...`);
+      try {
+        user = await this.create({ userId });
+        this.logger.log(`User ${userId} created successfully by findOrCreate.`);
+      } catch (creationError) {
+        this.logger.error(`User creation failed within findOrCreate for ${userId}: ${creationError.message}`);
+        // Attempt to find the user again in case of a race condition
+        user = await this.findOne(userId);
+        if (!user) {
+          this.logger.error(`User ${userId} still not found after creation attempt failed.`);
+          throw new Error(`Failed to find or create user ${userId}.`);
+        } else {
+          this.logger.warn(`User ${userId} found after failed creation attempt (possible race condition).`);
+        }
+      }
+    } else {
+      this.logger.log(`User ${userId} found in database.`);
     }
 
     return user;

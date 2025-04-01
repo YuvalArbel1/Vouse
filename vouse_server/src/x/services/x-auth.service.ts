@@ -215,12 +215,16 @@ export class XAuthService {
       // Twitter OAuth 2.0 token endpoint
       const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
 
-      // Get client credentials - BOTH are required for token refresh
-      const clientId = process.env.TWITTER_API_KEY;
+      // Get OAuth 2.0 client credentials - BOTH are required for token refresh
+      // Use the specific OAuth 2.0 Client ID for this flow
+      const clientId = process.env.TWITTER_OAUTH2_CLIENT_ID;
+      // The Client Secret is often the same as the v1.1 API Secret Key, but use the specific OAuth 2.0 one if different.
       const clientSecret = process.env.TWITTER_API_SECRET;
 
       if (!clientId || !clientSecret) {
-        this.logger.error('Twitter API credentials not properly configured');
+        this.logger.error(
+          'Twitter OAuth 2.0 Client ID or Client Secret not properly configured in environment variables (TWITTER_OAUTH2_CLIENT_ID, TWITTER_API_SECRET)',
+        );
         return null;
       }
 

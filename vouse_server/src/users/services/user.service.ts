@@ -126,9 +126,26 @@ export class UserService {
     try {
       const savedUser = await this.userRepository.save(user);
       this.logger.log(
-        `Successfully saved tokens for user ${userId}. DB isConnected: ${savedUser.isConnected}, DB AccessToken exists: ${!!savedUser.accessToken}, DB RefreshToken exists: ${!!savedUser.refreshToken}`,
+        `Successfully saved tokens for user ${userId}. TypeORM returned isConnected: ${savedUser.isConnected}, AccessToken exists: ${!!savedUser.accessToken}, RefreshToken exists: ${!!savedUser.refreshToken}`,
       );
-      return savedUser;
+
+      // Verification Step: Re-fetch directly from DB immediately after save
+      const userFromDbAfterSave = await this.findOne(userId);
+      if (userFromDbAfterSave) {
+        this.logger.log(
+          `Verification fetch for user ${userId}. DB isConnected: ${userFromDbAfterSave.isConnected}, DB AccessToken exists: ${!!userFromDbAfterSave.accessToken}, DB RefreshToken exists: ${!!userFromDbAfterSave.refreshToken}`,
+        );
+        this.logger.debug(
+          `Verification fetch data: ${JSON.stringify(userFromDbAfterSave)}`,
+        );
+      } else {
+        this.logger.error(
+          `Verification fetch failed for user ${userId} - user not found after save!`,
+        );
+      }
+      // End Verification Step
+
+      return savedUser; // Still return the entity TypeORM provided from save()
     } catch (error) {
       this.logger.error(
         `Failed to save tokens for user ${userId}: ${error.message}`,

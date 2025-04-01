@@ -282,8 +282,12 @@ export class XAuthService {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      // Log the detailed error response from Twitter if available
+      const errorResponseData = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : 'No response data';
       this.logger.error(
-        `Failed to refresh tokens for user ${userId}: ${errorMessage}`,
+        `Failed to refresh tokens for user ${userId}: ${errorMessage}. Response Data: ${errorResponseData}`,
       );
 
       // If the refresh token is invalid, update connection status

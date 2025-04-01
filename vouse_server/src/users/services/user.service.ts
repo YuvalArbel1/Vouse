@@ -52,14 +52,21 @@ export class UserService {
    * Create a new user
    */
   async create(createUserDto: CreateUserDto): Promise<User> {
-    this.logger.log(`Attempting to create user record for ${createUserDto.userId}`);
+    this.logger.log(
+      `Attempting to create user record for ${createUserDto.userId}`,
+    );
     const user = this.userRepository.create(createUserDto);
     try {
       const savedUser = await this.userRepository.save(user);
-      this.logger.log(`Successfully created and saved user record for ${savedUser.userId}`);
+      this.logger.log(
+        `Successfully created and saved user record for ${savedUser.userId}`,
+      );
       return savedUser;
     } catch (error) {
-      this.logger.error(`Failed to save new user record for ${createUserDto.userId}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to save new user record for ${createUserDto.userId}: ${error.message}`,
+        error.stack,
+      );
       throw error; // Re-throw the error to be handled upstream
     }
   }
@@ -77,14 +84,20 @@ export class UserService {
         user = await this.create({ userId });
         this.logger.log(`User ${userId} created successfully by findOrCreate.`);
       } catch (creationError) {
-        this.logger.error(`User creation failed within findOrCreate for ${userId}: ${creationError.message}`);
+        this.logger.error(
+          `User creation failed within findOrCreate for ${userId}: ${creationError.message}`,
+        );
         // Attempt to find the user again in case of a race condition
         user = await this.findOne(userId);
         if (!user) {
-          this.logger.error(`User ${userId} still not found after creation attempt failed.`);
+          this.logger.error(
+            `User ${userId} still not found after creation attempt failed.`,
+          );
           throw new Error(`Failed to find or create user ${userId}.`);
         } else {
-          this.logger.warn(`User ${userId} found after failed creation attempt (possible race condition).`);
+          this.logger.warn(
+            `User ${userId} found after failed creation attempt (possible race condition).`,
+          );
         }
       }
     } else {

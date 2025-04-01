@@ -1,5 +1,5 @@
 // src/users/services/user.service.ts
-import { Injectable, NotFoundException, Logger } from '@nestjs/common'; // Import Logger
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -11,20 +11,10 @@ import {
 
 /**
  * Service for managing user operations
- import { User } from '../entities/user.entity';
- import {
- CreateUserDto,
- ConnectTwitterDto,
- UpdateConnectionStatusDto,
- } from '../dto/user.dto';
-
- /**
- * Service for managing user operations
  */
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name); // Add logger instance
-
+  private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -128,7 +118,24 @@ export class UserService {
       user.tokenExpiresAt = null;
     }
 
-    return this.userRepository.save(user);
+    this.logger.log(
+      `Attempting to save tokens for user ${userId}. AccessToken provided: ${!!connectTwitterDto.accessToken}, RefreshToken provided: ${!!connectTwitterDto.refreshToken}`,
+    );
+    this.logger.debug(`Saving user data: ${JSON.stringify(user)}`); // Log the user object before saving
+
+    try {
+      const savedUser = await this.userRepository.save(user);
+      this.logger.log(
+        `Successfully saved tokens for user ${userId}. DB isConnected: ${savedUser.isConnected}, DB AccessToken exists: ${!!savedUser.accessToken}, DB RefreshToken exists: ${!!savedUser.refreshToken}`,
+      );
+      return savedUser;
+    } catch (error) {
+      this.logger.error(
+        `Failed to save tokens for user ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error; // Re-throw error
+    }
   }
 
   /**

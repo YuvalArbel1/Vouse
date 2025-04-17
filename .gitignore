@@ -12,22 +12,48 @@ vouse_flutter/vouse_flutter.iml
 vouse_flutter/firebase.json
 vouse_flutter/devtools_options.yaml
 vouse_flutter/lib/core/config/app_secrets.dart
-.idea/
+vouse_flutter/lib/firebase_options.dart # Added: Contains Firebase API keys
 
-vouse_flutter/android/.kotlin
-vouse_flutter/android/gradle-wrapper.jar
-vouse_flutter/android/app/.cxx
-vouse_flutter/android/app/google-services.json
+# =========================
+# Flutter Specific (vouse_flutter)
+# =========================
+.idea/ # General IDE folder
+vouse_flutter/.idea # Specific IDE folder
+
+# Flutter/Dart build outputs
+vouse_flutter/.dart_tool
+vouse_flutter/build
+
+# Flutter generated files
+vouse_flutter/.flutter-plugins
+vouse_flutter/.flutter-plugins-dependencies
+vouse_flutter/vouse_flutter.iml
+vouse_flutter/firebase.json # Often generated, might contain project IDs
+
+# Platform specific build/config folders (often better to ignore entirely)
+vouse_flutter/windows
+vouse_flutter/test
+vouse_flutter/macos
+vouse_flutter/linux
+vouse_flutter/web
+
+# Android specific ignores
 vouse_flutter/android/.gradle
+vouse_flutter/android/.kotlin
 vouse_flutter/android/captures/
 vouse_flutter/android/gradlew
 vouse_flutter/android/gradlew.bat
-vouse_flutter/android/local.properties
+vouse_flutter/android/gradle-wrapper.jar
+vouse_flutter/android/local.properties # Contains SDK path, user specific
 vouse_flutter/android/GeneratedPluginRegistrant.java
+vouse_flutter/android/app/.cxx
+vouse_flutter/android/app/google-services.json # Contains Firebase config
 
-
-
-# Ignore patterns
+# iOS specific ignores
+# (Existing iOS rules seem comprehensive, keeping them grouped)
+vouse_flutter/android/gradle-wrapper.jar
+vouse_flutter/android/app/.cxx
+# Ignore patterns (iOS)
 vouse_flutter/ios/**/dgph
 vouse_flutter/ios/*.mode1v3
 vouse_flutter/ios/*.mode2v3
@@ -59,32 +85,28 @@ vouse_flutter/ios/Flutter/flutter_export_environment.sh
 vouse_flutter/ios/ServiceDefinitions.json
 vouse_flutter/ios/Runner/GeneratedPluginRegistrant.*
 
-# Exceptions to above rules.
+# Exceptions to above rules. (iOS)
 vouse_flutter/ios/!default.mode1v3
 vouse_flutter/ios/!default.mode2v3
 vouse_flutter/ios/!default.pbxuser
 vouse_flutter/ios/!default.perspectivev3
 
-
-
+# =========================
+# General Secrets / Keys
+# =========================
 # Remember to never publicly share your keystore.
 # See https://flutter.dev/to/reference-keystore
 key.properties
 **/*.keystore
 **/*.jks
 
-
-
-
 # =========================
 # Node/JS Server (vouse_server) Specific
 # =========================
-
-# Compiled output
+vouse_server/.idea # IDE specific
+vouse_server/build
 vouse_server/dist
 vouse_server/node_modules
-vouse_server/.idea
-vouse_server/build
 
 # Logs
 vouse_server/logs
@@ -95,15 +117,14 @@ vouse_server/yarn-debug.log*
 vouse_server/yarn-error.log*
 vouse_server/lerna-debug.log*
 
-# OS
+# OS generated files
 .DS_Store
 
-# Tests
+# Test outputs
 vouse_server/coverage
 vouse_server/.nyc_output
 
-# IDEs and editors (WebStorm)
-vouse_server/.idea
+# Other IDE/Editor files
 vouse_server/.project
 vouse_server/.classpath
 vouse_server/.c9/
@@ -111,17 +132,15 @@ vouse_server/*.launch
 vouse_server/.settings/
 vouse_server/*.sublime-workspace
 
-# dotenv environment variable files
-vouse_server/.env
-vouse_server/.env.development.local
-vouse_server/.env.test.local
-vouse_server/.env.production.local
-vouse_server/.env.local
-vouse_server/vouse-4d2c0-firebase-adminsdk-fbsvc-0ae3a7c438.json
-vouse_server/package-lock.json
-vouse_server/dump.rdb
+# Environment variable files & Sensitive Config
+vouse_server/.env* # Ignore all .env files
+vouse_server/vouse-4d2c0-firebase-adminsdk-fbsvc-0ae3a7c438.json # Firebase Admin SDK key
+vouse_server/dump.rdb # Redis dump file, might contain sensitive data
 
-# Temp directory
+# Dependency lock files (can sometimes cause merge conflicts, optional to ignore)
+# vouse_server/package-lock.json
+
+# Temp directories
 vouse_server/.temp
 vouse_server/.tmp
 

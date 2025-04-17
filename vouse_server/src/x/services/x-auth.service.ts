@@ -242,7 +242,6 @@ export class XAuthService {
 
       this.logger.debug('Sending refresh token request to Twitter API');
 
-
       // Make the request to refresh the token with proper authentication
       const response = await axios.post(tokenUrl, formData.toString(), {
         headers: {

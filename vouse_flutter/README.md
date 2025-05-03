@@ -37,13 +37,13 @@ The Vouse Flutter client provides an intuitive and seamless experience for manag
 
 ## 📸 Screenshots / Demo
 
-*(Placeholders - Replace with actual screenshots or GIFs)*
+*(Replace placeholders with actual screenshots or GIFs)*
 
-| Login Screen                                     | Home Dashboard                                   | Post Creation                                      |
-| :-----------------------------------------------: | :----------------------------------------------: | :------------------------------------------------: |
-| ![Login Screen](placeholder_login.png)           | ![Home Screen](placeholder_home.png)             | ![Post Creation](placeholder_create.gif)           |
-| **Post History**                                 | **Engagement View**                              | **Profile/Settings**                             |
-| ![Post History Screen](placeholder_history.png) | ![Engagement Screen](placeholder_engagement.png) | ![Profile Screen](placeholder_profile.png)         |
+| Login Screen                                     | Home Dashboard                                            | Post Creation                                         |
+| :-----------------------------------------------: | :-------------------------------------------------------: | :---------------------------------------------------: |
+| ![Login Screen](assets/readme_images/login_screen.jpg) | ![Home Screen](assets/readme_images/home_dashboard_ip.jpg) | ![Post Creation](assets/readme_images/create_post_gif.gif) |
+| **Post History**                                 | **Engagement View**                                       | **Profile/Settings**                                  |
+| ![Post History Screen](assets/readme_images/post_history_scheduled.jpg) | ![Engagement Screen](assets/readme_images/engagemnt_overview.jpg) | ![Profile Screen](assets/readme_images/edit_profile.jpg)   |
 
 ## 🛠️ Tech Stack
 

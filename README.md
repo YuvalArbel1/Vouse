@@ -19,12 +19,13 @@
 Vouse is an integrated social media management platform designed to streamline content creation, scheduling, and analysis across multiple social networks (starting with Twitter/X). It combines an intuitive mobile experience built with **Flutter** and a powerful, scalable backend powered by **NestJS**. Simplify your social media workflow and gain insights into your performance with Vouse!
 
 <!-- Optional: Add a compelling GIF/Screenshot here -->
-<!-- <p align="center"><img src="path/to/your/demo.gif" alt="Vouse Demo"></p> -->
+<p align="center"><img src="vouse_flutter/assets/readme_images/create_post_gif.gif" alt="Vouse Demo"></p>
 
 ## 🚀 Key Features
 
 *   📱 **Cross-Platform Mobile App:** Manage your accounts anywhere using the Flutter app (iOS & Android).
 *   🔗 **Twitter/X Integration:** Securely connect and manage your Twitter presence.
+*   🔒 **Secure Authentication:** Client-side authentication using Firebase SDKs, with backend token verification.
 *   🤖 **AI-Assisted Content:** Leverage Firebase Vertex AI SDK directly in the client app for smarter content suggestions.
 *   ⏰ **Advanced Scheduling:** Plan and automate your posts with a reliable queue system.
 *   📊 **Performance Analytics:** Track key engagement metrics for your published content.

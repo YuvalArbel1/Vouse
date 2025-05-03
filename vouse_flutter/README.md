@@ -45,6 +45,19 @@ The Vouse Flutter client provides an intuitive and seamless experience for manag
 | **Post History**                                 | **Engagement View**                                       | **Profile/Settings**                                  |
 | ![Post History Screen](assets/readme_images/post_history_scheduled.jpg) | ![Engagement Screen](assets/readme_images/engagemnt_overview.jpg) | ![Profile Screen](assets/readme_images/edit_profile.jpg)   |
 
+### 🖼️ More Visuals
+
+Explore more screenshots and GIFs showcasing different states and flows of the app:
+
+*   [Registration Screen](assets/readme_images/register_screen.jpg)
+*   [Home Dashboard (GIF)](assets/readme_images/home_dashboard_gif.gif)
+*   [Post History (Drafts)](assets/readme_images/post_history_drafts.jpg)
+*   [Settings Screen (GIF)](assets/readme_images/setting_screen_gif.gif)
+*   [Engagement Overview (Alternate View)](assets/readme_images/engagemnt_overview_down.jpg)
+*   [Home Dashboard (Alternate View)](assets/readme_images/home_dashboard_down.jpg)
+
+*(You can find all visuals in the [assets/readme_images](assets/readme_images/) folder.)*
+
 ## 🛠️ Tech Stack
 
 *   **Framework:** [Flutter](https://flutter.dev/)
